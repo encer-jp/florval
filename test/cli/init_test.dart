@@ -56,8 +56,11 @@ void main() {
       expect(config.outputDirectory, equals('lib/api/generated'));
       expect(config.client.baseUrlEnv, equals('API_BASE_URL'));
       expect(config.client.timeout, equals(30000));
-      expect(config.riverpod.enabled, isFalse);
-      expect(config.riverpod.autoInvalidate, isFalse);
+      expect(config.riverpod.enabled, isTrue);
+      expect(config.riverpod.autoInvalidate, isTrue);
+      expect(config.riverpod.retry, isNotNull);
+      expect(config.riverpod.retry!.maxAttempts, equals(3));
+      expect(config.riverpod.retry!.delay, equals(1000));
     });
 
     test('returns alreadyExists when file exists and force is false', () {
