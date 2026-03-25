@@ -1,0 +1,25 @@
+## 0.1.0
+
+- Initial release
+- OpenAPI 3.0 / 3.1 spec parsing with automatic v3.0 → v3.1 normalization
+- Swagger 2.0 partial support (auto-normalized to 3.1)
+- `$ref` resolution with circular reference detection
+- freezed 3.x data model generation (abstract class)
+- Status-code Union type generation (freezed sealed class)
+- Dart 3 switch expression support (no when/map)
+- dio API client generation (no Retrofit dependency)
+- DioException handling with status-code routing
+- Riverpod 3.x provider generation (optional)
+  - GET → `@riverpod` Notifier with build() parameters
+  - POST/PUT/DELETE/PATCH → `Mutation<T>()` constants
+  - Auto-invalidation of GET providers after mutations
+  - `@Riverpod(retry:)` support from config
+- Cursor-based pagination with `fetchMore()` and `PaginatedData<T>`
+- multipart/form-data support with `MultipartFile`
+- oneOf / anyOf / allOf / discriminator support
+- Watch mode for auto-regeneration on spec changes
+- `florval init` command for config template generation
+- `florval.yaml` configuration with validation
+- Custom template headers and imports
+- Tag-based endpoint grouping
+- Barrel file generation
