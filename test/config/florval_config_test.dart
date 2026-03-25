@@ -14,9 +14,6 @@ florval:
   client:
     base_url_env: MY_API_URL
     timeout: 60000
-    retry:
-      max_attempts: 5
-      delay: 2000
 ''');
 
       final config = FlorvalConfig.fromFile(tmpFile.path);
@@ -25,8 +22,6 @@ florval:
       expect(config.outputDirectory, 'lib/api/generated');
       expect(config.client.baseUrlEnv, 'MY_API_URL');
       expect(config.client.timeout, 60000);
-      expect(config.client.retry.maxAttempts, 5);
-      expect(config.client.retry.delay, 2000);
 
       tmpFile.deleteSync();
     });
@@ -44,8 +39,6 @@ florval:
       expect(config.outputDirectory, 'lib/api/generated');
       expect(config.client.baseUrlEnv, 'API_BASE_URL');
       expect(config.client.timeout, 30000);
-      expect(config.client.retry.maxAttempts, 3);
-      expect(config.client.retry.delay, 1000);
 
       tmpFile.deleteSync();
     });
@@ -245,6 +238,66 @@ florval:
       final config = FlorvalConfig.fromFile(tmpFile.path);
 
       expect(config.riverpod.pagination, isEmpty);
+
+      tmpFile.deleteSync();
+    });
+
+    test('loads riverpod retry config from YAML', () {
+      final tmpFile =
+          File('${Directory.systemTemp.path}/florval_test_retry.yaml');
+      tmpFile.writeAsStringSync('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    enabled: true
+    retry:
+      max_attempts: 5
+      delay: 2000
+''');
+
+      final config = FlorvalConfig.fromFile(tmpFile.path);
+
+      expect(config.riverpod.retry, isNotNull);
+      expect(config.riverpod.retry!.maxAttempts, 5);
+      expect(config.riverpod.retry!.delay, 2000);
+
+      tmpFile.deleteSync();
+    });
+
+    test('riverpod retry defaults when partially specified', () {
+      final tmpFile =
+          File('${Directory.systemTemp.path}/florval_test_retry2.yaml');
+      tmpFile.writeAsStringSync('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    enabled: true
+    retry:
+      max_attempts: 5
+''');
+
+      final config = FlorvalConfig.fromFile(tmpFile.path);
+
+      expect(config.riverpod.retry, isNotNull);
+      expect(config.riverpod.retry!.maxAttempts, 5);
+      expect(config.riverpod.retry!.delay, 1000);
+
+      tmpFile.deleteSync();
+    });
+
+    test('riverpod retry is null when not specified', () {
+      final tmpFile =
+          File('${Directory.systemTemp.path}/florval_test_retry3.yaml');
+      tmpFile.writeAsStringSync('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    enabled: true
+''');
+
+      final config = FlorvalConfig.fromFile(tmpFile.path);
+
+      expect(config.riverpod.retry, isNull);
 
       tmpFile.deleteSync();
     });

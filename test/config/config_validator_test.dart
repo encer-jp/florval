@@ -152,4 +152,145 @@ florval:
       expect(errors.any((e) => e.message.contains('must be a string')), isTrue);
     });
   });
+
+  group('ConfigValidator - riverpod.retry', () {
+    final validator = ConfigValidator();
+
+    test('accepts valid retry config', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    enabled: true
+    retry:
+      max_attempts: 3
+      delay: 1000
+''') as YamlMap;
+
+      final errors = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.error)
+          .toList();
+
+      expect(errors, isEmpty);
+    });
+
+    test('errors when max_attempts is not an integer', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    retry:
+      max_attempts: "three"
+''') as YamlMap;
+
+      final errors = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.error)
+          .toList();
+
+      expect(errors.any((e) => e.field.contains('max_attempts')), isTrue);
+      expect(
+          errors.any((e) => e.message.contains('must be an integer')), isTrue);
+    });
+
+    test('errors when max_attempts is zero or negative', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    retry:
+      max_attempts: 0
+''') as YamlMap;
+
+      final errors = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.error)
+          .toList();
+
+      expect(errors.any((e) => e.field.contains('max_attempts')), isTrue);
+      expect(errors.any((e) => e.message.contains('positive')), isTrue);
+    });
+
+    test('errors when delay is not an integer', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    retry:
+      delay: "fast"
+''') as YamlMap;
+
+      final errors = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.error)
+          .toList();
+
+      expect(errors.any((e) => e.field.contains('delay')), isTrue);
+      expect(
+          errors.any((e) => e.message.contains('must be an integer')), isTrue);
+    });
+
+    test('errors when delay is negative', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    retry:
+      delay: -100
+''') as YamlMap;
+
+      final errors = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.error)
+          .toList();
+
+      expect(errors.any((e) => e.field.contains('delay')), isTrue);
+      expect(errors.any((e) => e.message.contains('non-negative')), isTrue);
+    });
+
+    test('warns on unknown keys in retry', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    retry:
+      max_attempts: 3
+      unknown_key: value
+''') as YamlMap;
+
+      final warnings = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.warning)
+          .toList();
+
+      expect(
+          warnings.any((e) => e.message.contains('unknown_key')), isTrue);
+    });
+  });
+
+  group('ConfigValidator - client.retry deprecation', () {
+    final validator = ConfigValidator();
+
+    test('warns when client.retry is present', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  client:
+    retry:
+      max_attempts: 3
+''') as YamlMap;
+
+      final warnings = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.warning)
+          .toList();
+
+      expect(
+          warnings.any((e) =>
+              e.field == 'florval.client.retry' &&
+              e.message.contains('moved to "riverpod.retry"')),
+          isTrue);
+    });
+  });
 }

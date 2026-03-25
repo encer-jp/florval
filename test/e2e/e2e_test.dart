@@ -7,13 +7,15 @@ import 'package:florval/src/florval_runner.dart';
 
 FlorvalConfig _makeConfig(String outputPath,
     {bool riverpodEnabled = false,
-    List<PaginationConfig> pagination = const []}) {
+    List<PaginationConfig> pagination = const [],
+    RiverpodRetryConfig? retry}) {
   return FlorvalConfig.fromArgs(
     schemaPath: 'test/fixtures/petstore.yaml',
     outputDirectory: outputPath,
     riverpod: RiverpodConfig(
       enabled: riverpodEnabled,
       pagination: pagination,
+      retry: retry,
     ),
   );
 }
@@ -363,6 +365,58 @@ void main() {
           File(p.join(outputDir.path, 'models', 'api_exception.dart'))
               .existsSync(),
           isFalse);
+    });
+
+    test('generates retry.dart utility and imports it when retry is configured', () {
+      final config = _makeConfig(
+        outputDir.path,
+        riverpodEnabled: true,
+        retry: const RiverpodRetryConfig(maxAttempts: 3, delay: 1000),
+      );
+
+      FlorvalRunner().run(config);
+
+      // Verify retry.dart utility file
+      final retryFile =
+          File(p.join(outputDir.path, 'providers', 'retry.dart'));
+      expect(retryFile.existsSync(), isTrue);
+
+      final retryCode = retryFile.readAsStringSync();
+      expect(retryCode, contains('Duration? retry(int retryCount, Object error)'));
+      expect(retryCode, contains('if (retryCount >= 3) return null;'));
+      expect(retryCode, contains('Duration(milliseconds: 1000 * (retryCount + 1))'));
+
+      // Verify provider imports retry.dart and uses @Riverpod(retry: retry)
+      final providerCode =
+          File(p.join(outputDir.path, 'providers', 'pets_providers.dart'))
+              .readAsStringSync();
+
+      expect(providerCode, contains("import 'retry.dart';"));
+      expect(providerCode, contains('@Riverpod(retry: retry)'));
+      expect(providerCode, contains('final createPet = Mutation<CreatePetResponse>();'));
+
+      // Verify barrel file exports retry.dart
+      final barrelCode =
+          File(p.join(outputDir.path, 'api.dart')).readAsStringSync();
+      expect(barrelCode, contains("export 'providers/retry.dart';"));
+    });
+
+    test('does not generate retry.dart when retry is not configured', () {
+      final config = _makeConfig(outputDir.path, riverpodEnabled: true);
+
+      FlorvalRunner().run(config);
+
+      expect(
+          File(p.join(outputDir.path, 'providers', 'retry.dart'))
+              .existsSync(),
+          isFalse);
+
+      final providerCode =
+          File(p.join(outputDir.path, 'providers', 'pets_providers.dart'))
+              .readAsStringSync();
+
+      expect(providerCode, isNot(contains("import 'retry.dart';")));
+      expect(providerCode, isNot(contains('@Riverpod(retry:')));
     });
   });
 }
