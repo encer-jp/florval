@@ -174,6 +174,71 @@ paths:
         "404":
           description: Task not found
 
+  /tasks/{taskId}/comments:
+    get:
+      operationId: listTaskComments
+      tags:
+        - tasks
+      summary: List comments on a task with cursor-based pagination ($ref pattern)
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: after
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated list of comments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentPage"
+        "404":
+          description: Task not found
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+    post:
+      operationId: addTaskComment
+      tags:
+        - tasks
+      summary: Add a comment to a task
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommentRequest"
+      responses:
+        "201":
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "404":
+          description: Task not found
+
 components:
   schemas:
     Task:
@@ -233,6 +298,45 @@ components:
             - in_progress
             - done
         assigneeId:
+          type: string
+
+    Comment:
+      type: object
+      required:
+        - id
+        - body
+        - author
+      properties:
+        id:
+          type: string
+        body:
+          type: string
+        author:
+          $ref: "#/components/schemas/User"
+        createdAt:
+          type: string
+          format: date-time
+
+    CommentPage:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Comment"
+        nextCursor:
+          type: string
+        totalCount:
+          type: integer
+
+    CreateCommentRequest:
+      type: object
+      required:
+        - body
+      properties:
+        body:
           type: string
 
     ApiError:
