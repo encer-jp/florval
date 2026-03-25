@@ -44,12 +44,6 @@ class InitCommand {
     #       cursor_param: cursor
     #       next_cursor_field: next
     #       items_field: data
-
-  # templates:
-  #   header: "// Custom header"
-  #   model_imports: []
-  #   client_imports: []
-  #   provider_imports: []
 ''';
 
   /// Runs the init command.
