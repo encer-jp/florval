@@ -5,6 +5,7 @@ import 'package:recase/recase.dart';
 
 import '../config/florval_config.dart';
 import '../model/api_endpoint.dart';
+import '../model/api_response.dart';
 import '../model/api_schema.dart';
 import '../model/api_type.dart';
 import '../parser/ref_resolver.dart';
