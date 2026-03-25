@@ -108,6 +108,24 @@ florval:
 
       expect(config.riverpod.enabled, isTrue);
       expect(config.riverpod.stateType, 'async_notifier');
+      expect(config.riverpod.autoInvalidate, isFalse);
+
+      tmpFile.deleteSync();
+    });
+
+    test('loads riverpod auto_invalidate from YAML', () {
+      final tmpFile = File('${Directory.systemTemp.path}/florval_test_rp_ai.yaml');
+      tmpFile.writeAsStringSync('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    enabled: true
+    auto_invalidate: true
+''');
+
+      final config = FlorvalConfig.fromFile(tmpFile.path);
+
+      expect(config.riverpod.autoInvalidate, isTrue);
 
       tmpFile.deleteSync();
     });
@@ -124,6 +142,7 @@ florval:
 
       expect(config.riverpod.enabled, isFalse);
       expect(config.riverpod.stateType, 'async_notifier');
+      expect(config.riverpod.autoInvalidate, isFalse);
 
       tmpFile.deleteSync();
     });
