@@ -159,15 +159,20 @@ class RiverpodConfig {
   /// State type for generated providers.
   final String stateType;
 
+  /// Whether to auto-invalidate same-tag GET providers after mutations.
+  final bool autoInvalidate;
+
   const RiverpodConfig({
     this.enabled = false,
     this.stateType = 'async_notifier',
+    this.autoInvalidate = false,
   });
 
   factory RiverpodConfig.fromYaml(YamlMap yaml) {
     return RiverpodConfig(
       enabled: (yaml['enabled'] as bool?) ?? false,
       stateType: (yaml['state_type'] as String?) ?? 'async_notifier',
+      autoInvalidate: (yaml['auto_invalidate'] as bool?) ?? false,
     );
   }
 }

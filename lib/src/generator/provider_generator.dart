@@ -7,8 +7,9 @@ import '../model/api_endpoint.dart';
 /// Generates Riverpod 3.x providers grouped by tag.
 class ProviderGenerator {
   final TemplateConfig? templateConfig;
+  final bool autoInvalidate;
 
-  ProviderGenerator({this.templateConfig});
+  ProviderGenerator({this.templateConfig, this.autoInvalidate = false});
   /// Generates a provider file for a group of endpoints sharing a tag.
   ///
   /// Produces:
@@ -37,7 +38,8 @@ class ProviderGenerator {
     buffer.writeln();
 
     // Separate GET and mutation endpoints for cache invalidation
-    final getEndpoints = endpoints.where((e) => e.method == 'GET').toList();
+    final getEndpoints =
+        autoInvalidate ? endpoints.where((e) => e.method == 'GET').toList() : <FlorvalEndpoint>[];
 
     // Endpoint providers
     for (final endpoint in endpoints) {

@@ -92,7 +92,10 @@ class FlorvalRunner {
     // Providers (optional)
     final providerNames = <String>[];
     if (config.riverpod.enabled) {
-      final providerGenerator = ProviderGenerator(templateConfig: tc);
+      final providerGenerator = ProviderGenerator(
+        templateConfig: tc,
+        autoInvalidate: config.riverpod.autoInvalidate,
+      );
       for (final entry in endpointsByTag.entries) {
         final code =
             providerGenerator.generate(entry.key, entry.value.cast());

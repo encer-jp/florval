@@ -46,6 +46,7 @@ class ConfigValidator {
   static const _validRiverpodKeys = {
     'enabled',
     'state_type',
+    'auto_invalidate',
   };
 
   static const _validTemplateKeys = {
@@ -244,6 +245,14 @@ class ConfigValidator {
       errors.add(const ConfigValidationError(
         field: 'florval.riverpod.enabled',
         message: '"enabled" must be a boolean.',
+      ));
+    }
+
+    final autoInvalidate = riverpod['auto_invalidate'];
+    if (autoInvalidate != null && autoInvalidate is! bool) {
+      errors.add(const ConfigValidationError(
+        field: 'florval.riverpod.auto_invalidate',
+        message: '"auto_invalidate" must be a boolean.',
       ));
     }
 

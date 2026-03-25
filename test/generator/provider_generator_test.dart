@@ -269,15 +269,24 @@ void main() {
       expect(code, contains('class CreateUser extends _\$CreateUser'));
     });
 
-    test('mutation invalidates related GET providers', () {
+    test('mutation does not invalidate GET providers by default', () {
       final code = generator.generate(
+          'users', [makeGetEndpoint(), makePostEndpoint()]);
+
+      expect(code, isNot(contains('ref.invalidate(')));
+    });
+
+    test('mutation invalidates related GET providers when autoInvalidate is true', () {
+      final autoInvalidateGenerator = ProviderGenerator(autoInvalidate: true);
+      final code = autoInvalidateGenerator.generate(
           'users', [makeGetEndpoint(), makePostEndpoint()]);
 
       // The POST mutation should invalidate the GET provider
       expect(code, contains('ref.invalidate(getUserProvider)'));
     });
 
-    test('mutation with multiple GET endpoints invalidates all', () {
+    test('mutation with multiple GET endpoints invalidates all when autoInvalidate is true', () {
+      final autoInvalidateGenerator = ProviderGenerator(autoInvalidate: true);
       final listEndpoint = FlorvalEndpoint(
         path: '/users',
         method: 'GET',
@@ -287,7 +296,7 @@ void main() {
         tags: ['users'],
       );
 
-      final code = generator.generate(
+      final code = autoInvalidateGenerator.generate(
           'users', [makeGetEndpoint(), listEndpoint, makePostEndpoint()]);
 
       expect(code, contains('ref.invalidate(getUserProvider)'));
