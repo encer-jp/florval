@@ -66,14 +66,21 @@ florval:
       expect(errors.any((e) => e.message.contains('must be a map')), isTrue);
     });
 
-    test('errors when pagination is not a list', () {
+    test('accepts new map format with defaults and endpoints', () {
       final yaml = loadYaml('''
 florval:
   schema_path: api.yaml
   riverpod:
     enabled: true
     pagination:
-      operation_id: listPets
+      defaults:
+        cursor_param: after
+        next_cursor_field: nextCursor
+        items_field: items
+      endpoints:
+        - searchPets
+        - operation_id: listOrders
+          cursor_param: cursor
 ''') as YamlMap;
 
       final errors = validator
@@ -81,7 +88,24 @@ florval:
           .where((e) => e.severity == ValidationSeverity.error)
           .toList();
 
-      expect(errors.any((e) => e.message.contains('must be a list')), isTrue);
+      expect(errors, isEmpty);
+    });
+
+    test('errors when pagination is not a list or map', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    enabled: true
+    pagination: invalid
+''') as YamlMap;
+
+      final errors = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.error)
+          .toList();
+
+      expect(errors.any((e) => e.message.contains('must be a map')), isTrue);
     });
 
     test('warns on unknown keys in pagination entry', () {

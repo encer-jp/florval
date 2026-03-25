@@ -169,10 +169,57 @@ class RiverpodConfig {
   });
 
   factory RiverpodConfig.fromYaml(YamlMap yaml) {
-    final paginationList = yaml['pagination'];
+    final paginationYaml = yaml['pagination'];
     final pagination = <PaginationConfig>[];
-    if (paginationList is YamlList) {
-      for (final entry in paginationList) {
+
+    if (paginationYaml is YamlMap) {
+      // New format: { defaults: {...}, endpoints: [...] }
+      final defaultsYaml = paginationYaml['defaults'] as YamlMap?;
+      final defaultCursorParam = defaultsYaml?['cursor_param'] as String?;
+      final defaultNextCursorField =
+          defaultsYaml?['next_cursor_field'] as String?;
+      final defaultItemsField = defaultsYaml?['items_field'] as String?;
+
+      final endpointsList = paginationYaml['endpoints'] as YamlList?;
+      if (endpointsList != null) {
+        for (final entry in endpointsList) {
+          if (entry is String) {
+            // Shorthand: just operation_id string
+            if (defaultCursorParam == null ||
+                defaultNextCursorField == null ||
+                defaultItemsField == null) {
+              throw FlorvalConfigException(
+                'Pagination endpoint "$entry" uses shorthand but '
+                'defaults are incomplete. Provide cursor_param, '
+                'next_cursor_field, and items_field in defaults.',
+              );
+            }
+            pagination.add(PaginationConfig(
+              operationId: entry,
+              cursorParam: defaultCursorParam,
+              nextCursorField: defaultNextCursorField,
+              itemsField: defaultItemsField,
+            ));
+          } else if (entry is YamlMap) {
+            // Map with operation_id + optional overrides
+            pagination.add(PaginationConfig(
+              operationId: entry['operation_id'] as String,
+              cursorParam: (entry['cursor_param'] as String?) ??
+                  defaultCursorParam ??
+                  'after',
+              nextCursorField: (entry['next_cursor_field'] as String?) ??
+                  defaultNextCursorField ??
+                  'nextCursor',
+              itemsField: (entry['items_field'] as String?) ??
+                  defaultItemsField ??
+                  'items',
+            ));
+          }
+        }
+      }
+    } else if (paginationYaml is YamlList) {
+      // Legacy flat list format (backwards compatible)
+      for (final entry in paginationYaml) {
         if (entry is YamlMap) {
           pagination.add(PaginationConfig.fromYaml(entry));
         }
