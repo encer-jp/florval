@@ -1,4 +1,5 @@
 import 'api_response.dart';
+import 'api_schema.dart';
 import 'api_type.dart';
 
 /// Endpoint information extracted from an OpenAPI path + operation.
@@ -94,9 +95,18 @@ enum ParamLocation {
   cookie,
 }
 
+/// Content type of a request body.
+enum ContentType {
+  /// application/json
+  json,
+
+  /// multipart/form-data
+  multipart,
+}
+
 /// Request body information.
 class FlorvalRequestBody {
-  /// Body type.
+  /// Body type (used for JSON bodies).
   final FlorvalType type;
 
   /// Whether the body is required.
@@ -105,12 +115,24 @@ class FlorvalRequestBody {
   /// Description from the OpenAPI spec.
   final String? description;
 
+  /// Content type of this request body.
+  final ContentType contentType;
+
+  /// Form fields for multipart/form-data requests.
+  /// Only populated when [contentType] is [ContentType.multipart].
+  final List<FlorvalField>? formFields;
+
   const FlorvalRequestBody({
     required this.type,
     required this.isRequired,
     this.description,
+    this.contentType = ContentType.json,
+    this.formFields,
   });
 
+  /// Whether this is a multipart request body.
+  bool get isMultipart => contentType == ContentType.multipart;
+
   @override
-  String toString() => 'FlorvalRequestBody(${type.dartType})';
+  String toString() => 'FlorvalRequestBody(${type.dartType}, $contentType)';
 }

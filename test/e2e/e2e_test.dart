@@ -83,6 +83,11 @@ void main() {
           File(p.join(outputDir.path, 'responses', 'delete_pet_response.dart'))
               .existsSync(),
           isTrue);
+      expect(
+          File(p.join(
+                  outputDir.path, 'responses', 'upload_pet_photo_response.dart'))
+              .existsSync(),
+          isTrue);
 
       // Verify client files
       expect(
@@ -150,6 +155,13 @@ void main() {
       expect(clientCode, contains('Future<DeletePetResponse> deletePet('));
       expect(clientCode, contains('switch (response.statusCode)'));
       expect(clientCode, contains('on DioException catch (e)'));
+
+      // Verify multipart endpoint
+      expect(clientCode,
+          contains('Future<UploadPetPhotoResponse> uploadPetPhoto('));
+      expect(clientCode, contains('required MultipartFile file,'));
+      expect(clientCode, contains('String? description,'));
+      expect(clientCode, contains('FormData.fromMap('));
     });
 
     test('barrel file exports all generated files', () {
@@ -215,6 +227,12 @@ void main() {
       expect(providerCode, contains('class CreatePet extends _\$CreatePet'));
       expect(providerCode, contains('class UpdatePet extends _\$UpdatePet'));
       expect(providerCode, contains('class DeletePet extends _\$DeletePet'));
+
+      // Multipart endpoint → Mutation with form fields
+      expect(providerCode,
+          contains('class UploadPetPhoto extends _\$UploadPetPhoto'));
+      expect(providerCode, contains('required MultipartFile file,'));
+      expect(providerCode, contains("import 'package:dio/dio.dart';"));
     });
 
     test('barrel file includes provider exports when riverpod enabled', () {

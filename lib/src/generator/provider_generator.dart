@@ -59,6 +59,13 @@ class ProviderGenerator {
       StringBuffer buffer, String tag, List<FlorvalEndpoint> endpoints) {
     buffer.writeln("import 'dart:async';");
     buffer.writeln();
+
+    // Import dio if any endpoint uses multipart (for MultipartFile type)
+    final hasMultipart = endpoints.any(
+        (e) => e.requestBody != null && e.requestBody!.isMultipart);
+    if (hasMultipart) {
+      buffer.writeln("import 'package:dio/dio.dart';");
+    }
     buffer.writeln(
         "import 'package:riverpod_annotation/riverpod_annotation.dart';");
 
@@ -227,10 +234,21 @@ class ProviderGenerator {
     }
     if (endpoint.requestBody != null) {
       final body = endpoint.requestBody!;
-      if (body.isRequired) {
-        params.add('required ${body.type.dartType} body,');
+      if (body.isMultipart && body.formFields != null) {
+        // Expand multipart form fields as individual parameters
+        for (final field in body.formFields!) {
+          if (field.isRequired) {
+            params.add('required ${field.type.dartType} ${field.name},');
+          } else {
+            params.add('${field.type.dartType}? ${field.name},');
+          }
+        }
       } else {
-        params.add('${body.type.dartType}? body,');
+        if (body.isRequired) {
+          params.add('required ${body.type.dartType} body,');
+        } else {
+          params.add('${body.type.dartType}? body,');
+        }
       }
     }
 
@@ -245,14 +263,21 @@ class ProviderGenerator {
       args.add('${p.dartName}: ${p.dartName}');
     }
     if (endpoint.requestBody != null) {
-      args.add('body: body');
+      final body = endpoint.requestBody!;
+      if (body.isMultipart && body.formFields != null) {
+        for (final field in body.formFields!) {
+          args.add('${field.name}: ${field.name}');
+        }
+      } else {
+        args.add('body: body');
+      }
     }
 
     return args.isEmpty ? '' : args.join(', ');
   }
 
   void _collectModelImports(FlorvalEndpoint endpoint, Set<String> imports) {
-    if (endpoint.requestBody != null) {
+    if (endpoint.requestBody != null && !endpoint.requestBody!.isMultipart) {
       _addTypeImport(imports, endpoint.requestBody!.type);
     }
   }

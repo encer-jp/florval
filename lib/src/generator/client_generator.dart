@@ -110,10 +110,21 @@ class ClientGenerator {
     }
     if (endpoint.requestBody != null) {
       final body = endpoint.requestBody!;
-      if (body.isRequired) {
-        params.add('required ${body.type.dartType} body,');
+      if (body.isMultipart && body.formFields != null) {
+        // Expand multipart form fields as individual parameters
+        for (final field in body.formFields!) {
+          if (field.isRequired) {
+            params.add('required ${field.type.dartType} ${field.name},');
+          } else {
+            params.add('${field.type.dartType}? ${field.name},');
+          }
+        }
       } else {
-        params.add('${body.type.dartType}? body,');
+        if (body.isRequired) {
+          params.add('required ${body.type.dartType} body,');
+        } else {
+          params.add('${body.type.dartType}? body,');
+        }
       }
     }
 
@@ -148,10 +159,25 @@ class ClientGenerator {
 
     // Request body
     if (endpoint.requestBody != null) {
-      buffer.writeln(',');
-      buffer.write('        data: body');
-      if (!endpoint.requestBody!.type.isPrimitive) {
-        buffer.write('.toJson()');
+      final body = endpoint.requestBody!;
+      if (body.isMultipart && body.formFields != null) {
+        buffer.writeln(',');
+        buffer.writeln('        data: FormData.fromMap({');
+        for (final field in body.formFields!) {
+          if (field.isRequired) {
+            buffer.writeln("          '${field.jsonKey}': ${field.name},");
+          } else {
+            buffer.writeln(
+                "          if (${field.name} != null) '${field.jsonKey}': ${field.name},");
+          }
+        }
+        buffer.write('        })');
+      } else {
+        buffer.writeln(',');
+        buffer.write('        data: body');
+        if (!body.type.isPrimitive) {
+          buffer.write('.toJson()');
+        }
       }
     }
 
@@ -273,8 +299,8 @@ class ClientGenerator {
         _addTypeImport(imports, response.type!);
       }
     }
-    // From request body
-    if (endpoint.requestBody != null) {
+    // From request body (skip multipart — no model to import)
+    if (endpoint.requestBody != null && !endpoint.requestBody!.isMultipart) {
       _addTypeImport(imports, endpoint.requestBody!.type);
     }
   }

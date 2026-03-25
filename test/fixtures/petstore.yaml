@@ -73,6 +73,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /pets/{petId}/photo:
+    post:
+      operationId: uploadPetPhoto
+      tags:
+        - pets
+      summary: Upload a pet photo
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                description:
+                  type: string
+      responses:
+        "200":
+          description: Photo uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+        "404":
+          description: Pet not found
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /pets/{petId}:
     get:
       operationId: getPet
