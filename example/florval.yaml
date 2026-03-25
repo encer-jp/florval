@@ -9,3 +9,4 @@ florval:
   riverpod:
     enabled: true
     state_type: async_notifier
+    auto_invalidate: true

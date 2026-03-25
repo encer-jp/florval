@@ -95,6 +95,7 @@ florval:
   riverpod:
     enabled: true
     state_type: async_notifier        # async_notifier | future_provider
+    auto_invalidate: true             # 自動リフレッシュ
 ```
 
 ## 生成コードの理想形
