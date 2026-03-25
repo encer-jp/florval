@@ -178,6 +178,9 @@ class ProviderGenerator {
     final pagination = endpoint.pagination!;
     final itemDartType = pagination.itemType.dartType;
     final cursorParam = ReCase(pagination.cursorParam).camelCase;
+    // Page type = 200 response body type (e.g. SearchPetsPage, CommentPage)
+    final pageDartType = endpoint.responses[200]?.type?.dartType ?? 'dynamic';
+    final paginatedType = 'PaginatedData<$itemDartType, $pageDartType>';
 
     buffer.writeln('@riverpod');
     buffer.writeln('class $className extends _\$$className {');
@@ -193,14 +196,14 @@ class ProviderGenerator {
     // build() signature — include non-cursor query params and path params
     final buildParams = _buildPaginatedBuildParams(endpoint);
     if (buildParams.isNotEmpty) {
-      buffer.writeln('  FutureOr<PaginatedData<$itemDartType>> build({');
+      buffer.writeln('  FutureOr<$paginatedType> build({');
       for (final param in buildParams) {
         buffer.writeln('    $param');
       }
       buffer.writeln('  }) async {');
     } else {
       buffer.writeln(
-          '  FutureOr<PaginatedData<$itemDartType>> build() async {');
+          '  FutureOr<$paginatedType> build() async {');
     }
 
     // Reset state
@@ -229,6 +232,7 @@ class ProviderGenerator {
     buffer.writeln('          items: List.unmodifiable(_allItems),');
     buffer.writeln('          nextCursor: _nextCursor,');
     buffer.writeln('          hasMore: _hasMore,');
+    buffer.writeln('          lastPage: data,');
     buffer.writeln('        );');
     buffer.writeln('      default:');
     buffer.writeln('        throw ApiException(response);');
@@ -260,6 +264,7 @@ class ProviderGenerator {
     buffer.writeln('          items: List.unmodifiable(_allItems),');
     buffer.writeln('          nextCursor: _nextCursor,');
     buffer.writeln('          hasMore: _hasMore,');
+    buffer.writeln('          lastPage: data,');
     buffer.writeln('        ));');
     buffer.writeln('      default:');
     buffer.writeln(

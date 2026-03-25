@@ -194,14 +194,16 @@ void main() {
     test('generates PaginatedData class', () {
       final code = generator.generatePaginatedData();
 
-      expect(code, contains('class PaginatedData<T>'));
+      expect(code, contains('class PaginatedData<T, P>'));
       expect(code, contains('final List<T> items;'));
       expect(code, contains('final String? nextCursor;'));
       expect(code, contains('final bool hasMore;'));
+      expect(code, contains('final P lastPage;'));
       expect(code, contains('const PaginatedData('));
       expect(code, contains('required this.items,'));
       expect(code, contains('this.nextCursor,'));
       expect(code, contains('this.hasMore = true,'));
+      expect(code, contains('required this.lastPage,'));
     });
 
     test('generates ApiException class', () {

@@ -484,7 +484,7 @@ void main() {
         final code = generator.generate('pets', [makePaginatedEndpoint()]);
 
         expect(code, contains('class ListPetsPaginated extends _\$ListPetsPaginated'));
-        expect(code, contains('FutureOr<PaginatedData<Pet>> build('));
+        expect(code, contains('FutureOr<PaginatedData<Pet, ListPetsPaginatedPage>> build('));
         expect(code, contains('Future<void> fetchMore()'));
       });
 
@@ -511,6 +511,7 @@ void main() {
         expect(code, contains('case ListPetsPaginatedResponseSuccess(:final data):'));
         expect(code, contains('_allItems.addAll(data.items)'));
         expect(code, contains('_nextCursor = data.nextCursor'));
+        expect(code, contains('lastPage: data,'));
         expect(code, contains('throw ApiException(response)'));
       });
 

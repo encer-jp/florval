@@ -324,7 +324,7 @@ void main() {
 
       expect(providerCode, contains('class ListPetsPaginated extends _\$ListPetsPaginated'));
       expect(providerCode, contains('Future<void> fetchMore()'));
-      expect(providerCode, contains('PaginatedData<Pet>'));
+      expect(providerCode, contains('PaginatedData<Pet, ListPetsPaginatedPage>'));
     });
 
     test('barrel file exports pagination utilities when configured', () {

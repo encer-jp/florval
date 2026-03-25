@@ -186,7 +186,7 @@ class ModelGenerator {
     buffer.writeln('    $prefix${field.type.dartType} ${field.name},');
   }
 
-  /// Generates the PaginatedData<T> utility class.
+  /// Generates the PaginatedData<T, P> utility class.
   String generatePaginatedData() {
     final buffer = StringBuffer();
 
@@ -196,7 +196,10 @@ class ModelGenerator {
     }
 
     buffer.writeln('/// Paginated data container for cursor-based pagination.');
-    buffer.writeln('class PaginatedData<T> {');
+    buffer.writeln('///');
+    buffer.writeln('/// [T] is the item type (e.g. Pet, Comment).');
+    buffer.writeln('/// [P] is the raw page type returned by the API (e.g. SearchPetsPage, CommentPage).');
+    buffer.writeln('class PaginatedData<T, P> {');
     buffer.writeln('  /// The accumulated items across all loaded pages.');
     buffer.writeln('  final List<T> items;');
     buffer.writeln();
@@ -206,10 +209,15 @@ class ModelGenerator {
     buffer.writeln('  /// Whether more pages are available.');
     buffer.writeln('  final bool hasMore;');
     buffer.writeln();
+    buffer.writeln('  /// The raw page data from the last API response.');
+    buffer.writeln('  /// Use this to access API-specific fields (e.g. totalCount).');
+    buffer.writeln('  final P lastPage;');
+    buffer.writeln();
     buffer.writeln('  const PaginatedData({');
     buffer.writeln('    required this.items,');
     buffer.writeln('    this.nextCursor,');
     buffer.writeln('    this.hasMore = true,');
+    buffer.writeln('    required this.lastPage,');
     buffer.writeln('  });');
     buffer.writeln('}');
 
