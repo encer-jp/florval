@@ -1,0 +1,17 @@
+name: florval
+description: OpenAPI to Flutter/Dart API client code generator with type-safe status code handling.
+version: 0.1.0
+
+environment:
+  sdk: ^3.0.0
+
+dependencies:
+  openapi_spec_plus: ^0.6.0
+  yaml: ^3.1.0
+  args: ^2.4.0
+  path: ^1.9.0
+  recase: ^4.1.0
+
+dev_dependencies:
+  test: ^1.24.0
+  lints: ^5.0.0
