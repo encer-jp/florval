@@ -14,7 +14,7 @@ class ProviderGenerator {
   /// Produces:
   /// - A client provider for the API client
   /// - GET endpoints → @riverpod Notifier with build() params
-  /// - POST/PUT/DELETE/PATCH → @riverpod Mutation Notifier
+  /// - POST/PUT/DELETE/PATCH → @riverpod Notifier with call() method
   String generate(String tag, List<FlorvalEndpoint> endpoints) {
     final buffer = StringBuffer();
 
@@ -148,7 +148,6 @@ class ProviderGenerator {
     buffer.writeln('  @override');
     buffer.writeln('  FutureOr<$responseType?> build() => null;');
     buffer.writeln();
-    buffer.writeln('  @mutation');
 
     // call() signature
     final callParams = _buildMutationParams(endpoint);

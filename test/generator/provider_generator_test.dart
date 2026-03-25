@@ -172,18 +172,18 @@ void main() {
       expect(code, contains('client.listPets(limit: limit, status: status)'));
     });
 
-    test('generates POST endpoint as mutation', () {
+    test('generates POST endpoint as mutation notifier', () {
       final code = generator.generate('users', [makePostEndpoint()]);
 
       expect(code, contains('class CreateUser extends _\$CreateUser'));
       expect(code, contains('FutureOr<CreateUserResponse?> build() => null;'));
-      expect(code, contains('@mutation'));
+      expect(code, isNot(contains('@mutation')));
       expect(code, contains('Future<CreateUserResponse> call('));
       expect(code, contains('required CreateUserRequest body,'));
       expect(code, contains('client.createUser(body: body)'));
     });
 
-    test('generates PUT endpoint as mutation with path params', () {
+    test('generates PUT endpoint as mutation notifier with path params', () {
       final endpoint = FlorvalEndpoint(
         path: '/users/{id}',
         method: 'PUT',
@@ -219,13 +219,13 @@ void main() {
       final code = generator.generate('users', [endpoint]);
 
       expect(code, contains('class UpdateUser extends _\$UpdateUser'));
-      expect(code, contains('@mutation'));
+      expect(code, isNot(contains('@mutation')));
       expect(code, contains('required int id,'));
       expect(code, contains('required UpdateUserRequest body,'));
       expect(code, contains('client.updateUser(id: id, body: body)'));
     });
 
-    test('generates DELETE endpoint as mutation', () {
+    test('generates DELETE endpoint as mutation notifier', () {
       final endpoint = FlorvalEndpoint(
         path: '/users/{id}',
         method: 'DELETE',
@@ -248,7 +248,7 @@ void main() {
       final code = generator.generate('users', [endpoint]);
 
       expect(code, contains('class DeleteUser extends _\$DeleteUser'));
-      expect(code, contains('@mutation'));
+      expect(code, isNot(contains('@mutation')));
       expect(code, contains('Future<DeleteUserResponse> call('));
       expect(code, contains('required int id,'));
       expect(code, contains('client.deleteUser(id: id)'));
