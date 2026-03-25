@@ -94,7 +94,7 @@ class ProviderGenerator {
     final providerName = '${ReCase(tag).camelCase}ApiClient';
 
     buffer.writeln('@riverpod');
-    buffer.writeln('$className $providerName(${className}Ref ref) {');
+    buffer.writeln('$className $providerName(Ref ref) {');
     buffer.writeln(
         "  throw UnimplementedError('Provide a Dio instance via override');");
     buffer.writeln('}');

@@ -95,7 +95,7 @@ void main() {
       final code = generator.generate('users', [makeGetEndpoint()]);
 
       expect(code, contains('@riverpod'));
-      expect(code, contains('UsersApiClient usersApiClient('));
+      expect(code, contains('UsersApiClient usersApiClient(Ref ref)'));
     });
 
     test('generates GET endpoint as @riverpod Notifier', () {
