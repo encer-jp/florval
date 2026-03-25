@@ -131,6 +131,66 @@ void main() {
       expect(code, contains("import 'field_error.dart';"));
     });
 
+    test('generates sealed class for oneOf union type', () {
+      final schema = FlorvalSchema(
+        name: 'Animal',
+        fields: [],
+        oneOf: [
+          FlorvalSchema(name: 'Dog', fields: []),
+          FlorvalSchema(name: 'Cat', fields: []),
+        ],
+      );
+
+      final code = generator.generate(schema);
+
+      expect(code, contains('sealed class Animal with _\$Animal'));
+      expect(code, contains('const factory Animal.dog(Dog data) = AnimalDog;'));
+      expect(code, contains('const factory Animal.cat(Cat data) = AnimalCat;'));
+      expect(code, contains("import 'dog.dart';"));
+      expect(code, contains("import 'cat.dart';"));
+    });
+
+    test('generates sealed class for anyOf union type', () {
+      final schema = FlorvalSchema(
+        name: 'Shape',
+        fields: [],
+        anyOf: [
+          FlorvalSchema(name: 'Circle', fields: []),
+          FlorvalSchema(name: 'Square', fields: []),
+        ],
+      );
+
+      final code = generator.generate(schema);
+
+      expect(code, contains('sealed class Shape with _\$Shape'));
+      expect(code, contains('const factory Shape.circle(Circle data) = ShapeCircle;'));
+      expect(code, contains('const factory Shape.square(Square data) = ShapeSquare;'));
+    });
+
+    test('generates discriminator-based fromJson', () {
+      final schema = FlorvalSchema(
+        name: 'Animal',
+        fields: [],
+        oneOf: [
+          FlorvalSchema(name: 'Dog', fields: []),
+          FlorvalSchema(name: 'Cat', fields: []),
+        ],
+        discriminator: FlorvalDiscriminator(
+          propertyName: 'type',
+          mapping: {'dog': 'Dog', 'cat': 'Cat'},
+        ),
+      );
+
+      final code = generator.generate(schema);
+
+      expect(code, contains("switch (json['type'])"));
+      expect(code, contains("case 'dog':"));
+      expect(code, contains('Animal.dog(Dog.fromJson(json))'));
+      expect(code, contains("case 'cat':"));
+      expect(code, contains('Animal.cat(Cat.fromJson(json))'));
+      expect(code, contains("throw UnimplementedError('Unknown type:"));
+    });
+
     test('generates valid freezed 3.x syntax', () {
       final schema = FlorvalSchema(
         name: 'Category',

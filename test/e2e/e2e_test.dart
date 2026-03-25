@@ -5,6 +5,14 @@ import 'package:test/test.dart';
 import 'package:florval/src/config/florval_config.dart';
 import 'package:florval/src/florval_runner.dart';
 
+FlorvalConfig _makeConfig(String outputPath, {bool riverpodEnabled = false}) {
+  return FlorvalConfig.fromArgs(
+    schemaPath: 'test/fixtures/petstore.yaml',
+    outputDirectory: outputPath,
+    riverpod: RiverpodConfig(enabled: riverpodEnabled),
+  );
+}
+
 void main() {
   group('E2E', () {
     late Directory outputDir;
@@ -20,10 +28,7 @@ void main() {
     });
 
     test('generates code from petstore.yaml', () {
-      final config = FlorvalConfig.fromArgs(
-        schemaPath: 'test/fixtures/petstore.yaml',
-        outputDirectory: outputDir.path,
-      );
+      final config = _makeConfig(outputDir.path);
 
       FlorvalRunner().run(config);
 
@@ -91,10 +96,7 @@ void main() {
     });
 
     test('generated models contain correct freezed syntax', () {
-      final config = FlorvalConfig.fromArgs(
-        schemaPath: 'test/fixtures/petstore.yaml',
-        outputDirectory: outputDir.path,
-      );
+      final config = _makeConfig(outputDir.path);
 
       FlorvalRunner().run(config);
 
@@ -113,10 +115,7 @@ void main() {
     });
 
     test('generated responses contain sealed class syntax', () {
-      final config = FlorvalConfig.fromArgs(
-        schemaPath: 'test/fixtures/petstore.yaml',
-        outputDirectory: outputDir.path,
-      );
+      final config = _makeConfig(outputDir.path);
 
       FlorvalRunner().run(config);
 
@@ -135,10 +134,7 @@ void main() {
     });
 
     test('generated client contains dio calls with status code switching', () {
-      final config = FlorvalConfig.fromArgs(
-        schemaPath: 'test/fixtures/petstore.yaml',
-        outputDirectory: outputDir.path,
-      );
+      final config = _makeConfig(outputDir.path);
 
       FlorvalRunner().run(config);
 
@@ -157,10 +153,7 @@ void main() {
     });
 
     test('barrel file exports all generated files', () {
-      final config = FlorvalConfig.fromArgs(
-        schemaPath: 'test/fixtures/petstore.yaml',
-        outputDirectory: outputDir.path,
-      );
+      final config = _makeConfig(outputDir.path);
 
       FlorvalRunner().run(config);
 
@@ -170,6 +163,70 @@ void main() {
       expect(barrelCode, contains("export 'models/pet.dart';"));
       expect(barrelCode, contains("export 'models/category.dart';"));
       expect(barrelCode, contains("export 'clients/pets_api_client.dart';"));
+    });
+
+    test('does not generate providers when riverpod is disabled', () {
+      final config = _makeConfig(outputDir.path);
+
+      FlorvalRunner().run(config);
+
+      expect(
+          Directory(p.join(outputDir.path, 'providers'))
+              .listSync()
+              .where((e) => e.path.endsWith('.dart'))
+              .isEmpty,
+          isTrue);
+    });
+
+    test('generates provider files when riverpod is enabled', () {
+      final config = _makeConfig(outputDir.path, riverpodEnabled: true);
+
+      FlorvalRunner().run(config);
+
+      // Verify provider directory has files
+      expect(
+          File(p.join(outputDir.path, 'providers', 'pets_providers.dart'))
+              .existsSync(),
+          isTrue);
+    });
+
+    test('generated providers contain correct riverpod syntax', () {
+      final config = _makeConfig(outputDir.path, riverpodEnabled: true);
+
+      FlorvalRunner().run(config);
+
+      final providerCode =
+          File(p.join(outputDir.path, 'providers', 'pets_providers.dart'))
+              .readAsStringSync();
+
+      // Imports
+      expect(providerCode,
+          contains("import 'package:riverpod_annotation/riverpod_annotation.dart';"));
+      expect(providerCode, contains("part 'pets_providers.g.dart';"));
+
+      // Client provider
+      expect(providerCode, contains('PetsApiClient petsApiClient('));
+
+      // GET endpoints → Notifier
+      expect(providerCode, contains('class ListPets extends _\$ListPets'));
+      expect(providerCode, contains('class GetPet extends _\$GetPet'));
+
+      // POST/PUT/DELETE → Mutation
+      expect(providerCode, contains('class CreatePet extends _\$CreatePet'));
+      expect(providerCode, contains('@mutation'));
+      expect(providerCode, contains('class UpdatePet extends _\$UpdatePet'));
+      expect(providerCode, contains('class DeletePet extends _\$DeletePet'));
+    });
+
+    test('barrel file includes provider exports when riverpod enabled', () {
+      final config = _makeConfig(outputDir.path, riverpodEnabled: true);
+
+      FlorvalRunner().run(config);
+
+      final barrelCode =
+          File(p.join(outputDir.path, 'api.dart')).readAsStringSync();
+
+      expect(barrelCode, contains("export 'providers/pets_providers.dart';"));
     });
   });
 }

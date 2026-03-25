@@ -93,5 +93,39 @@ florval:
       expect(config.schemaPath, 'spec.yaml');
       expect(config.outputDirectory, 'output/');
     });
+
+    test('loads riverpod config from YAML', () {
+      final tmpFile = File('${Directory.systemTemp.path}/florval_test_rp.yaml');
+      tmpFile.writeAsStringSync('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    enabled: true
+    state_type: async_notifier
+''');
+
+      final config = FlorvalConfig.fromFile(tmpFile.path);
+
+      expect(config.riverpod.enabled, isTrue);
+      expect(config.riverpod.stateType, 'async_notifier');
+
+      tmpFile.deleteSync();
+    });
+
+    test('riverpod defaults to disabled', () {
+      final tmpFile =
+          File('${Directory.systemTemp.path}/florval_test_rp2.yaml');
+      tmpFile.writeAsStringSync('''
+florval:
+  schema_path: api.yaml
+''');
+
+      final config = FlorvalConfig.fromFile(tmpFile.path);
+
+      expect(config.riverpod.enabled, isFalse);
+      expect(config.riverpod.stateType, 'async_notifier');
+
+      tmpFile.deleteSync();
+    });
   });
 }
