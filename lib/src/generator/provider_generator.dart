@@ -481,6 +481,11 @@ class ProviderGenerator {
     }
     if (endpoint.pagination != null) {
       _addTypeImport(imports, endpoint.pagination!.itemType);
+      // Import the page type (e.g. SearchPetsPage, CommentPage) for PaginatedData<T, P>
+      final pageType = endpoint.responses[200]?.type;
+      if (pageType != null) {
+        _addTypeImport(imports, pageType);
+      }
     }
   }
 
