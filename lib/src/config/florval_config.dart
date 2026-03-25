@@ -110,43 +110,15 @@ class ClientConfig {
   /// Default request timeout in milliseconds.
   final int timeout;
 
-  /// Retry configuration.
-  final RetryConfig retry;
-
   const ClientConfig({
     this.baseUrlEnv = 'API_BASE_URL',
     this.timeout = 30000,
-    this.retry = const RetryConfig(),
   });
 
   factory ClientConfig.fromYaml(YamlMap yaml) {
     return ClientConfig(
       baseUrlEnv: (yaml['base_url_env'] as String?) ?? 'API_BASE_URL',
       timeout: (yaml['timeout'] as int?) ?? 30000,
-      retry: yaml['retry'] != null
-          ? RetryConfig.fromYaml(yaml['retry'] as YamlMap)
-          : const RetryConfig(),
-    );
-  }
-}
-
-/// Retry configuration.
-class RetryConfig {
-  /// Maximum retry attempts.
-  final int maxAttempts;
-
-  /// Initial delay between retries in milliseconds.
-  final int delay;
-
-  const RetryConfig({
-    this.maxAttempts = 3,
-    this.delay = 1000,
-  });
-
-  factory RetryConfig.fromYaml(YamlMap yaml) {
-    return RetryConfig(
-      maxAttempts: (yaml['max_attempts'] as int?) ?? 3,
-      delay: (yaml['delay'] as int?) ?? 1000,
     );
   }
 }
@@ -162,10 +134,14 @@ class RiverpodConfig {
   /// Pagination configurations for cursor-based paginated endpoints.
   final List<PaginationConfig> pagination;
 
+  /// Retry configuration for GET providers.
+  final RiverpodRetryConfig? retry;
+
   const RiverpodConfig({
     this.enabled = false,
     this.autoInvalidate = false,
     this.pagination = const [],
+    this.retry,
   });
 
   factory RiverpodConfig.fromYaml(YamlMap yaml) {
@@ -226,10 +202,37 @@ class RiverpodConfig {
       }
     }
 
+    final retryYaml = yaml['retry'];
+    final retry = retryYaml is YamlMap
+        ? RiverpodRetryConfig.fromYaml(retryYaml)
+        : null;
+
     return RiverpodConfig(
       enabled: (yaml['enabled'] as bool?) ?? false,
       autoInvalidate: (yaml['auto_invalidate'] as bool?) ?? false,
       pagination: pagination,
+      retry: retry,
+    );
+  }
+}
+
+/// Retry configuration for Riverpod GET providers.
+class RiverpodRetryConfig {
+  /// Maximum retry attempts.
+  final int maxAttempts;
+
+  /// Initial delay between retries in milliseconds (linear backoff).
+  final int delay;
+
+  const RiverpodRetryConfig({
+    this.maxAttempts = 3,
+    this.delay = 1000,
+  });
+
+  factory RiverpodRetryConfig.fromYaml(YamlMap yaml) {
+    return RiverpodRetryConfig(
+      maxAttempts: (yaml['max_attempts'] as int?) ?? 3,
+      delay: (yaml['delay'] as int?) ?? 1000,
     );
   }
 }

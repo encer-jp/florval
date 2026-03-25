@@ -8,13 +8,13 @@ florval:
   client:
     base_url_env: API_BASE_URL
     timeout: 30000
-    retry:
-      max_attempts: 3
-      delay: 1000
 
   riverpod:
     enabled: true
     auto_invalidate: false
+    # retry:
+    #   max_attempts: 3
+    #   delay: 1000
     # pagination:
     #   defaults:                          # Default values for all endpoints
     #     cursor_param: after              # Query parameter used as cursor

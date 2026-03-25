@@ -123,6 +123,7 @@ class FlorvalRunner {
       final providerGenerator = ProviderGenerator(
         templateConfig: tc,
         autoInvalidate: config.riverpod.autoInvalidate,
+        retry: config.riverpod.retry,
       );
       for (final entry in endpointsByTag.entries) {
         final code =
