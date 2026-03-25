@@ -9,6 +9,9 @@ florval:
   riverpod:
     enabled: true
     auto_invalidate: true
+    retry:
+      max_attempts: 3
+      delay: 1000
     pagination:
       defaults:
         cursor_param: after
