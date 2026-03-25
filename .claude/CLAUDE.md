@@ -94,7 +94,6 @@ florval:
   # Riverpod設定
   riverpod:
     enabled: true
-    state_type: async_notifier        # async_notifier | future_provider
     auto_invalidate: true             # 自動リフレッシュ
 ```
 
@@ -174,6 +173,8 @@ class UserApiClient {
 ```
 
 ### 4. Riverpodプロバイダー（Riverpod 3.x）
+
+GET用（従来通りNotifier）:
 ```dart
 @riverpod
 class GetUser extends _$GetUser {
@@ -184,10 +185,34 @@ class GetUser extends _$GetUser {
   }
 }
 ```
+
+POST/PUT/DELETE用（Mutation API）:
+```dart
+/// Mutation for createUser (POST /users)
+final createUser = Mutation<CreateUserResponse>();
+```
+
+autoInvalidate有効時のヘルパー関数:
+```dart
+/// Runs createUser mutation and invalidates related GET providers.
+Future<CreateUserResponse> runCreateUser(
+  MutationTarget ref, {
+  required CreateUserRequest body,
+}) async {
+  return createUser.run(ref, (tsx) async {
+    final client = tsx.get(usersApiClientProvider);
+    final result = await client.createUser(body: body);
+    ref.container.invalidate(getUserProvider);
+    ref.container.invalidate(listUsersProvider);
+    return result;
+  });
+}
+```
+
 ※ Riverpod 3.xでは以下が標準化：
 - FamilyNotifierは廃止。Notifierに統合（buildのパラメータでfamily化）
 - 自動リトライがビルトイン（ProviderScopeのretryで設定可能）
-- Mutation（実験的機能）でPOST/PUT/DELETEの状態管理をサポート
+- Mutation APIでPOST/PUT/DELETEの状態管理（`Mutation<T>()`定数 + `run()`で実行）
 
 ## コーディング規約
 

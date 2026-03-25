@@ -101,13 +101,11 @@ florval:
   schema_path: api.yaml
   riverpod:
     enabled: true
-    state_type: async_notifier
 ''');
 
       final config = FlorvalConfig.fromFile(tmpFile.path);
 
       expect(config.riverpod.enabled, isTrue);
-      expect(config.riverpod.stateType, 'async_notifier');
       expect(config.riverpod.autoInvalidate, isFalse);
 
       tmpFile.deleteSync();
@@ -141,7 +139,6 @@ florval:
       final config = FlorvalConfig.fromFile(tmpFile.path);
 
       expect(config.riverpod.enabled, isFalse);
-      expect(config.riverpod.stateType, 'async_notifier');
       expect(config.riverpod.autoInvalidate, isFalse);
 
       tmpFile.deleteSync();

@@ -59,23 +59,60 @@ void main() {
           tags: ['users'],
         );
 
-    test('generates part directive', () {
+    FlorvalEndpoint makeListEndpoint() => FlorvalEndpoint(
+          path: '/users',
+          method: 'GET',
+          operationId: 'listUsers',
+          parameters: [],
+          responses: {
+            200: FlorvalResponse(
+              statusCode: 200,
+              type: FlorvalType(
+                name: 'List<User>',
+                dartType: 'List<User>',
+                isList: true,
+                itemType: FlorvalType(
+                    name: 'User',
+                    dartType: 'User',
+                    ref: '#/components/schemas/User'),
+              ),
+            ),
+          },
+          tags: ['users'],
+        );
+
+    test('generates part directive when GET endpoints exist', () {
       final code = generator.generate('users', [makeGetEndpoint()]);
 
       expect(code, contains("part 'users_providers.g.dart';"));
     });
 
-    test('generates riverpod_annotation import', () {
+    test('does not generate part directive when only mutation endpoints exist', () {
+      final code = generator.generate('users', [makePostEndpoint()]);
+
+      expect(code, isNot(contains("part '")));
+    });
+
+    test('generates riverpod_annotation import for GET endpoints', () {
       final code = generator.generate('users', [makeGetEndpoint()]);
 
       expect(code,
           contains("import 'package:riverpod_annotation/riverpod_annotation.dart';"));
     });
 
-    test('generates dart:async import', () {
-      final code = generator.generate('users', [makeGetEndpoint()]);
+    test('generates mutation import for mutation endpoints', () {
+      final code = generator.generate('users', [makePostEndpoint()]);
 
-      expect(code, contains("import 'dart:async';"));
+      expect(code,
+          contains("import 'package:riverpod/experimental/mutation.dart';"));
+    });
+
+    test('generates dart:async import only for GET endpoints', () {
+      final getCode = generator.generate('users', [makeGetEndpoint()]);
+      expect(getCode, contains("import 'dart:async';"));
+
+      final postCode = generator.generate('users', [makePostEndpoint()]);
+      expect(postCode, isNot(contains("import 'dart:async';")));
     });
 
     test('generates client import', () {
@@ -110,29 +147,7 @@ void main() {
     });
 
     test('generates GET endpoint without params', () {
-      final endpoint = FlorvalEndpoint(
-        path: '/users',
-        method: 'GET',
-        operationId: 'listUsers',
-        parameters: [],
-        responses: {
-          200: FlorvalResponse(
-            statusCode: 200,
-            type: FlorvalType(
-              name: 'List<User>',
-              dartType: 'List<User>',
-              isList: true,
-              itemType: FlorvalType(
-                  name: 'User',
-                  dartType: 'User',
-                  ref: '#/components/schemas/User'),
-            ),
-          ),
-        },
-        tags: ['users'],
-      );
-
-      final code = generator.generate('users', [endpoint]);
+      final code = generator.generate('users', [makeListEndpoint()]);
 
       expect(code, contains('class ListUsers extends _\$ListUsers'));
       expect(code, contains('FutureOr<ListUsersResponse> build() async'));
@@ -173,18 +188,16 @@ void main() {
       expect(code, contains('client.listPets(limit: limit, status: status)'));
     });
 
-    test('generates POST endpoint as mutation notifier', () {
+    test('generates POST endpoint as Mutation constant', () {
       final code = generator.generate('users', [makePostEndpoint()]);
 
-      expect(code, contains('class CreateUser extends _\$CreateUser'));
-      expect(code, contains('FutureOr<CreateUserResponse?> build() => null;'));
+      expect(code, contains('final createUser = Mutation<CreateUserResponse>();'));
+      expect(code, isNot(contains('class CreateUser extends _\$CreateUser')));
+      expect(code, isNot(contains('build() => null')));
       expect(code, isNot(contains('@mutation')));
-      expect(code, contains('Future<CreateUserResponse> call('));
-      expect(code, contains('required CreateUserRequest body,'));
-      expect(code, contains('client.createUser(body: body)'));
     });
 
-    test('generates PUT endpoint as mutation notifier with path params', () {
+    test('generates PUT endpoint as Mutation constant with path params', () {
       final endpoint = FlorvalEndpoint(
         path: '/users/{id}',
         method: 'PUT',
@@ -219,14 +232,12 @@ void main() {
 
       final code = generator.generate('users', [endpoint]);
 
-      expect(code, contains('class UpdateUser extends _\$UpdateUser'));
-      expect(code, isNot(contains('@mutation')));
-      expect(code, contains('required int id,'));
-      expect(code, contains('required UpdateUserRequest body,'));
-      expect(code, contains('client.updateUser(id: id, body: body)'));
+      expect(code, contains('final updateUser = Mutation<UpdateUserResponse>();'));
+      expect(code, isNot(contains('class UpdateUser extends _\$UpdateUser')));
+      expect(code, isNot(contains('build() => null')));
     });
 
-    test('generates DELETE endpoint as mutation notifier', () {
+    test('generates DELETE endpoint as Mutation constant', () {
       final endpoint = FlorvalEndpoint(
         path: '/users/{id}',
         method: 'DELETE',
@@ -248,11 +259,9 @@ void main() {
 
       final code = generator.generate('users', [endpoint]);
 
-      expect(code, contains('class DeleteUser extends _\$DeleteUser'));
-      expect(code, isNot(contains('@mutation')));
-      expect(code, contains('Future<DeleteUserResponse> call('));
-      expect(code, contains('required int id,'));
-      expect(code, contains('client.deleteUser(id: id)'));
+      expect(code, contains('final deleteUser = Mutation<DeleteUserResponse>();'));
+      expect(code, isNot(contains('class DeleteUser extends _\$DeleteUser')));
+      expect(code, isNot(contains('build() => null')));
     });
 
     test('generates model imports for request body types', () {
@@ -267,44 +276,58 @@ void main() {
           'users', [makeGetEndpoint(), makePostEndpoint()]);
 
       expect(code, contains('class GetUser extends _\$GetUser'));
-      expect(code, contains('class CreateUser extends _\$CreateUser'));
+      expect(code, contains('final createUser = Mutation<CreateUserResponse>();'));
     });
 
-    test('mutation does not invalidate GET providers by default', () {
+    test('mutation does not generate helper by default', () {
       final code = generator.generate(
           'users', [makeGetEndpoint(), makePostEndpoint()]);
 
-      expect(code, isNot(contains('ref.invalidate(')));
+      expect(code, isNot(contains('runCreateUser')));
+      expect(code, isNot(contains('ref.container.invalidate(')));
     });
 
-    test('mutation invalidates related GET providers when autoInvalidate is true', () {
+    test('mutation generates helper with invalidation when autoInvalidate is true', () {
       final autoInvalidateGenerator = ProviderGenerator(autoInvalidate: true);
       final code = autoInvalidateGenerator.generate(
           'users', [makeGetEndpoint(), makePostEndpoint()]);
 
-      // The POST mutation should invalidate the GET provider
-      expect(code, contains('ref.invalidate(getUserProvider)'));
+      // Helper function should exist
+      expect(code, contains('Future<CreateUserResponse> runCreateUser('));
+      expect(code, contains('MutationTarget ref'));
+      expect(code, contains('createUser.run(ref, (tsx) async {'));
+      expect(code, contains('tsx.get(usersApiClientProvider)'));
+      expect(code, contains('ref.container.invalidate(getUserProvider)'));
     });
 
-    test('mutation with multiple GET endpoints invalidates all when autoInvalidate is true', () {
+    test('mutation helper with multiple GET endpoints invalidates all when autoInvalidate is true', () {
       final autoInvalidateGenerator = ProviderGenerator(autoInvalidate: true);
-      final listEndpoint = FlorvalEndpoint(
-        path: '/users',
-        method: 'GET',
-        operationId: 'listUsers',
-        parameters: [],
-        responses: {200: FlorvalResponse(statusCode: 200)},
-        tags: ['users'],
-      );
 
       final code = autoInvalidateGenerator.generate(
-          'users', [makeGetEndpoint(), listEndpoint, makePostEndpoint()]);
+          'users', [makeGetEndpoint(), makeListEndpoint(), makePostEndpoint()]);
 
-      expect(code, contains('ref.invalidate(getUserProvider)'));
-      expect(code, contains('ref.invalidate(listUsersProvider)'));
+      expect(code, contains('ref.container.invalidate(getUserProvider)'));
+      expect(code, contains('ref.container.invalidate(listUsersProvider)'));
     });
 
-    test('generates multipart mutation with form fields as params', () {
+    test('mutation helper not generated when autoInvalidate is false', () {
+      final code = generator.generate(
+          'users', [makeGetEndpoint(), makePostEndpoint()]);
+
+      expect(code, isNot(contains('runCreateUser')));
+      expect(code, isNot(contains('MutationTarget')));
+    });
+
+    test('mutation helper includes request body params', () {
+      final autoInvalidateGenerator = ProviderGenerator(autoInvalidate: true);
+      final code = autoInvalidateGenerator.generate(
+          'users', [makeGetEndpoint(), makePostEndpoint()]);
+
+      expect(code, contains('required CreateUserRequest body,'));
+      expect(code, contains('client.createUser(body: body)'));
+    });
+
+    test('generates multipart mutation as Mutation constant', () {
       final endpoint = FlorvalEndpoint(
         path: '/pets/{petId}/photo',
         method: 'POST',
@@ -351,11 +374,8 @@ void main() {
 
       final code = generator.generate('pets', [endpoint]);
 
-      expect(code, contains('required int petId,'));
-      expect(code, contains('required MultipartFile file,'));
-      expect(code, contains('String? description,'));
-      expect(code, contains('client.uploadPetPhoto(petId: petId, file: file, description: description)'));
-      expect(code, isNot(contains('body: body')));
+      expect(code, contains('final uploadPetPhoto = Mutation<UploadPetPhotoResponse>();'));
+      expect(code, isNot(contains('class UploadPetPhoto extends')));
     });
 
     test('generates dio import when multipart endpoint exists', () {
@@ -391,7 +411,23 @@ void main() {
     test('GET providers do not have invalidation calls', () {
       final code = generator.generate('users', [makeGetEndpoint()]);
 
-      expect(code, isNot(contains('ref.invalidate(')));
+      expect(code, isNot(contains('ref.container.invalidate(')));
+    });
+
+    test('mutation comment includes method and path', () {
+      final code = generator.generate('users', [makePostEndpoint()]);
+
+      expect(code, contains('/// Mutation for createUser (POST /users)'));
+    });
+
+    test('generates both mutation import and riverpod_annotation import for mixed endpoints', () {
+      final code = generator.generate(
+          'users', [makeGetEndpoint(), makePostEndpoint()]);
+
+      expect(code,
+          contains("import 'package:riverpod/experimental/mutation.dart';"));
+      expect(code,
+          contains("import 'package:riverpod_annotation/riverpod_annotation.dart';"));
     });
   });
 }
