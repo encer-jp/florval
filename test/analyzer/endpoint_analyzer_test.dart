@@ -165,6 +165,21 @@ void main() {
       expect(paginated.pagination!.nextCursorField, 'nextCursor');
       expect(paginated.pagination!.itemsField, 'items');
       expect(paginated.pagination!.itemType.dartType, 'Pet');
+
+      // Inline response → wrapper schema auto-generated
+      expect(paginated.pagination!.wrapperSchema, isNotNull);
+      expect(paginated.pagination!.wrapperSchema!.name, 'ListPetsPaginatedPage');
+      expect(
+          paginated.pagination!.wrapperSchema!.fields
+              .any((f) => f.name == 'items'),
+          isTrue);
+      expect(
+          paginated.pagination!.wrapperSchema!.fields
+              .any((f) => f.name == 'nextCursor'),
+          isTrue);
+
+      // 200 response type should be the wrapper, not Map<String, dynamic>
+      expect(paginated.responses[200]!.type!.dartType, 'ListPetsPaginatedPage');
     });
 
     test('pagination is null when cursor param does not exist', () {

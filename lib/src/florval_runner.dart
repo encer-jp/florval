@@ -80,6 +80,17 @@ class FlorvalRunner {
       writer.writeUtilityModel('api_exception.dart', apiExceptionCode);
       modelNames.add('api_exception');
       logger.debug('Generated utility: api_exception');
+
+      // Generate wrapper models for inline paginated response schemas
+      for (final endpoint in endpoints) {
+        if (endpoint.pagination?.wrapperSchema != null) {
+          final wrapper = endpoint.pagination!.wrapperSchema!;
+          final code = modelGenerator.generate(wrapper);
+          writer.writeModel(wrapper.name, code);
+          modelNames.add(wrapper.name);
+          logger.debug('Generated pagination wrapper: ${wrapper.name}');
+        }
+      }
     }
 
     // Responses

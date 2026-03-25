@@ -456,8 +456,9 @@ void main() {
               200: FlorvalResponse(
                 statusCode: 200,
                 type: FlorvalType(
-                    name: 'Map<String, dynamic>',
-                    dartType: 'Map<String, dynamic>'),
+                    name: 'ListPetsPaginatedPage',
+                    dartType: 'ListPetsPaginatedPage',
+                    ref: '#/components/schemas/ListPetsPaginatedPage'),
               ),
               400: FlorvalResponse(
                 statusCode: 400,
