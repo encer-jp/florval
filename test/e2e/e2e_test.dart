@@ -211,9 +211,8 @@ void main() {
       expect(providerCode, contains('class ListPets extends _\$ListPets'));
       expect(providerCode, contains('class GetPet extends _\$GetPet'));
 
-      // POST/PUT/DELETE → Mutation
+      // POST/PUT/DELETE → Mutation Notifier
       expect(providerCode, contains('class CreatePet extends _\$CreatePet'));
-      expect(providerCode, contains('@mutation'));
       expect(providerCode, contains('class UpdatePet extends _\$UpdatePet'));
       expect(providerCode, contains('class DeletePet extends _\$DeletePet'));
     });

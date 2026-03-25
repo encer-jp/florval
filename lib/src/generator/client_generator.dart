@@ -124,6 +124,10 @@ class ClientGenerator {
     final dioMethod = endpoint.method.toLowerCase();
     final pathExpr = _buildPathExpression(endpoint);
 
+    // Check if any response has a body (needs JSON parsing)
+    final hasAnyResponseBody =
+        endpoint.responses.values.any((r) => r.hasBody);
+
     buffer.write("      final response = await _dio.$dioMethod(");
     buffer.write("'$pathExpr'");
 
@@ -149,6 +153,13 @@ class ClientGenerator {
       if (!endpoint.requestBody!.type.isPrimitive) {
         buffer.write('.toJson()');
       }
+    }
+
+    // Use plain responseType when no response has a body to avoid JSON parse errors
+    if (!hasAnyResponseBody) {
+      buffer.writeln(',');
+      buffer.write(
+          '        options: Options(responseType: ResponseType.plain)');
     }
 
     buffer.writeln(',');

@@ -156,6 +156,40 @@ void main() {
       expect(code, contains("import '../responses/get_user_response.dart';"));
     });
 
+    test('generates ResponseType.plain for endpoints with no response body',
+        () {
+      final endpoint = FlorvalEndpoint(
+        path: '/pets/{petId}',
+        method: 'DELETE',
+        operationId: 'deletePet',
+        parameters: [
+          FlorvalParam(
+            name: 'petId',
+            dartName: 'petId',
+            location: ParamLocation.path,
+            type: FlorvalType(name: 'int', dartType: 'int'),
+            isRequired: true,
+          ),
+        ],
+        responses: {
+          200: FlorvalResponse(statusCode: 200),
+          400: FlorvalResponse(statusCode: 400),
+          404: FlorvalResponse(statusCode: 404),
+        },
+        tags: ['pets'],
+      );
+
+      final code = generator.generate('pets', [endpoint]);
+
+      expect(code, contains('ResponseType.plain'));
+    });
+
+    test('does not generate ResponseType.plain when response has body', () {
+      final code = generator.generate('users', [makeGetEndpoint()]);
+
+      expect(code, isNot(contains('ResponseType.plain')));
+    });
+
     test('generates list deserialization', () {
       final endpoint = FlorvalEndpoint(
         path: '/pets',
