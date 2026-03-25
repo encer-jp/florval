@@ -231,16 +231,16 @@ void main() {
       expect(providerCode, contains('class GetPet extends _\$GetPet'));
 
       // POST/PUT/DELETE → Mutation constants
-      expect(providerCode, contains('final createPet = Mutation<CreatePetResponse>();'));
-      expect(providerCode, contains('final updatePet = Mutation<UpdatePetResponse>();'));
-      expect(providerCode, contains('final deletePet = Mutation<DeletePetResponse>();'));
+      expect(providerCode, contains('final createPetMutation = Mutation<CreatePetResponse>();'));
+      expect(providerCode, contains('final updatePetMutation = Mutation<UpdatePetResponse>();'));
+      expect(providerCode, contains('final deletePetMutation = Mutation<DeletePetResponse>();'));
       expect(providerCode, isNot(contains('class CreatePet extends _\$CreatePet')));
       expect(providerCode, isNot(contains('class UpdatePet extends _\$UpdatePet')));
       expect(providerCode, isNot(contains('class DeletePet extends _\$DeletePet')));
 
       // Multipart endpoint → Mutation constant
       expect(providerCode,
-          contains('final uploadPetPhoto = Mutation<UploadPetPhotoResponse>();'));
+          contains('final uploadPetPhotoMutation = Mutation<UploadPetPhotoResponse>();'));
       expect(providerCode, isNot(contains('class UploadPetPhoto extends _\$UploadPetPhoto')));
       expect(providerCode, contains("import 'package:dio/dio.dart';"));
       expect(providerCode, contains("import 'package:riverpod/experimental/mutation.dart';"));
@@ -393,7 +393,7 @@ void main() {
 
       expect(providerCode, contains("import 'retry.dart';"));
       expect(providerCode, contains('@Riverpod(retry: retry)'));
-      expect(providerCode, contains('final createPet = Mutation<CreatePetResponse>();'));
+      expect(providerCode, contains('final createPetMutation = Mutation<CreatePetResponse>();'));
 
       // Verify barrel file exports retry.dart
       final barrelCode =
