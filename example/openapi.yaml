@@ -111,6 +111,9 @@ components:
   schemas:
     Pet:
       type: object
+      required:
+        - name
+        - photoUrls
       properties:
         id:
           type: integer

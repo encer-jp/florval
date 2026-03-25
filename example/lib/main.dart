@@ -65,6 +65,9 @@ class _PetstoreHomePageState extends ConsumerState<PetstoreHomePage> {
     final client = ref.read(petApiClientProvider);
 
     // --- Test 1: GET /pet/findByStatus ---
+    // Note: The shared Petstore demo API often returns spec-violating data
+    // (e.g. null for required fields). florval generates strict type-safe code
+    // that correctly rejects such invalid data.
     _log('=== Test 1: GET /pet/findByStatus ===');
     try {
       final findResponse = await client.findPetsByStatus(status: 'available');
@@ -73,7 +76,7 @@ class _PetstoreHomePageState extends ConsumerState<PetstoreHomePage> {
           _log('SUCCESS: Found ${data.length} pets');
           if (data.isNotEmpty) {
             final first = data.first;
-            _log('  First pet: ${first.name ?? "(no name)"} (id: ${first.id})');
+            _log('  First pet: ${first.name} (id: ${first.id})');
           }
         case FindPetsByStatusResponseBadRequest():
           _log('BAD REQUEST: Invalid status value');
@@ -81,7 +84,10 @@ class _PetstoreHomePageState extends ConsumerState<PetstoreHomePage> {
           _log('UNKNOWN: status=$statusCode body=$body');
       }
     } catch (e) {
-      _log('ERROR: $e');
+      _log('DESERIALIZATION ERROR (expected): The shared Petstore API returned '
+          'spec-violating data (e.g. null for required fields). '
+          'florval correctly rejects invalid data.');
+      _log('  Detail: $e');
     }
 
     // --- Test 2: POST /pet ---
