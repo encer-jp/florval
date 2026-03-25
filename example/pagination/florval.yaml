@@ -1,0 +1,16 @@
+florval:
+  schema_path: openapi.yaml
+  output_directory: generated
+
+  client:
+    base_url_env: API_BASE_URL
+    timeout: 30000
+
+  riverpod:
+    enabled: true
+    auto_invalidate: true
+    pagination:
+      - operation_id: listTasks
+        cursor_param: after
+        next_cursor_field: nextCursor
+        items_field: items
