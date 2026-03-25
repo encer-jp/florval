@@ -370,7 +370,7 @@ class ProviderGenerator {
     final responseType = '${className}Response';
 
     buffer.writeln('/// Mutation for ${endpoint.operationId} (${endpoint.method} ${endpoint.path})');
-    buffer.writeln('final ${ReCase(endpoint.operationId).camelCase} = Mutation<$responseType>();');
+    buffer.writeln('final ${ReCase(endpoint.operationId).camelCase}Mutation = Mutation<$responseType>();');
   }
 
   void _writeMutationHelper(
@@ -380,14 +380,14 @@ class ProviderGenerator {
     final responseType = '${className}Response';
     final clientProvider = '${ReCase(tag).camelCase}ApiClientProvider';
     final methodName = ReCase(endpoint.operationId).camelCase;
-    final mutationName = ReCase(endpoint.operationId).camelCase;
-    final helperName = 'run${className}';
+    final mutationName = '${ReCase(endpoint.operationId).camelCase}Mutation';
+    final helperName = ReCase(endpoint.operationId).camelCase;
 
     // Build helper function signature
     final helperParams = _buildMutationParams(endpoint);
 
     buffer.writeln();
-    buffer.writeln('/// Runs $mutationName mutation and invalidates related GET providers.');
+    buffer.writeln('/// Executes ${ReCase(endpoint.operationId).camelCase} mutation and invalidates related GET providers.');
     if (helperParams.isNotEmpty) {
       buffer.writeln('Future<$responseType> $helperName(');
       buffer.writeln('  MutationTarget ref, {');
