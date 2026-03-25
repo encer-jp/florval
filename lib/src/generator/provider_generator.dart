@@ -1,3 +1,4 @@
+import 'package:florval/src/model/api_type.dart';
 import 'package:recase/recase.dart';
 
 import '../model/api_endpoint.dart';
@@ -26,8 +27,7 @@ class ProviderGenerator {
     buffer.writeln();
 
     // Separate GET and mutation endpoints for cache invalidation
-    final getEndpoints =
-        endpoints.where((e) => e.method == 'GET').toList();
+    final getEndpoints = endpoints.where((e) => e.method == 'GET').toList();
 
     // Endpoint providers
     for (final endpoint in endpoints) {
@@ -47,7 +47,8 @@ class ProviderGenerator {
       StringBuffer buffer, String tag, List<FlorvalEndpoint> endpoints) {
     buffer.writeln("import 'dart:async';");
     buffer.writeln();
-    buffer.writeln("import 'package:riverpod_annotation/riverpod_annotation.dart';");
+    buffer.writeln(
+        "import 'package:riverpod_annotation/riverpod_annotation.dart';");
     buffer.writeln();
 
     // Import client
@@ -76,9 +77,9 @@ class ProviderGenerator {
     final providerName = '${ReCase(tag).camelCase}ApiClient';
 
     buffer.writeln('@riverpod');
+    buffer.writeln('$className $providerName(${className}Ref ref) {');
     buffer.writeln(
-        '$className $providerName(${className}Ref ref) {');
-    buffer.writeln("  throw UnimplementedError('Provide a Dio instance via override');");
+        "  throw UnimplementedError('Provide a Dio instance via override');");
     buffer.writeln('}');
   }
 
@@ -232,8 +233,7 @@ class ProviderGenerator {
     return args.isEmpty ? '' : args.join(', ');
   }
 
-  void _collectModelImports(
-      FlorvalEndpoint endpoint, Set<String> imports) {
+  void _collectModelImports(FlorvalEndpoint endpoint, Set<String> imports) {
     if (endpoint.requestBody != null) {
       _addTypeImport(imports, endpoint.requestBody!.type);
     }
