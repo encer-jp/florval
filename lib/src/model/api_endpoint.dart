@@ -155,10 +155,15 @@ class PaginationInfo {
   /// The element type of the items array.
   final FlorvalType itemType;
 
+  /// Auto-generated wrapper schema for inline response objects.
+  /// Null if the 200 response already uses a named $ref schema.
+  final FlorvalSchema? wrapperSchema;
+
   const PaginationInfo({
     required this.cursorParam,
     required this.nextCursorField,
     required this.itemsField,
     required this.itemType,
+    this.wrapperSchema,
   });
 }

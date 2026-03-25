@@ -88,7 +88,24 @@ class EndpointAnalyzer {
           paginationConfig,
           operation.responses,
           parameters,
+          operationId,
         );
+        // Replace 200 response type with the wrapper model type
+        if (pagination != null && pagination.wrapperSchema != null) {
+          final wrapperName = pagination.wrapperSchema!.name;
+          final wrapperType = FlorvalType(
+            name: wrapperName,
+            dartType: wrapperName,
+            // Synthetic ref so import collection picks up the wrapper model
+            ref: '#/components/schemas/$wrapperName',
+          );
+          final existing200 = responses[200]!;
+          responses[200] = FlorvalResponse(
+            statusCode: 200,
+            description: existing200.description,
+            type: wrapperType,
+          );
+        }
       }
     }
 
@@ -256,6 +273,7 @@ class EndpointAnalyzer {
     PaginationConfig config,
     Map<String, v31.Response> responses,
     List<FlorvalParam> parameters,
+    String operationId,
   ) {
     // Validate cursor param exists in query parameters
     final hasCursorParam = parameters.any(
@@ -295,11 +313,42 @@ class EndpointAnalyzer {
     final cursorSchema = properties[config.nextCursorField];
     if (cursorSchema == null) return null;
 
+    // If the 200 response is an inline object (no $ref), auto-generate a
+    // wrapper model so the Union type uses a proper class instead of
+    // Map<String, dynamic>.
+    FlorvalSchema? wrapperSchema;
+    if (schema.ref == null) {
+      final wrapperName =
+          '${ReCase(operationId).pascalCase}Page';
+      final wrapperFields = <FlorvalField>[];
+      final requiredFields = resolvedSchema.$required ?? [];
+
+      for (final entry in properties.entries) {
+        final fieldName = ReCase(entry.key).camelCase;
+        final fieldSchema = entry.value;
+        final isRequired = requiredFields.contains(entry.key);
+        final type = schemaAnalyzer.schemaToType(fieldSchema);
+
+        wrapperFields.add(FlorvalField(
+          name: fieldName,
+          jsonKey: entry.key,
+          type: isRequired ? type : type.asNullable(),
+          isRequired: isRequired,
+        ));
+      }
+
+      wrapperSchema = FlorvalSchema(
+        name: wrapperName,
+        fields: wrapperFields,
+      );
+    }
+
     return PaginationInfo(
       cursorParam: config.cursorParam,
       nextCursorField: config.nextCursorField,
       itemsField: config.itemsField,
       itemType: itemType,
+      wrapperSchema: wrapperSchema,
     );
   }
 

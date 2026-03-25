@@ -289,6 +289,17 @@ void main() {
           File(p.join(outputDir.path, 'models', 'api_exception.dart'))
               .readAsStringSync();
       expect(apiExceptionCode, contains('class ApiException'));
+
+      // Wrapper model generated for inline response schema
+      expect(
+          File(p.join(
+                  outputDir.path, 'models', 'list_pets_paginated_page.dart'))
+              .existsSync(),
+          isTrue);
+      final wrapperCode = File(p.join(
+              outputDir.path, 'models', 'list_pets_paginated_page.dart'))
+          .readAsStringSync();
+      expect(wrapperCode, contains('class ListPetsPaginatedPage'));
     });
 
     test('paginated provider contains fetchMore method', () {
