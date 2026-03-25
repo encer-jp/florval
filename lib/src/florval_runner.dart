@@ -9,6 +9,7 @@ import 'config/florval_config.dart';
 import 'generator/client_generator.dart';
 import 'generator/file_writer.dart';
 import 'generator/model_generator.dart';
+import 'generator/provider_generator.dart';
 import 'generator/response_generator.dart';
 import 'parser/ref_resolver.dart';
 import 'parser/spec_reader.dart';
@@ -79,15 +80,28 @@ class FlorvalRunner {
       clientNames.add(entry.key);
     }
 
+    // Providers (optional)
+    final providerNames = <String>[];
+    if (config.riverpod.enabled) {
+      final providerGenerator = ProviderGenerator();
+      for (final entry in endpointsByTag.entries) {
+        final code =
+            providerGenerator.generate(entry.key, entry.value.cast());
+        writer.writeProvider(entry.key, code);
+        providerNames.add(entry.key);
+      }
+    }
+
     // Barrel file
     writer.writeBarrel(
       modelNames,
       responseNames.map((n) => ReCase(n).snakeCase).toList(),
       clientNames,
+      providerNames,
     );
 
     stdout.writeln(
-        'florval: Generated ${modelNames.length} models, ${responseNames.length} responses, ${clientNames.length} clients');
+        'florval: Generated ${modelNames.length} models, ${responseNames.length} responses, ${clientNames.length} clients${providerNames.isNotEmpty ? ', ${providerNames.length} providers' : ''}');
     stdout.writeln('florval: Output written to ${config.outputDirectory}');
   }
 }

@@ -19,11 +19,39 @@ class SchemaAnalyzer {
   /// Converts a single named schema to a FlorvalSchema.
   FlorvalSchema analyze(String name, v31.Schema schema) {
     final resolved = resolver.resolveSchema(schema);
-    final requiredFields = _requiredFields(resolved);
+
+    // Handle allOf — merge fields from all sub-schemas
+    if (resolved.allOf != null && resolved.allOf!.isNotEmpty) {
+      return _analyzeAllOf(name, resolved);
+    }
+
+    // Handle oneOf — generate sealed class variants
+    if (resolved.oneOf != null && resolved.oneOf!.isNotEmpty) {
+      return _analyzeOneOf(name, resolved);
+    }
+
+    // Handle anyOf — treat same as oneOf for Dart
+    if (resolved.anyOf != null && resolved.anyOf!.isNotEmpty) {
+      return _analyzeAnyOf(name, resolved);
+    }
+
+    // Regular object with properties
+    final fields = _extractFields(resolved);
+
+    return FlorvalSchema(
+      name: name,
+      fields: fields,
+      description: resolved.description,
+    );
+  }
+
+  /// Extracts fields from a schema's properties.
+  List<FlorvalField> _extractFields(v31.Schema schema) {
+    final requiredFields = _requiredFields(schema);
     final fields = <FlorvalField>[];
 
-    if (resolved.properties != null) {
-      for (final entry in resolved.properties!.entries) {
+    if (schema.properties != null) {
+      for (final entry in schema.properties!.entries) {
         final fieldName = ReCase(entry.key).camelCase;
         final fieldSchema = entry.value;
         final isRequired = requiredFields.contains(entry.key);
@@ -39,10 +67,116 @@ class SchemaAnalyzer {
       }
     }
 
+    return fields;
+  }
+
+  /// Handles allOf — merges all sub-schema fields into one flat schema.
+  FlorvalSchema _analyzeAllOf(String name, v31.Schema schema) {
+    final mergedFields = <String, FlorvalField>{};
+
+    for (final subSchema in schema.allOf!) {
+      final resolved = resolver.resolveSchema(subSchema);
+      final subName = resolver.schemaName(subSchema) ?? name;
+      final analyzed = FlorvalSchema(
+        name: subName,
+        fields: _extractFields(resolved),
+      );
+      for (final field in analyzed.fields) {
+        mergedFields[field.jsonKey] = field;
+      }
+    }
+
+    // Also merge fields from the schema itself (if any)
+    for (final field in _extractFields(schema)) {
+      mergedFields[field.jsonKey] = field;
+    }
+
     return FlorvalSchema(
       name: name,
-      fields: fields,
-      description: resolved.description,
+      fields: mergedFields.values.toList(),
+      description: schema.description,
+    );
+  }
+
+  /// Handles oneOf — creates variant schemas for sealed class generation.
+  FlorvalSchema _analyzeOneOf(String name, v31.Schema schema) {
+    final variants = <FlorvalSchema>[];
+
+    for (final subSchema in schema.oneOf!) {
+      final resolved = resolver.resolveSchema(subSchema);
+      final subName = resolver.schemaName(subSchema);
+      if (subName != null) {
+        variants.add(FlorvalSchema(
+          name: subName,
+          fields: _extractFields(resolved),
+          description: resolved.description,
+        ));
+      } else {
+        // Inline schema — give it a generated name
+        final variantName = '${name}Variant${variants.length}';
+        variants.add(FlorvalSchema(
+          name: variantName,
+          fields: _extractFields(resolved),
+          description: resolved.description,
+        ));
+      }
+    }
+
+    // Parse discriminator if present
+    FlorvalDiscriminator? discriminator;
+    if (schema.discriminator != null) {
+      discriminator = FlorvalDiscriminator(
+        propertyName: schema.discriminator!.propertyName,
+        mapping: schema.discriminator!.mapping?.cast<String, String>(),
+      );
+    }
+
+    return FlorvalSchema(
+      name: name,
+      fields: [],
+      oneOf: variants,
+      discriminator: discriminator,
+      description: schema.description,
+    );
+  }
+
+  /// Handles anyOf — treat the same as oneOf for Dart code generation.
+  FlorvalSchema _analyzeAnyOf(String name, v31.Schema schema) {
+    final variants = <FlorvalSchema>[];
+
+    for (final subSchema in schema.anyOf!) {
+      final resolved = resolver.resolveSchema(subSchema);
+      final subName = resolver.schemaName(subSchema);
+      if (subName != null) {
+        variants.add(FlorvalSchema(
+          name: subName,
+          fields: _extractFields(resolved),
+          description: resolved.description,
+        ));
+      } else {
+        final variantName = '${name}Variant${variants.length}';
+        variants.add(FlorvalSchema(
+          name: variantName,
+          fields: _extractFields(resolved),
+          description: resolved.description,
+        ));
+      }
+    }
+
+    FlorvalDiscriminator? discriminator;
+    if (schema.discriminator != null) {
+      discriminator = FlorvalDiscriminator(
+        propertyName: schema.discriminator!.propertyName,
+        mapping: schema.discriminator!.mapping?.cast<String, String>(),
+      );
+    }
+
+    return FlorvalSchema(
+      name: name,
+      fields: [],
+      anyOf: variants,
+      discriminator: discriminator,
+      description: schema.description,
     );
   }
 

@@ -368,19 +368,19 @@ dart run florval init  # florval.yamlのテンプレート生成
 
 ### Phase 1（MVP）
 - [x] OpenAPI 3.1 JSON/YAML パース（openapi_spec_plus）
-- [ ] $ref解決（components/schemas のみ）
-- [ ] freezedモデル生成（基本型 + object + array）
-- [ ] ステータスコード別Union型生成
-- [ ] dioクライアント生成（GET/POST/PUT/DELETE）
-- [ ] CLIコマンド（generate）
-- [ ] petstore.yamlでのE2Eテスト
+- [x] $ref解決（components/schemas のみ）
+- [x] freezedモデル生成（基本型 + object + array）
+- [x] ステータスコード別Union型生成
+- [x] dioクライアント生成（GET/POST/PUT/DELETE）
+- [x] CLIコマンド（generate）
+- [x] petstore.yamlでのE2Eテスト
 
 ### Phase 2
-- [ ] Riverpodプロバイダー生成
-- [ ] リトライロジック生成
-- [ ] oneOf/anyOf/allOf対応
-- [ ] discriminator対応
-- [ ] ミューテーション後のキャッシュ無効化
+- [x] Riverpodプロバイダー生成
+- [x] リトライロジック生成（Riverpod 3.x内蔵に委譲）
+- [x] oneOf/anyOf/allOf対応
+- [x] discriminator対応
+- [x] ミューテーション後のキャッシュ無効化
 
 ### Phase 3
 - [ ] OpenAPI 3.0 / 2.0 対応

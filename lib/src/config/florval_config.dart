@@ -13,10 +13,14 @@ class FlorvalConfig {
   /// Client configuration.
   final ClientConfig client;
 
+  /// Riverpod configuration.
+  final RiverpodConfig riverpod;
+
   const FlorvalConfig({
     required this.schemaPath,
     required this.outputDirectory,
     this.client = const ClientConfig(),
+    this.riverpod = const RiverpodConfig(),
   });
 
   /// Loads config from a YAML file.
@@ -56,6 +60,9 @@ class FlorvalConfig {
       client: florval['client'] != null
           ? ClientConfig.fromYaml(florval['client'] as YamlMap)
           : const ClientConfig(),
+      riverpod: florval['riverpod'] != null
+          ? RiverpodConfig.fromYaml(florval['riverpod'] as YamlMap)
+          : const RiverpodConfig(),
     );
   }
 
@@ -63,10 +70,12 @@ class FlorvalConfig {
   factory FlorvalConfig.fromArgs({
     required String schemaPath,
     required String outputDirectory,
+    RiverpodConfig riverpod = const RiverpodConfig(),
   }) {
     return FlorvalConfig(
       schemaPath: schemaPath,
       outputDirectory: outputDirectory,
+      riverpod: riverpod,
     );
   }
 }
@@ -116,6 +125,27 @@ class RetryConfig {
     return RetryConfig(
       maxAttempts: (yaml['max_attempts'] as int?) ?? 3,
       delay: (yaml['delay'] as int?) ?? 1000,
+    );
+  }
+}
+
+/// Riverpod generation configuration.
+class RiverpodConfig {
+  /// Whether to generate Riverpod providers.
+  final bool enabled;
+
+  /// State type for generated providers.
+  final String stateType;
+
+  const RiverpodConfig({
+    this.enabled = false,
+    this.stateType = 'async_notifier',
+  });
+
+  factory RiverpodConfig.fromYaml(YamlMap yaml) {
+    return RiverpodConfig(
+      enabled: (yaml['enabled'] as bool?) ?? false,
+      stateType: (yaml['state_type'] as String?) ?? 'async_notifier',
     );
   }
 }
