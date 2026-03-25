@@ -1,9 +1,14 @@
 import 'package:recase/recase.dart';
 
+import '../config/template_config.dart';
 import '../model/api_schema.dart';
 
 /// Generates freezed 3.x model classes from FlorvalSchemas.
 class ModelGenerator {
+  final TemplateConfig? templateConfig;
+
+  ModelGenerator({this.templateConfig});
+
   /// Generates a freezed model file for a single schema.
   String generate(FlorvalSchema schema) {
     // Union types (oneOf/anyOf) → sealed class
@@ -19,10 +24,23 @@ class ModelGenerator {
     final fileName = ReCase(schema.name).snakeCase;
     final buffer = StringBuffer();
 
+    // Custom header
+    if (templateConfig?.header != null) {
+      buffer.writeln(templateConfig!.header);
+      buffer.writeln();
+    }
+
     // Imports
     buffer.writeln(
         "import 'package:freezed_annotation/freezed_annotation.dart';");
     buffer.writeln("import 'package:json_annotation/json_annotation.dart';");
+
+    // Custom model imports
+    if (templateConfig != null) {
+      for (final import_ in templateConfig!.modelImports) {
+        buffer.writeln(import_);
+      }
+    }
     buffer.writeln();
 
     // Import referenced types
@@ -62,10 +80,23 @@ class ModelGenerator {
     final variants = schema.oneOf ?? schema.anyOf ?? [];
     final buffer = StringBuffer();
 
+    // Custom header
+    if (templateConfig?.header != null) {
+      buffer.writeln(templateConfig!.header);
+      buffer.writeln();
+    }
+
     // Imports
     buffer.writeln(
         "import 'package:freezed_annotation/freezed_annotation.dart';");
     buffer.writeln("import 'package:json_annotation/json_annotation.dart';");
+
+    // Custom model imports
+    if (templateConfig != null) {
+      for (final import_ in templateConfig!.modelImports) {
+        buffer.writeln(import_);
+      }
+    }
     buffer.writeln();
 
     // Import variant types

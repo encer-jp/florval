@@ -1,10 +1,14 @@
 import 'package:florval/src/model/api_type.dart';
 import 'package:recase/recase.dart';
 
+import '../config/template_config.dart';
 import '../model/api_endpoint.dart';
 
 /// Generates Riverpod 3.x providers grouped by tag.
 class ProviderGenerator {
+  final TemplateConfig? templateConfig;
+
+  ProviderGenerator({this.templateConfig});
   /// Generates a provider file for a group of endpoints sharing a tag.
   ///
   /// Produces:
@@ -13,6 +17,12 @@ class ProviderGenerator {
   /// - POST/PUT/DELETE/PATCH → @riverpod Mutation Notifier
   String generate(String tag, List<FlorvalEndpoint> endpoints) {
     final buffer = StringBuffer();
+
+    // Custom header
+    if (templateConfig?.header != null) {
+      buffer.writeln(templateConfig!.header);
+      buffer.writeln();
+    }
 
     // Imports
     _writeImports(buffer, tag, endpoints);
@@ -49,6 +59,13 @@ class ProviderGenerator {
     buffer.writeln();
     buffer.writeln(
         "import 'package:riverpod_annotation/riverpod_annotation.dart';");
+
+    // Custom provider imports
+    if (templateConfig != null) {
+      for (final import_ in templateConfig!.providerImports) {
+        buffer.writeln(import_);
+      }
+    }
     buffer.writeln();
 
     // Import client

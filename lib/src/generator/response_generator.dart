@@ -1,16 +1,27 @@
 import 'package:recase/recase.dart';
 
+import '../config/template_config.dart';
 import '../model/api_endpoint.dart';
 import '../model/api_response.dart';
 
 /// Generates freezed 3.x sealed classes for status-code-based response Union types.
 class ResponseGenerator {
+  final TemplateConfig? templateConfig;
+
+  ResponseGenerator({this.templateConfig});
+
   /// Generates a response Union type for an endpoint.
   String generate(FlorvalEndpoint endpoint) {
     final className =
         '${ReCase(endpoint.operationId).pascalCase}Response';
     final fileName = ReCase(endpoint.operationId).snakeCase;
     final buffer = StringBuffer();
+
+    // Custom header
+    if (templateConfig?.header != null) {
+      buffer.writeln(templateConfig!.header);
+      buffer.writeln();
+    }
 
     // Imports
     buffer.writeln(

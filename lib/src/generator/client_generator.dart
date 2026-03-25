@@ -1,16 +1,34 @@
 import 'package:recase/recase.dart';
 
+import '../config/template_config.dart';
 import '../model/api_endpoint.dart';
 
 /// Generates dio API client classes grouped by tag.
 class ClientGenerator {
+  final TemplateConfig? templateConfig;
+
+  ClientGenerator({this.templateConfig});
+
   /// Generates a client class for a group of endpoints sharing a tag.
   String generate(String tag, List<FlorvalEndpoint> endpoints) {
     final className = '${ReCase(tag).pascalCase}ApiClient';
     final buffer = StringBuffer();
 
+    // Custom header
+    if (templateConfig?.header != null) {
+      buffer.writeln(templateConfig!.header);
+      buffer.writeln();
+    }
+
     // Imports
     buffer.writeln("import 'package:dio/dio.dart';");
+
+    // Custom client imports
+    if (templateConfig != null) {
+      for (final import_ in templateConfig!.clientImports) {
+        buffer.writeln(import_);
+      }
+    }
     buffer.writeln();
 
     // Import response types
