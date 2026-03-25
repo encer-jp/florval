@@ -191,6 +191,30 @@ void main() {
       expect(code, contains("throw UnimplementedError('Unknown type:"));
     });
 
+    test('generates PaginatedData class', () {
+      final code = generator.generatePaginatedData();
+
+      expect(code, contains('class PaginatedData<T, P>'));
+      expect(code, contains('final List<T> items;'));
+      expect(code, contains('final String? nextCursor;'));
+      expect(code, contains('final bool hasMore;'));
+      expect(code, contains('final P lastPage;'));
+      expect(code, contains('const PaginatedData('));
+      expect(code, contains('required this.items,'));
+      expect(code, contains('this.nextCursor,'));
+      expect(code, contains('this.hasMore = true,'));
+      expect(code, contains('required this.lastPage,'));
+    });
+
+    test('generates ApiException class', () {
+      final code = generator.generateApiException();
+
+      expect(code, contains('class ApiException implements Exception'));
+      expect(code, contains('final dynamic response;'));
+      expect(code, contains('const ApiException(this.response);'));
+      expect(code, contains("String toString() => 'ApiException: \$response';"));
+    });
+
     test('generates valid freezed 3.x syntax', () {
       final schema = FlorvalSchema(
         name: 'Category',

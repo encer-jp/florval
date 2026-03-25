@@ -159,15 +159,108 @@ class RiverpodConfig {
   /// Whether to auto-invalidate same-tag GET providers after mutations.
   final bool autoInvalidate;
 
+  /// Pagination configurations for cursor-based paginated endpoints.
+  final List<PaginationConfig> pagination;
+
   const RiverpodConfig({
     this.enabled = false,
     this.autoInvalidate = false,
+    this.pagination = const [],
   });
 
   factory RiverpodConfig.fromYaml(YamlMap yaml) {
+    final paginationYaml = yaml['pagination'];
+    final pagination = <PaginationConfig>[];
+
+    if (paginationYaml is YamlMap) {
+      // New format: { defaults: {...}, endpoints: [...] }
+      final defaultsYaml = paginationYaml['defaults'] as YamlMap?;
+      final defaultCursorParam = defaultsYaml?['cursor_param'] as String?;
+      final defaultNextCursorField =
+          defaultsYaml?['next_cursor_field'] as String?;
+      final defaultItemsField = defaultsYaml?['items_field'] as String?;
+
+      final endpointsList = paginationYaml['endpoints'] as YamlList?;
+      if (endpointsList != null) {
+        for (final entry in endpointsList) {
+          if (entry is String) {
+            // Shorthand: just operation_id string
+            if (defaultCursorParam == null ||
+                defaultNextCursorField == null ||
+                defaultItemsField == null) {
+              throw FlorvalConfigException(
+                'Pagination endpoint "$entry" uses shorthand but '
+                'defaults are incomplete. Provide cursor_param, '
+                'next_cursor_field, and items_field in defaults.',
+              );
+            }
+            pagination.add(PaginationConfig(
+              operationId: entry,
+              cursorParam: defaultCursorParam,
+              nextCursorField: defaultNextCursorField,
+              itemsField: defaultItemsField,
+            ));
+          } else if (entry is YamlMap) {
+            // Map with operation_id + optional overrides
+            pagination.add(PaginationConfig(
+              operationId: entry['operation_id'] as String,
+              cursorParam: (entry['cursor_param'] as String?) ??
+                  defaultCursorParam ??
+                  'after',
+              nextCursorField: (entry['next_cursor_field'] as String?) ??
+                  defaultNextCursorField ??
+                  'nextCursor',
+              itemsField: (entry['items_field'] as String?) ??
+                  defaultItemsField ??
+                  'items',
+            ));
+          }
+        }
+      }
+    } else if (paginationYaml is YamlList) {
+      // Legacy flat list format (backwards compatible)
+      for (final entry in paginationYaml) {
+        if (entry is YamlMap) {
+          pagination.add(PaginationConfig.fromYaml(entry));
+        }
+      }
+    }
+
     return RiverpodConfig(
       enabled: (yaml['enabled'] as bool?) ?? false,
       autoInvalidate: (yaml['auto_invalidate'] as bool?) ?? false,
+      pagination: pagination,
+    );
+  }
+}
+
+/// Configuration for a single cursor-based paginated endpoint.
+class PaginationConfig {
+  /// The operationId of the endpoint to apply pagination to.
+  final String operationId;
+
+  /// The query parameter name used as the cursor (e.g. 'after').
+  final String cursorParam;
+
+  /// The response field name containing the next cursor value.
+  final String nextCursorField;
+
+  /// The response field name containing the data items array.
+  final String itemsField;
+
+  const PaginationConfig({
+    required this.operationId,
+    required this.cursorParam,
+    required this.nextCursorField,
+    required this.itemsField,
+  });
+
+  factory PaginationConfig.fromYaml(YamlMap yaml) {
+    return PaginationConfig(
+      operationId: yaml['operation_id'] as String,
+      cursorParam: yaml['cursor_param'] as String,
+      nextCursorField: yaml['next_cursor_field'] as String,
+      itemsField: yaml['items_field'] as String,
     );
   }
 }

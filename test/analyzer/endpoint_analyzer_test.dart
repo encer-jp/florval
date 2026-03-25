@@ -3,6 +3,7 @@ import 'package:test/test.dart';
 import 'package:florval/src/analyzer/endpoint_analyzer.dart';
 import 'package:florval/src/analyzer/response_analyzer.dart';
 import 'package:florval/src/analyzer/schema_analyzer.dart';
+import 'package:florval/src/config/florval_config.dart';
 import 'package:florval/src/model/api_endpoint.dart';
 import 'package:florval/src/parser/ref_resolver.dart';
 import 'package:florval/src/parser/spec_reader.dart';
@@ -22,8 +23,8 @@ void main() {
 
     test('extracts all endpoints', () {
       final endpoints = analyzer.analyzeAll(spec.paths);
-      // GET /pets, POST /pets, POST /pets/{petId}/photo, GET /pets/{petId}, PUT /pets/{petId}, DELETE /pets/{petId}
-      expect(endpoints.length, 6);
+      // GET /pets, POST /pets, GET /pets/paginated, POST /pets/{petId}/photo, GET /pets/{petId}, PUT /pets/{petId}, DELETE /pets/{petId}
+      expect(endpoints.length, 7);
     });
 
     test('parses GET /pets correctly', () {
@@ -126,6 +127,114 @@ void main() {
       final descField = fields.firstWhere((f) => f.jsonKey == 'description');
       expect(descField.type.dartType, 'String');
       expect(descField.isRequired, isFalse);
+    });
+
+    test('pagination is null when no pagination config provided', () {
+      final endpoints = analyzer.analyzeAll(spec.paths);
+      final listPets =
+          endpoints.firstWhere((e) => e.operationId == 'listPets');
+
+      expect(listPets.pagination, isNull);
+    });
+
+    test('pagination is set when config matches endpoint', () {
+      final paginationConfigs = [
+        PaginationConfig(
+          operationId: 'listPetsPaginated',
+          cursorParam: 'after',
+          nextCursorField: 'nextCursor',
+          itemsField: 'items',
+        ),
+      ];
+      final resolver = RefResolver(spec);
+      final schemaAnalyzer = SchemaAnalyzer(resolver);
+      final responseAnalyzer = ResponseAnalyzer(resolver, schemaAnalyzer);
+      final paginatedAnalyzer = EndpointAnalyzer(
+        resolver,
+        schemaAnalyzer,
+        responseAnalyzer,
+        paginationConfigs: paginationConfigs,
+      );
+
+      final endpoints = paginatedAnalyzer.analyzeAll(spec.paths);
+      final paginated =
+          endpoints.firstWhere((e) => e.operationId == 'listPetsPaginated');
+
+      expect(paginated.pagination, isNotNull);
+      expect(paginated.pagination!.cursorParam, 'after');
+      expect(paginated.pagination!.nextCursorField, 'nextCursor');
+      expect(paginated.pagination!.itemsField, 'items');
+      expect(paginated.pagination!.itemType.dartType, 'Pet');
+
+      // Inline response → wrapper schema auto-generated
+      expect(paginated.pagination!.wrapperSchema, isNotNull);
+      expect(paginated.pagination!.wrapperSchema!.name, 'ListPetsPaginatedPage');
+      expect(
+          paginated.pagination!.wrapperSchema!.fields
+              .any((f) => f.name == 'items'),
+          isTrue);
+      expect(
+          paginated.pagination!.wrapperSchema!.fields
+              .any((f) => f.name == 'nextCursor'),
+          isTrue);
+
+      // 200 response type should be the wrapper, not Map<String, dynamic>
+      expect(paginated.responses[200]!.type!.dartType, 'ListPetsPaginatedPage');
+    });
+
+    test('pagination is null when cursor param does not exist', () {
+      final paginationConfigs = [
+        PaginationConfig(
+          operationId: 'listPetsPaginated',
+          cursorParam: 'nonexistent',
+          nextCursorField: 'nextCursor',
+          itemsField: 'items',
+        ),
+      ];
+      final resolver = RefResolver(spec);
+      final schemaAnalyzer = SchemaAnalyzer(resolver);
+      final responseAnalyzer = ResponseAnalyzer(resolver, schemaAnalyzer);
+      final paginatedAnalyzer = EndpointAnalyzer(
+        resolver,
+        schemaAnalyzer,
+        responseAnalyzer,
+        paginationConfigs: paginationConfigs,
+      );
+
+      final endpoints = paginatedAnalyzer.analyzeAll(spec.paths);
+      final paginated =
+          endpoints.firstWhere((e) => e.operationId == 'listPetsPaginated');
+
+      expect(paginated.pagination, isNull);
+    });
+
+    test('non-matching endpoints remain without pagination', () {
+      final paginationConfigs = [
+        PaginationConfig(
+          operationId: 'listPetsPaginated',
+          cursorParam: 'after',
+          nextCursorField: 'nextCursor',
+          itemsField: 'items',
+        ),
+      ];
+      final resolver = RefResolver(spec);
+      final schemaAnalyzer = SchemaAnalyzer(resolver);
+      final responseAnalyzer = ResponseAnalyzer(resolver, schemaAnalyzer);
+      final paginatedAnalyzer = EndpointAnalyzer(
+        resolver,
+        schemaAnalyzer,
+        responseAnalyzer,
+        paginationConfigs: paginationConfigs,
+      );
+
+      final endpoints = paginatedAnalyzer.analyzeAll(spec.paths);
+      final listPets =
+          endpoints.firstWhere((e) => e.operationId == 'listPets');
+      final getPet =
+          endpoints.firstWhere((e) => e.operationId == 'getPet');
+
+      expect(listPets.pagination, isNull);
+      expect(getPet.pagination, isNull);
     });
   });
 }

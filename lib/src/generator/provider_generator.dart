@@ -7,7 +7,7 @@ import '../model/api_endpoint.dart';
 /// Generates Riverpod 3.x providers grouped by tag.
 ///
 /// - GET endpoints → @riverpod Notifier with build() params
-/// - POST/PUT/DELETE/PATCH → Mutation<ResponseType>() constant + optional helper
+/// - POST/PUT/DELETE/PATCH → `Mutation<ResponseType>()` constant + optional helper
 class ProviderGenerator {
   final TemplateConfig? templateConfig;
   final bool autoInvalidate;
@@ -45,7 +45,9 @@ class ProviderGenerator {
 
     // Endpoint providers / mutations
     for (final endpoint in endpoints) {
-      if (endpoint.method == 'GET') {
+      if (endpoint.method == 'GET' && endpoint.pagination != null) {
+        _writePaginatedProvider(buffer, tag, endpoint);
+      } else if (endpoint.method == 'GET') {
         _writeGetProvider(buffer, tag, endpoint);
       } else {
         _writeMutationDefinition(buffer, endpoint);
@@ -92,6 +94,13 @@ class ProviderGenerator {
       }
     }
     buffer.writeln();
+
+    // Import pagination utilities if needed
+    final hasPagination = endpoints.any((e) => e.pagination != null);
+    if (hasPagination) {
+      buffer.writeln("import '../models/api_exception.dart';");
+      buffer.writeln("import '../models/paginated_data.dart';");
+    }
 
     // Import client
     buffer.writeln(
@@ -158,6 +167,167 @@ class ProviderGenerator {
     buffer.writeln(');');
     buffer.writeln('  }');
     buffer.writeln('}');
+  }
+
+  void _writePaginatedProvider(
+      StringBuffer buffer, String tag, FlorvalEndpoint endpoint) {
+    final className = ReCase(endpoint.operationId).pascalCase;
+    final responseType = '${className}Response';
+    final clientProvider = '${ReCase(tag).camelCase}ApiClientProvider';
+    final methodName = ReCase(endpoint.operationId).camelCase;
+    final pagination = endpoint.pagination!;
+    final itemDartType = pagination.itemType.dartType;
+    final cursorParam = ReCase(pagination.cursorParam).camelCase;
+    // Page type = 200 response body type (e.g. SearchPetsPage, CommentPage)
+    final pageDartType = endpoint.responses[200]?.type?.dartType ?? 'dynamic';
+    final paginatedType = 'PaginatedData<$itemDartType, $pageDartType>';
+
+    buffer.writeln('@riverpod');
+    buffer.writeln('class $className extends _\$$className {');
+
+    // Instance fields for accumulating paginated state
+    buffer.writeln('  final List<$itemDartType> _allItems = [];');
+    buffer.writeln('  String? _nextCursor;');
+    buffer.writeln('  bool _hasMore = true;');
+    buffer.writeln();
+
+    buffer.writeln('  @override');
+
+    // build() signature — include non-cursor query params and path params
+    final buildParams = _buildPaginatedBuildParams(endpoint);
+    if (buildParams.isNotEmpty) {
+      buffer.writeln('  FutureOr<$paginatedType> build({');
+      for (final param in buildParams) {
+        buffer.writeln('    $param');
+      }
+      buffer.writeln('  }) async {');
+    } else {
+      buffer.writeln(
+          '  FutureOr<$paginatedType> build() async {');
+    }
+
+    // Reset state
+    buffer.writeln('    _allItems.clear();');
+    buffer.writeln('    _nextCursor = null;');
+    buffer.writeln('    _hasMore = true;');
+    buffer.writeln();
+
+    // Initial fetch (without cursor param)
+    buffer.writeln('    final client = ref.watch($clientProvider);');
+    final initialCallArgs = _buildPaginatedInitialCallArgs(endpoint);
+    buffer.writeln('    final response = await client.$methodName($initialCallArgs);');
+    buffer.writeln();
+
+    // Switch on Union type
+    buffer.writeln('    switch (response) {');
+    buffer.writeln(
+        '      case ${responseType}Success(:final data):');
+    buffer.writeln(
+        '        _allItems.addAll(data.${ReCase(pagination.itemsField).camelCase});');
+    buffer.writeln(
+        '        _nextCursor = data.${ReCase(pagination.nextCursorField).camelCase};');
+    buffer.writeln(
+        '        _hasMore = data.${ReCase(pagination.nextCursorField).camelCase} != null;');
+    buffer.writeln('        return PaginatedData(');
+    buffer.writeln('          items: List.unmodifiable(_allItems),');
+    buffer.writeln('          nextCursor: _nextCursor,');
+    buffer.writeln('          hasMore: _hasMore,');
+    buffer.writeln('          lastPage: data,');
+    buffer.writeln('        );');
+    buffer.writeln('      default:');
+    buffer.writeln('        throw ApiException(response);');
+    buffer.writeln('    }');
+    buffer.writeln('  }');
+    buffer.writeln();
+
+    // fetchMore() method
+    buffer.writeln('  Future<void> fetchMore() async {');
+    buffer.writeln('    if (!_hasMore || _nextCursor == null) return;');
+    buffer.writeln();
+    buffer.writeln('    final client = ref.read($clientProvider);');
+
+    // Build call args with cursor
+    final fetchMoreArgs = _buildPaginatedFetchMoreArgs(endpoint, cursorParam);
+    buffer.writeln(
+        '    final response = await client.$methodName($fetchMoreArgs);');
+    buffer.writeln();
+    buffer.writeln('    switch (response) {');
+    buffer.writeln(
+        '      case ${responseType}Success(:final data):');
+    buffer.writeln(
+        '        _allItems.addAll(data.${ReCase(pagination.itemsField).camelCase});');
+    buffer.writeln(
+        '        _nextCursor = data.${ReCase(pagination.nextCursorField).camelCase};');
+    buffer.writeln(
+        '        _hasMore = data.${ReCase(pagination.nextCursorField).camelCase} != null;');
+    buffer.writeln('        state = AsyncData(PaginatedData(');
+    buffer.writeln('          items: List.unmodifiable(_allItems),');
+    buffer.writeln('          nextCursor: _nextCursor,');
+    buffer.writeln('          hasMore: _hasMore,');
+    buffer.writeln('          lastPage: data,');
+    buffer.writeln('        ));');
+    buffer.writeln('      default:');
+    buffer.writeln(
+        '        state = AsyncError(ApiException(response), StackTrace.current);');
+    buffer.writeln('    }');
+    buffer.writeln('  }');
+    buffer.writeln('}');
+  }
+
+  /// Build params for paginated provider's build() method.
+  /// Excludes the cursor param (it's managed internally).
+  List<String> _buildPaginatedBuildParams(FlorvalEndpoint endpoint) {
+    final params = <String>[];
+    final cursorParam = endpoint.pagination!.cursorParam;
+
+    for (final p in endpoint.pathParameters) {
+      params.add('required ${p.type.dartType} ${p.dartName},');
+    }
+    for (final p in endpoint.queryParameters) {
+      if (p.name == cursorParam) continue; // Skip cursor param
+      if (p.isRequired) {
+        params.add('required ${p.type.dartType} ${p.dartName},');
+      } else {
+        params.add('${p.type.dartType}? ${p.dartName},');
+      }
+    }
+
+    return params;
+  }
+
+  /// Build call args for the initial fetch in build(), excluding cursor param.
+  String _buildPaginatedInitialCallArgs(FlorvalEndpoint endpoint) {
+    final args = <String>[];
+    final cursorParam = endpoint.pagination!.cursorParam;
+
+    for (final p in endpoint.pathParameters) {
+      args.add('${p.dartName}: ${p.dartName}');
+    }
+    for (final p in endpoint.queryParameters) {
+      if (p.name == cursorParam) continue;
+      args.add('${p.dartName}: ${p.dartName}');
+    }
+
+    return args.join(', ');
+  }
+
+  /// Build call args for fetchMore, including cursor param.
+  String _buildPaginatedFetchMoreArgs(
+      FlorvalEndpoint endpoint, String cursorDartName) {
+    final args = <String>[];
+
+    for (final p in endpoint.pathParameters) {
+      args.add('${p.dartName}: ${p.dartName}');
+    }
+    for (final p in endpoint.queryParameters) {
+      if (p.name == endpoint.pagination!.cursorParam) {
+        args.add('$cursorDartName: _nextCursor');
+      } else {
+        args.add('${p.dartName}: ${p.dartName}');
+      }
+    }
+
+    return args.join(', ');
   }
 
   void _writeMutationDefinition(
@@ -308,6 +478,14 @@ class ProviderGenerator {
   void _collectModelImports(FlorvalEndpoint endpoint, Set<String> imports) {
     if (endpoint.requestBody != null && !endpoint.requestBody!.isMultipart) {
       _addTypeImport(imports, endpoint.requestBody!.type);
+    }
+    if (endpoint.pagination != null) {
+      _addTypeImport(imports, endpoint.pagination!.itemType);
+      // Import the page type (e.g. SearchPetsPage, CommentPage) for PaginatedData<T, P>
+      final pageType = endpoint.responses[200]?.type;
+      if (pageType != null) {
+        _addTypeImport(imports, pageType);
+      }
     }
   }
 

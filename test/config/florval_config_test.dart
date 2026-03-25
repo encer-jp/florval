@@ -143,5 +143,110 @@ florval:
 
       tmpFile.deleteSync();
     });
+
+    test('loads pagination config with defaults and shorthand', () {
+      final tmpFile =
+          File('${Directory.systemTemp.path}/florval_test_pg.yaml');
+      tmpFile.writeAsStringSync('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    enabled: true
+    pagination:
+      defaults:
+        cursor_param: after
+        next_cursor_field: nextCursor
+        items_field: items
+      endpoints:
+        - listPets
+        - listUsers
+''');
+
+      final config = FlorvalConfig.fromFile(tmpFile.path);
+
+      expect(config.riverpod.pagination.length, 2);
+      expect(config.riverpod.pagination[0].operationId, 'listPets');
+      expect(config.riverpod.pagination[0].cursorParam, 'after');
+      expect(config.riverpod.pagination[0].nextCursorField, 'nextCursor');
+      expect(config.riverpod.pagination[0].itemsField, 'items');
+      expect(config.riverpod.pagination[1].operationId, 'listUsers');
+      expect(config.riverpod.pagination[1].cursorParam, 'after');
+
+      tmpFile.deleteSync();
+    });
+
+    test('pagination endpoint overrides defaults', () {
+      final tmpFile =
+          File('${Directory.systemTemp.path}/florval_test_pg_ov.yaml');
+      tmpFile.writeAsStringSync('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    enabled: true
+    pagination:
+      defaults:
+        cursor_param: after
+        next_cursor_field: nextCursor
+        items_field: items
+      endpoints:
+        - listPets
+        - operation_id: listOrders
+          cursor_param: cursor
+          items_field: edges
+''');
+
+      final config = FlorvalConfig.fromFile(tmpFile.path);
+
+      expect(config.riverpod.pagination.length, 2);
+      expect(config.riverpod.pagination[0].operationId, 'listPets');
+      expect(config.riverpod.pagination[0].cursorParam, 'after');
+      expect(config.riverpod.pagination[1].operationId, 'listOrders');
+      expect(config.riverpod.pagination[1].cursorParam, 'cursor');
+      expect(config.riverpod.pagination[1].nextCursorField, 'nextCursor');
+      expect(config.riverpod.pagination[1].itemsField, 'edges');
+
+      tmpFile.deleteSync();
+    });
+
+    test('pagination legacy flat list still works', () {
+      final tmpFile =
+          File('${Directory.systemTemp.path}/florval_test_pg_legacy.yaml');
+      tmpFile.writeAsStringSync('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    enabled: true
+    pagination:
+      - operation_id: listPets
+        cursor_param: after
+        next_cursor_field: nextCursor
+        items_field: items
+''');
+
+      final config = FlorvalConfig.fromFile(tmpFile.path);
+
+      expect(config.riverpod.pagination.length, 1);
+      expect(config.riverpod.pagination[0].operationId, 'listPets');
+      expect(config.riverpod.pagination[0].cursorParam, 'after');
+
+      tmpFile.deleteSync();
+    });
+
+    test('pagination defaults to empty list', () {
+      final tmpFile =
+          File('${Directory.systemTemp.path}/florval_test_pg2.yaml');
+      tmpFile.writeAsStringSync('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    enabled: true
+''');
+
+      final config = FlorvalConfig.fromFile(tmpFile.path);
+
+      expect(config.riverpod.pagination, isEmpty);
+
+      tmpFile.deleteSync();
+    });
   });
 }

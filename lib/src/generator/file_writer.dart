@@ -22,6 +22,11 @@ class FileWriter {
     _writeFile(p.join(outputDirectory, 'models', fileName), code);
   }
 
+  /// Writes a utility model file (e.g. paginated_data.dart).
+  void writeUtilityModel(String fileName, String code) {
+    _writeFile(p.join(outputDirectory, 'models', fileName), code);
+  }
+
   /// Writes a response file.
   void writeResponse(String operationId, String code) {
     final fileName = '${ReCase(operationId).snakeCase}_response.dart';

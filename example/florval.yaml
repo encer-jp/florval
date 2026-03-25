@@ -9,3 +9,13 @@ florval:
   riverpod:
     enabled: true
     auto_invalidate: true
+    pagination:
+      defaults:
+        cursor_param: after
+        next_cursor_field: nextCursor
+        items_field: items
+      endpoints:
+        # インラインobject → SearchPetsPageが自動生成される
+        - searchPets
+        # $ref → CommentPageがそのまま使われる
+        - listPetComments
