@@ -40,6 +40,10 @@ class InitCommand {
     #   endpoints:
     #     - listUsers
     #     - listPosts
+    #     - operation_id: listComments
+    #       cursor_param: cursor
+    #       next_cursor_field: next
+    #       items_field: data
 
   # templates:
   #   header: "// Custom header"
