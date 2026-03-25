@@ -159,15 +159,61 @@ class RiverpodConfig {
   /// Whether to auto-invalidate same-tag GET providers after mutations.
   final bool autoInvalidate;
 
+  /// Pagination configurations for cursor-based paginated endpoints.
+  final List<PaginationConfig> pagination;
+
   const RiverpodConfig({
     this.enabled = false,
     this.autoInvalidate = false,
+    this.pagination = const [],
   });
 
   factory RiverpodConfig.fromYaml(YamlMap yaml) {
+    final paginationList = yaml['pagination'];
+    final pagination = <PaginationConfig>[];
+    if (paginationList is YamlList) {
+      for (final entry in paginationList) {
+        if (entry is YamlMap) {
+          pagination.add(PaginationConfig.fromYaml(entry));
+        }
+      }
+    }
+
     return RiverpodConfig(
       enabled: (yaml['enabled'] as bool?) ?? false,
       autoInvalidate: (yaml['auto_invalidate'] as bool?) ?? false,
+      pagination: pagination,
+    );
+  }
+}
+
+/// Configuration for a single cursor-based paginated endpoint.
+class PaginationConfig {
+  /// The operationId of the endpoint to apply pagination to.
+  final String operationId;
+
+  /// The query parameter name used as the cursor (e.g. 'after').
+  final String cursorParam;
+
+  /// The response field name containing the next cursor value.
+  final String nextCursorField;
+
+  /// The response field name containing the data items array.
+  final String itemsField;
+
+  const PaginationConfig({
+    required this.operationId,
+    required this.cursorParam,
+    required this.nextCursorField,
+    required this.itemsField,
+  });
+
+  factory PaginationConfig.fromYaml(YamlMap yaml) {
+    return PaginationConfig(
+      operationId: yaml['operation_id'] as String,
+      cursorParam: yaml['cursor_param'] as String,
+      nextCursorField: yaml['next_cursor_field'] as String,
+      itemsField: yaml['items_field'] as String,
     );
   }
 }

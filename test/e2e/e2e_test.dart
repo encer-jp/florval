@@ -5,11 +5,16 @@ import 'package:test/test.dart';
 import 'package:florval/src/config/florval_config.dart';
 import 'package:florval/src/florval_runner.dart';
 
-FlorvalConfig _makeConfig(String outputPath, {bool riverpodEnabled = false}) {
+FlorvalConfig _makeConfig(String outputPath,
+    {bool riverpodEnabled = false,
+    List<PaginationConfig> pagination = const []}) {
   return FlorvalConfig.fromArgs(
     schemaPath: 'test/fixtures/petstore.yaml',
     outputDirectory: outputPath,
-    riverpod: RiverpodConfig(enabled: riverpodEnabled),
+    riverpod: RiverpodConfig(
+      enabled: riverpodEnabled,
+      pagination: pagination,
+    ),
   );
 }
 
@@ -248,6 +253,105 @@ void main() {
           File(p.join(outputDir.path, 'api.dart')).readAsStringSync();
 
       expect(barrelCode, contains("export 'providers/pets_providers.dart';"));
+    });
+
+    test('generates paginated_data.dart and api_exception.dart when pagination configured', () {
+      final config = _makeConfig(
+        outputDir.path,
+        riverpodEnabled: true,
+        pagination: [
+          PaginationConfig(
+            operationId: 'listPetsPaginated',
+            cursorParam: 'after',
+            nextCursorField: 'nextCursor',
+            itemsField: 'items',
+          ),
+        ],
+      );
+
+      FlorvalRunner().run(config);
+
+      expect(
+          File(p.join(outputDir.path, 'models', 'paginated_data.dart'))
+              .existsSync(),
+          isTrue);
+      expect(
+          File(p.join(outputDir.path, 'models', 'api_exception.dart'))
+              .existsSync(),
+          isTrue);
+
+      final paginatedDataCode =
+          File(p.join(outputDir.path, 'models', 'paginated_data.dart'))
+              .readAsStringSync();
+      expect(paginatedDataCode, contains('class PaginatedData<T>'));
+
+      final apiExceptionCode =
+          File(p.join(outputDir.path, 'models', 'api_exception.dart'))
+              .readAsStringSync();
+      expect(apiExceptionCode, contains('class ApiException'));
+    });
+
+    test('paginated provider contains fetchMore method', () {
+      final config = _makeConfig(
+        outputDir.path,
+        riverpodEnabled: true,
+        pagination: [
+          PaginationConfig(
+            operationId: 'listPetsPaginated',
+            cursorParam: 'after',
+            nextCursorField: 'nextCursor',
+            itemsField: 'items',
+          ),
+        ],
+      );
+
+      FlorvalRunner().run(config);
+
+      final providerCode =
+          File(p.join(outputDir.path, 'providers', 'pets_providers.dart'))
+              .readAsStringSync();
+
+      expect(providerCode, contains('class ListPetsPaginated extends _\$ListPetsPaginated'));
+      expect(providerCode, contains('Future<void> fetchMore()'));
+      expect(providerCode, contains('PaginatedData<Pet>'));
+    });
+
+    test('barrel file exports pagination utilities when configured', () {
+      final config = _makeConfig(
+        outputDir.path,
+        riverpodEnabled: true,
+        pagination: [
+          PaginationConfig(
+            operationId: 'listPetsPaginated',
+            cursorParam: 'after',
+            nextCursorField: 'nextCursor',
+            itemsField: 'items',
+          ),
+        ],
+      );
+
+      FlorvalRunner().run(config);
+
+      final barrelCode =
+          File(p.join(outputDir.path, 'api.dart')).readAsStringSync();
+
+      expect(barrelCode, contains("export 'models/paginated_data.dart';"));
+      expect(barrelCode, contains("export 'models/api_exception.dart';"));
+    });
+
+    test('does not generate pagination utilities when no pagination configured', () {
+      final config = _makeConfig(outputDir.path, riverpodEnabled: true);
+
+      FlorvalRunner().run(config);
+
+      expect(
+          File(p.join(outputDir.path, 'models', 'paginated_data.dart'))
+              .existsSync(),
+          isFalse);
+      expect(
+          File(p.join(outputDir.path, 'models', 'api_exception.dart'))
+              .existsSync(),
+          isFalse);
     });
   });
 }

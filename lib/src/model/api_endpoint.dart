@@ -28,6 +28,9 @@ class FlorvalEndpoint {
   /// Summary from the OpenAPI spec.
   final String? summary;
 
+  /// Pagination info if this endpoint is configured for cursor-based pagination.
+  final PaginationInfo? pagination;
+
   const FlorvalEndpoint({
     required this.path,
     required this.method,
@@ -37,6 +40,7 @@ class FlorvalEndpoint {
     required this.responses,
     required this.tags,
     this.summary,
+    this.pagination,
   });
 
   /// The primary tag for grouping (first tag, or 'default').
@@ -135,4 +139,26 @@ class FlorvalRequestBody {
 
   @override
   String toString() => 'FlorvalRequestBody(${type.dartType}, $contentType)';
+}
+
+/// Pagination information for cursor-based paginated endpoints.
+class PaginationInfo {
+  /// The query parameter name used as the cursor (e.g. 'after').
+  final String cursorParam;
+
+  /// The response field name containing the next cursor value.
+  final String nextCursorField;
+
+  /// The response field name containing the data items array.
+  final String itemsField;
+
+  /// The element type of the items array.
+  final FlorvalType itemType;
+
+  const PaginationInfo({
+    required this.cursorParam,
+    required this.nextCursorField,
+    required this.itemsField,
+    required this.itemType,
+  });
 }

@@ -46,6 +46,14 @@ class ConfigValidator {
   static const _validRiverpodKeys = {
     'enabled',
     'auto_invalidate',
+    'pagination',
+  };
+
+  static const _validPaginationEntryKeys = {
+    'operation_id',
+    'cursor_param',
+    'next_cursor_field',
+    'items_field',
   };
 
   static const _validTemplateKeys = {
@@ -250,6 +258,56 @@ class ConfigValidator {
       ));
     }
 
+    final pagination = riverpod['pagination'];
+    if (pagination != null) {
+      if (pagination is! YamlList) {
+        errors.add(const ConfigValidationError(
+          field: 'florval.riverpod.pagination',
+          message: '"pagination" must be a list.',
+        ));
+      } else {
+        _validatePagination(pagination, errors);
+      }
+    }
+  }
+
+  void _validatePagination(
+      YamlList pagination, List<ConfigValidationError> errors) {
+    for (var i = 0; i < pagination.length; i++) {
+      final entry = pagination[i];
+      final prefix = 'florval.riverpod.pagination[$i]';
+
+      if (entry is! YamlMap) {
+        errors.add(ConfigValidationError(
+          field: prefix,
+          message: 'Each pagination entry must be a map.',
+        ));
+        continue;
+      }
+
+      _checkUnknownKeys(entry, _validPaginationEntryKeys, prefix, errors);
+
+      // Required string fields
+      for (final field in [
+        'operation_id',
+        'cursor_param',
+        'next_cursor_field',
+        'items_field',
+      ]) {
+        final value = entry[field];
+        if (value == null) {
+          errors.add(ConfigValidationError(
+            field: '$prefix.$field',
+            message: 'Missing required "$field".',
+          ));
+        } else if (value is! String) {
+          errors.add(ConfigValidationError(
+            field: '$prefix.$field',
+            message: '"$field" must be a string.',
+          ));
+        }
+      }
+    }
   }
 
   void _checkUnknownKeys(YamlMap yaml, Set<String> validKeys,

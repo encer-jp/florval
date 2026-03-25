@@ -143,5 +143,54 @@ florval:
 
       tmpFile.deleteSync();
     });
+
+    test('loads pagination config from YAML', () {
+      final tmpFile =
+          File('${Directory.systemTemp.path}/florval_test_pg.yaml');
+      tmpFile.writeAsStringSync('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    enabled: true
+    pagination:
+      - operation_id: listPets
+        cursor_param: after
+        next_cursor_field: nextCursor
+        items_field: items
+      - operation_id: listUsers
+        cursor_param: cursor
+        next_cursor_field: next
+        items_field: data
+''');
+
+      final config = FlorvalConfig.fromFile(tmpFile.path);
+
+      expect(config.riverpod.pagination.length, 2);
+      expect(config.riverpod.pagination[0].operationId, 'listPets');
+      expect(config.riverpod.pagination[0].cursorParam, 'after');
+      expect(config.riverpod.pagination[0].nextCursorField, 'nextCursor');
+      expect(config.riverpod.pagination[0].itemsField, 'items');
+      expect(config.riverpod.pagination[1].operationId, 'listUsers');
+      expect(config.riverpod.pagination[1].cursorParam, 'cursor');
+
+      tmpFile.deleteSync();
+    });
+
+    test('pagination defaults to empty list', () {
+      final tmpFile =
+          File('${Directory.systemTemp.path}/florval_test_pg2.yaml');
+      tmpFile.writeAsStringSync('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    enabled: true
+''');
+
+      final config = FlorvalConfig.fromFile(tmpFile.path);
+
+      expect(config.riverpod.pagination, isEmpty);
+
+      tmpFile.deleteSync();
+    });
   });
 }
