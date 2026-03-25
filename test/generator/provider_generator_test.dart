@@ -578,22 +578,29 @@ void main() {
         retry: const RiverpodRetryConfig(maxAttempts: 3, delay: 1000),
       );
 
-      test('generates _retry function when retry is configured', () {
-        final code = retryGenerator.generate('users', [makeGetEndpoint()]);
+      test('generates retry utility file', () {
+        final code = retryGenerator.generateRetryUtility(
+            const RiverpodRetryConfig(maxAttempts: 3, delay: 1000));
 
-        expect(code, contains('Duration? _retry(int retryCount, Object error)'));
+        expect(code, contains('Duration? retry(int retryCount, Object error)'));
         expect(code, contains('if (retryCount >= 3) return null;'));
         expect(code, contains('Duration(milliseconds: 1000 * (retryCount + 1))'));
       });
 
-      test('GET Notifier uses @Riverpod(retry: _retry) when retry is configured', () {
+      test('imports retry.dart when retry is configured', () {
         final code = retryGenerator.generate('users', [makeGetEndpoint()]);
 
-        expect(code, contains('@Riverpod(retry: _retry)'));
+        expect(code, contains("import 'retry.dart';"));
+      });
+
+      test('GET Notifier uses @Riverpod(retry: retry) when retry is configured', () {
+        final code = retryGenerator.generate('users', [makeGetEndpoint()]);
+
+        expect(code, contains('@Riverpod(retry: retry)'));
         expect(code, contains('class GetUser extends _\$GetUser'));
       });
 
-      test('paginated Notifier uses @Riverpod(retry: _retry) when retry is configured', () {
+      test('paginated Notifier uses @Riverpod(retry: retry) when retry is configured', () {
         final paginatedEndpoint = FlorvalEndpoint(
           path: '/pets/paginated',
           method: 'GET',
@@ -630,7 +637,7 @@ void main() {
 
         final code = retryGenerator.generate('pets', [paginatedEndpoint]);
 
-        expect(code, contains('@Riverpod(retry: _retry)'));
+        expect(code, contains('@Riverpod(retry: retry)'));
         expect(code, contains('class ListPetsPaginated extends _\$ListPetsPaginated'));
       });
 
@@ -646,34 +653,31 @@ void main() {
         expect(mutationLine, isNot(contains('retry')));
       });
 
-      test('does not generate _retry function when retry is not configured', () {
+      test('does not import retry.dart when retry is not configured', () {
         final code = generator.generate('users', [makeGetEndpoint()]);
 
-        expect(code, isNot(contains('Duration? _retry')));
+        expect(code, isNot(contains("import 'retry.dart';")));
       });
 
       test('GET Notifier uses @riverpod (lowercase) when retry is not configured', () {
         final code = generator.generate('users', [makeGetEndpoint()]);
 
-        // Should have @riverpod but not @Riverpod(retry:
         expect(code, contains('@riverpod'));
         expect(code, isNot(contains('@Riverpod(retry:')));
       });
 
-      test('_retry function uses custom max_attempts and delay', () {
-        final customRetryGenerator = ProviderGenerator(
-          retry: const RiverpodRetryConfig(maxAttempts: 5, delay: 2000),
-        );
-        final code = customRetryGenerator.generate('users', [makeGetEndpoint()]);
+      test('retry utility uses custom max_attempts and delay', () {
+        final code = retryGenerator.generateRetryUtility(
+            const RiverpodRetryConfig(maxAttempts: 5, delay: 2000));
 
         expect(code, contains('if (retryCount >= 5) return null;'));
         expect(code, contains('Duration(milliseconds: 2000 * (retryCount + 1))'));
       });
 
-      test('_retry function not generated when only mutation endpoints exist', () {
+      test('does not import retry.dart when only mutation endpoints exist', () {
         final code = retryGenerator.generate('users', [makePostEndpoint()]);
 
-        expect(code, isNot(contains('Duration? _retry')));
+        expect(code, isNot(contains("import 'retry.dart';")));
       });
     });
   });
