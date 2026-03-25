@@ -176,12 +176,13 @@ class EndpointAnalyzer {
   /// `string` + `format: binary` → `MultipartFile`
   /// `array` of `string/binary` → `List<MultipartFile>`
   FlorvalType _multipartFieldType(v31.Schema schema) {
-    if (schema.type == 'string' && schema.format == 'binary') {
+    if (_isBinaryString(schema)) {
       return const FlorvalType(name: 'MultipartFile', dartType: 'MultipartFile');
     }
-    if (schema.type == 'array' && schema.items != null) {
+    final extractedType = _extractType(schema);
+    if (extractedType == 'array' && schema.items != null) {
       final itemSchema = resolver.resolveSchema(schema.items!);
-      if (itemSchema.type == 'string' && itemSchema.format == 'binary') {
+      if (_isBinaryString(itemSchema)) {
         return const FlorvalType(
           name: 'List<MultipartFile>',
           dartType: 'List<MultipartFile>',
@@ -192,6 +193,24 @@ class EndpointAnalyzer {
     }
     // For non-binary fields, use the standard schema-to-type mapping
     return schemaAnalyzer.schemaToType(schema);
+  }
+
+  /// Returns true if the schema represents a binary string (format: binary).
+  bool _isBinaryString(v31.Schema schema) {
+    return _extractType(schema) == 'string' && schema.format == 'binary';
+  }
+
+  /// Extracts the primary type string from a schema, handling OpenAPI 3.1
+  /// array-style types like `["string", "null"]`.
+  String _extractType(v31.Schema schema) {
+    final type = schema.type;
+    if (type == null) return 'object';
+    if (type is String) return type;
+    if (type is List) {
+      final types = type.cast<String>();
+      return types.firstWhere((t) => t != 'null', orElse: () => 'object');
+    }
+    return 'object';
   }
 
   ParamLocation _toParamLocation(oapi_enums.ParameterLocation? location) {
