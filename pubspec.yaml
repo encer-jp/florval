@@ -3,7 +3,7 @@ description: OpenAPI to Flutter/Dart API client code generator with type-safe st
 version: 0.1.0
 
 environment:
-  sdk: ^3.0.0
+  sdk: ^3.10.0
 
 dependencies:
   openapi_spec_plus: ^0.6.0
