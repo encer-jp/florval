@@ -336,17 +336,17 @@ class GetUser extends _$GetUser {
 生成例（POST / Mutation定数）:
 ```dart
 /// Mutation for createUser (POST /users)
-final createUser = Mutation<CreateUserResponse>();
+final createUserMutation = Mutation<CreateUserResponse>();
 ```
 
 生成例（autoInvalidate有効時のヘルパー関数）:
 ```dart
-/// Runs createUser mutation and invalidates related GET providers.
-Future<CreateUserResponse> runCreateUser(
+/// Executes createUser mutation and invalidates related GET providers.
+Future<CreateUserResponse> createUser(
   MutationTarget ref, {
   required CreateUserRequest body,
 }) async {
-  return createUser.run(ref, (tsx) async {
+  return createUserMutation.run(ref, (tsx) async {
     final client = tsx.get(usersApiClientProvider);
     final result = await client.createUser(body: body);
     ref.container.invalidate(getUserProvider);
