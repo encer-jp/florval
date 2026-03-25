@@ -227,12 +227,6 @@ florval:
         cursor_param: after
         next_cursor_field: nextCursor
         items_field: items
-
-  templates:
-    header: null                          # Custom header for generated files.
-    model_imports: []                     # Extra imports for model files.
-    client_imports: []                    # Extra imports for client files.
-    provider_imports: []                  # Extra imports for provider files.
 ```
 
 ## CLI
