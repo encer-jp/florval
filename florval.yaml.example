@@ -1,0 +1,17 @@
+florval:
+  schema_path: openapi.yaml
+  output_directory: lib/api/generated
+
+  model:
+    serializer: freezed
+
+  client:
+    base_url_env: API_BASE_URL
+    timeout: 30000
+    retry:
+      max_attempts: 3
+      delay: 1000
+
+  riverpod:
+    enabled: true
+    state_type: async_notifier

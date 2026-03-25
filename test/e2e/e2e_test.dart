@@ -1,0 +1,175 @@
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
+import 'package:test/test.dart';
+import 'package:florval/src/config/florval_config.dart';
+import 'package:florval/src/florval_runner.dart';
+
+void main() {
+  group('E2E', () {
+    late Directory outputDir;
+
+    setUp(() {
+      outputDir = Directory.systemTemp.createTempSync('florval_e2e_');
+    });
+
+    tearDown(() {
+      if (outputDir.existsSync()) {
+        outputDir.deleteSync(recursive: true);
+      }
+    });
+
+    test('generates code from petstore.yaml', () {
+      final config = FlorvalConfig.fromArgs(
+        schemaPath: 'test/fixtures/petstore.yaml',
+        outputDirectory: outputDir.path,
+      );
+
+      FlorvalRunner().run(config);
+
+      // Verify directory structure
+      expect(Directory(p.join(outputDir.path, 'models')).existsSync(), isTrue);
+      expect(
+          Directory(p.join(outputDir.path, 'responses')).existsSync(), isTrue);
+      expect(
+          Directory(p.join(outputDir.path, 'clients')).existsSync(), isTrue);
+
+      // Verify model files
+      expect(
+          File(p.join(outputDir.path, 'models', 'pet.dart')).existsSync(),
+          isTrue);
+      expect(
+          File(p.join(outputDir.path, 'models', 'category.dart')).existsSync(),
+          isTrue);
+      expect(
+          File(p.join(outputDir.path, 'models', 'error.dart')).existsSync(),
+          isTrue);
+      expect(
+          File(p.join(outputDir.path, 'models', 'create_pet_request.dart'))
+              .existsSync(),
+          isTrue);
+      expect(
+          File(p.join(outputDir.path, 'models', 'validation_error.dart'))
+              .existsSync(),
+          isTrue);
+      expect(
+          File(p.join(outputDir.path, 'models', 'field_error.dart'))
+              .existsSync(),
+          isTrue);
+
+      // Verify response files
+      expect(
+          File(p.join(outputDir.path, 'responses', 'list_pets_response.dart'))
+              .existsSync(),
+          isTrue);
+      expect(
+          File(p.join(outputDir.path, 'responses', 'create_pet_response.dart'))
+              .existsSync(),
+          isTrue);
+      expect(
+          File(p.join(outputDir.path, 'responses', 'get_pet_response.dart'))
+              .existsSync(),
+          isTrue);
+      expect(
+          File(p.join(outputDir.path, 'responses', 'update_pet_response.dart'))
+              .existsSync(),
+          isTrue);
+      expect(
+          File(p.join(outputDir.path, 'responses', 'delete_pet_response.dart'))
+              .existsSync(),
+          isTrue);
+
+      // Verify client files
+      expect(
+          File(p.join(outputDir.path, 'clients', 'pets_api_client.dart'))
+              .existsSync(),
+          isTrue);
+
+      // Verify barrel file
+      expect(
+          File(p.join(outputDir.path, 'api.dart')).existsSync(), isTrue);
+    });
+
+    test('generated models contain correct freezed syntax', () {
+      final config = FlorvalConfig.fromArgs(
+        schemaPath: 'test/fixtures/petstore.yaml',
+        outputDirectory: outputDir.path,
+      );
+
+      FlorvalRunner().run(config);
+
+      final petCode =
+          File(p.join(outputDir.path, 'models', 'pet.dart')).readAsStringSync();
+
+      expect(petCode, contains('@freezed'));
+      expect(petCode, contains('abstract class Pet with _\$Pet'));
+      expect(petCode, contains('required int id,'));
+      expect(petCode, contains('required String name,'));
+      expect(petCode, contains('String? tag,'));
+      expect(petCode, contains('Category? category,'));
+      expect(petCode, contains('DateTime? createdAt,'));
+      expect(petCode, contains(') = _Pet;'));
+      expect(petCode, contains('factory Pet.fromJson'));
+    });
+
+    test('generated responses contain sealed class syntax', () {
+      final config = FlorvalConfig.fromArgs(
+        schemaPath: 'test/fixtures/petstore.yaml',
+        outputDirectory: outputDir.path,
+      );
+
+      FlorvalRunner().run(config);
+
+      final responseCode =
+          File(p.join(outputDir.path, 'responses', 'get_pet_response.dart'))
+              .readAsStringSync();
+
+      expect(responseCode, contains('sealed class GetPetResponse'));
+      expect(responseCode,
+          contains('const factory GetPetResponse.success(Pet data)'));
+      expect(responseCode,
+          contains('const factory GetPetResponse.notFound()'));
+      expect(responseCode,
+          contains('const factory GetPetResponse.serverError(Error data)'));
+      expect(responseCode, contains('const factory GetPetResponse.unknown('));
+    });
+
+    test('generated client contains dio calls with status code switching', () {
+      final config = FlorvalConfig.fromArgs(
+        schemaPath: 'test/fixtures/petstore.yaml',
+        outputDirectory: outputDir.path,
+      );
+
+      FlorvalRunner().run(config);
+
+      final clientCode =
+          File(p.join(outputDir.path, 'clients', 'pets_api_client.dart'))
+              .readAsStringSync();
+
+      expect(clientCode, contains('class PetsApiClient'));
+      expect(clientCode, contains('final Dio _dio;'));
+      expect(clientCode, contains('Future<ListPetsResponse> listPets('));
+      expect(clientCode, contains('Future<GetPetResponse> getPet('));
+      expect(clientCode, contains('Future<CreatePetResponse> createPet('));
+      expect(clientCode, contains('Future<DeletePetResponse> deletePet('));
+      expect(clientCode, contains('switch (response.statusCode)'));
+      expect(clientCode, contains('on DioException catch (e)'));
+    });
+
+    test('barrel file exports all generated files', () {
+      final config = FlorvalConfig.fromArgs(
+        schemaPath: 'test/fixtures/petstore.yaml',
+        outputDirectory: outputDir.path,
+      );
+
+      FlorvalRunner().run(config);
+
+      final barrelCode =
+          File(p.join(outputDir.path, 'api.dart')).readAsStringSync();
+
+      expect(barrelCode, contains("export 'models/pet.dart';"));
+      expect(barrelCode, contains("export 'models/category.dart';"));
+      expect(barrelCode, contains("export 'clients/pets_api_client.dart';"));
+    });
+  });
+}
