@@ -35,18 +35,18 @@ class ConfigValidator {
   static const _validClientKeys = {
     'base_url_env',
     'timeout',
-    'retry',
-  };
-
-  static const _validRetryKeys = {
-    'max_attempts',
-    'delay',
   };
 
   static const _validRiverpodKeys = {
     'enabled',
     'auto_invalidate',
     'pagination',
+    'retry',
+  };
+
+  static const _validRiverpodRetryKeys = {
+    'max_attempts',
+    'delay',
   };
 
   static const _validPaginationKeys = {
@@ -199,52 +199,14 @@ class ConfigValidator {
       }
     }
 
-    final retry = client['retry'];
-    if (retry != null) {
-      if (retry is! YamlMap) {
-        errors.add(const ConfigValidationError(
-          field: 'florval.client.retry',
-          message: '"retry" must be a map.',
-        ));
-      } else {
-        _validateRetry(retry, errors);
-      }
-    }
-  }
-
-  void _validateRetry(
-      YamlMap retry, List<ConfigValidationError> errors) {
-    _checkUnknownKeys(
-        retry, _validRetryKeys, 'florval.client.retry', errors);
-
-    final maxAttempts = retry['max_attempts'];
-    if (maxAttempts != null) {
-      if (maxAttempts is! int) {
-        errors.add(const ConfigValidationError(
-          field: 'florval.client.retry.max_attempts',
-          message: '"max_attempts" must be an integer.',
-        ));
-      } else if (maxAttempts <= 0) {
-        errors.add(const ConfigValidationError(
-          field: 'florval.client.retry.max_attempts',
-          message: '"max_attempts" must be a positive integer.',
-        ));
-      }
-    }
-
-    final delay = retry['delay'];
-    if (delay != null) {
-      if (delay is! int) {
-        errors.add(const ConfigValidationError(
-          field: 'florval.client.retry.delay',
-          message: '"delay" must be an integer (milliseconds).',
-        ));
-      } else if (delay < 0) {
-        errors.add(const ConfigValidationError(
-          field: 'florval.client.retry.delay',
-          message: '"delay" must be a non-negative integer.',
-        ));
-      }
+    // Deprecation warning for client.retry (moved to riverpod.retry)
+    if (client['retry'] != null) {
+      errors.add(const ConfigValidationError(
+        field: 'florval.client.retry',
+        message:
+            '"retry" has been moved to "riverpod.retry". "client.retry" is no longer supported.',
+        severity: ValidationSeverity.warning,
+      ));
     }
   }
 
@@ -269,6 +231,18 @@ class ConfigValidator {
       ));
     }
 
+    final retry = riverpod['retry'];
+    if (retry != null) {
+      if (retry is! YamlMap) {
+        errors.add(const ConfigValidationError(
+          field: 'florval.riverpod.retry',
+          message: '"retry" must be a map.',
+        ));
+      } else {
+        _validateRiverpodRetry(retry, errors);
+      }
+    }
+
     final pagination = riverpod['pagination'];
     if (pagination != null) {
       if (pagination is YamlMap) {
@@ -280,6 +254,42 @@ class ConfigValidator {
         errors.add(const ConfigValidationError(
           field: 'florval.riverpod.pagination',
           message: '"pagination" must be a map (with defaults/endpoints) or a list.',
+        ));
+      }
+    }
+  }
+
+  void _validateRiverpodRetry(
+      YamlMap retry, List<ConfigValidationError> errors) {
+    _checkUnknownKeys(
+        retry, _validRiverpodRetryKeys, 'florval.riverpod.retry', errors);
+
+    final maxAttempts = retry['max_attempts'];
+    if (maxAttempts != null) {
+      if (maxAttempts is! int) {
+        errors.add(const ConfigValidationError(
+          field: 'florval.riverpod.retry.max_attempts',
+          message: '"max_attempts" must be an integer.',
+        ));
+      } else if (maxAttempts <= 0) {
+        errors.add(const ConfigValidationError(
+          field: 'florval.riverpod.retry.max_attempts',
+          message: '"max_attempts" must be a positive integer.',
+        ));
+      }
+    }
+
+    final delay = retry['delay'];
+    if (delay != null) {
+      if (delay is! int) {
+        errors.add(const ConfigValidationError(
+          field: 'florval.riverpod.retry.delay',
+          message: '"delay" must be an integer (milliseconds).',
+        ));
+      } else if (delay < 0) {
+        errors.add(const ConfigValidationError(
+          field: 'florval.riverpod.retry.delay',
+          message: '"delay" must be a non-negative integer.',
         ));
       }
     }
