@@ -72,7 +72,8 @@ class _PetstoreHomePageState extends ConsumerState<PetstoreHomePage> {
         case FindPetsByStatusResponseSuccess(:final data):
           _log('SUCCESS: Found ${data.length} pets');
           if (data.isNotEmpty) {
-            _log('  First pet: ${data.first.name} (id: ${data.first.id})');
+            final first = data.first;
+            _log('  First pet: ${first.name ?? "(no name)"} (id: ${first.id})');
           }
         case FindPetsByStatusResponseBadRequest():
           _log('BAD REQUEST: Invalid status value');
@@ -89,9 +90,12 @@ class _PetstoreHomePageState extends ConsumerState<PetstoreHomePage> {
     int? createdPetId;
     try {
       final newPet = Pet(
+        id: DateTime.now().millisecondsSinceEpoch,
         name: 'Florval Test Dog',
         photoUrls: ['https://example.com/dog.jpg'],
         status: 'available',
+        category: Category(id: 1, name: 'Dogs'),
+        tags: [Tag(id: 1, name: 'florval-test')],
       );
       final addResponse = await client.addPet(body: newPet);
       switch (addResponse) {
