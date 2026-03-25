@@ -7,7 +7,7 @@ import '../model/api_endpoint.dart';
 /// Generates Riverpod 3.x providers grouped by tag.
 ///
 /// - GET endpoints → @riverpod Notifier with build() params
-/// - POST/PUT/DELETE/PATCH → Mutation<ResponseType>() constant + optional helper
+/// - POST/PUT/DELETE/PATCH → `Mutation<ResponseType>()` constant + optional helper
 class ProviderGenerator {
   final TemplateConfig? templateConfig;
   final bool autoInvalidate;

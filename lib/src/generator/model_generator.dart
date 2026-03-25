@@ -186,7 +186,7 @@ class ModelGenerator {
     buffer.writeln('    $prefix${field.type.dartType} ${field.name},');
   }
 
-  /// Generates the PaginatedData<T, P> utility class.
+  /// Generates the `PaginatedData<T, P>` utility class.
   String generatePaginatedData() {
     final buffer = StringBuffer();
 
