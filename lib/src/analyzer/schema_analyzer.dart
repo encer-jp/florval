@@ -310,7 +310,8 @@ class SchemaAnalyzer {
 
   /// Checks if a schema is nullable.
   bool _isNullable(v31.Schema schema) {
-    // OpenAPI 3.0 style
+    // v3.0 compatibility fallback: nullable: true may still appear
+    // if the spec was not normalised through SpecNormalizer.
     if (schema.nullable == true) return true;
     // OpenAPI 3.1 style: type is ["string", "null"]
     final type = schema.type;

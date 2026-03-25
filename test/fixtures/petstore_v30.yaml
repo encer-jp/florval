@@ -180,6 +180,15 @@ components:
         tag:
           type: string
           nullable: true
+        age:
+          type: integer
+          minimum: 0
+          exclusiveMinimum: true
+        weight:
+          type: number
+          format: double
+          maximum: 1000
+          exclusiveMaximum: true
         category:
           $ref: "#/components/schemas/Category"
         createdAt:
