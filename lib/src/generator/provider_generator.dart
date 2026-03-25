@@ -1,6 +1,7 @@
 import 'package:florval/src/model/api_type.dart';
 import 'package:recase/recase.dart';
 
+import '../config/florval_config.dart';
 import '../config/template_config.dart';
 import '../model/api_endpoint.dart';
 
@@ -11,8 +12,13 @@ import '../model/api_endpoint.dart';
 class ProviderGenerator {
   final TemplateConfig? templateConfig;
   final bool autoInvalidate;
+  final RiverpodRetryConfig? retry;
 
-  ProviderGenerator({this.templateConfig, this.autoInvalidate = false});
+  ProviderGenerator({
+    this.templateConfig,
+    this.autoInvalidate = false,
+    this.retry,
+  });
 
   /// Generates a provider file for a group of endpoints sharing a tag.
   String generate(String tag, List<FlorvalEndpoint> endpoints) {
@@ -32,6 +38,12 @@ class ProviderGenerator {
     final hasGetEndpoints = endpoints.any((e) => e.method == 'GET');
     if (hasGetEndpoints) {
       buffer.writeln("part '${ReCase(tag).snakeCase}_providers.g.dart';");
+      buffer.writeln();
+    }
+
+    // Retry function (shared by all GET Notifiers)
+    if (retry != null && hasGetEndpoints) {
+      _writeRetryFunction(buffer, retry!);
       buffer.writeln();
     }
 
@@ -123,6 +135,15 @@ class ProviderGenerator {
     }
   }
 
+  void _writeRetryFunction(
+      StringBuffer buffer, RiverpodRetryConfig retry) {
+    buffer.writeln('Duration? _retry(int retryCount, Object error) {');
+    buffer.writeln('  if (retryCount >= ${retry.maxAttempts}) return null;');
+    buffer.writeln(
+        '  return Duration(milliseconds: ${retry.delay} * (retryCount + 1));');
+    buffer.writeln('}');
+  }
+
   void _writeClientProvider(StringBuffer buffer, String tag) {
     final className = '${ReCase(tag).pascalCase}ApiClient';
     final providerName = '${ReCase(tag).camelCase}ApiClient';
@@ -141,7 +162,11 @@ class ProviderGenerator {
     final clientProvider = '${ReCase(tag).camelCase}ApiClientProvider';
     final methodName = ReCase(endpoint.operationId).camelCase;
 
-    buffer.writeln('@riverpod');
+    if (retry != null) {
+      buffer.writeln('@Riverpod(retry: _retry)');
+    } else {
+      buffer.writeln('@riverpod');
+    }
     buffer.writeln('class $className extends _\$$className {');
     buffer.writeln('  @override');
 
@@ -182,7 +207,11 @@ class ProviderGenerator {
     final pageDartType = endpoint.responses[200]?.type?.dartType ?? 'dynamic';
     final paginatedType = 'PaginatedData<$itemDartType, $pageDartType>';
 
-    buffer.writeln('@riverpod');
+    if (retry != null) {
+      buffer.writeln('@Riverpod(retry: _retry)');
+    } else {
+      buffer.writeln('@riverpod');
+    }
     buffer.writeln('class $className extends _\$$className {');
 
     // Instance fields for accumulating paginated state

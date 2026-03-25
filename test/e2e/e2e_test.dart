@@ -7,13 +7,15 @@ import 'package:florval/src/florval_runner.dart';
 
 FlorvalConfig _makeConfig(String outputPath,
     {bool riverpodEnabled = false,
-    List<PaginationConfig> pagination = const []}) {
+    List<PaginationConfig> pagination = const [],
+    RiverpodRetryConfig? retry}) {
   return FlorvalConfig.fromArgs(
     schemaPath: 'test/fixtures/petstore.yaml',
     outputDirectory: outputPath,
     riverpod: RiverpodConfig(
       enabled: riverpodEnabled,
       pagination: pagination,
+      retry: retry,
     ),
   );
 }
@@ -363,6 +365,44 @@ void main() {
           File(p.join(outputDir.path, 'models', 'api_exception.dart'))
               .existsSync(),
           isFalse);
+    });
+
+    test('generated providers contain retry function when retry is configured', () {
+      final config = _makeConfig(
+        outputDir.path,
+        riverpodEnabled: true,
+        retry: const RiverpodRetryConfig(maxAttempts: 3, delay: 1000),
+      );
+
+      FlorvalRunner().run(config);
+
+      final providerCode =
+          File(p.join(outputDir.path, 'providers', 'pets_providers.dart'))
+              .readAsStringSync();
+
+      // Retry function
+      expect(providerCode, contains('Duration? _retry(int retryCount, Object error)'));
+      expect(providerCode, contains('if (retryCount >= 3) return null;'));
+      expect(providerCode, contains('Duration(milliseconds: 1000 * (retryCount + 1))'));
+
+      // GET Notifiers use @Riverpod(retry: _retry)
+      expect(providerCode, contains('@Riverpod(retry: _retry)'));
+
+      // Mutation constants are unaffected
+      expect(providerCode, contains('final createPet = Mutation<CreatePetResponse>();'));
+    });
+
+    test('generated providers do not contain retry function when retry is not configured', () {
+      final config = _makeConfig(outputDir.path, riverpodEnabled: true);
+
+      FlorvalRunner().run(config);
+
+      final providerCode =
+          File(p.join(outputDir.path, 'providers', 'pets_providers.dart'))
+              .readAsStringSync();
+
+      expect(providerCode, isNot(contains('Duration? _retry')));
+      expect(providerCode, isNot(contains('@Riverpod(retry:')));
     });
   });
 }
