@@ -1,0 +1,11 @@
+florval:
+  schema_path: openapi.yaml
+  output_directory: lib/api/generated
+
+  client:
+    base_url_env: API_BASE_URL
+    timeout: 30000
+
+  riverpod:
+    enabled: true
+    state_type: async_notifier
