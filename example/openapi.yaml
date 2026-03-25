@@ -107,6 +107,52 @@ paths:
         "422":
           description: Validation exception
 
+  /pet/search:
+    get:
+      operationId: searchPets
+      tags:
+        - pet
+      summary: Search pets with cursor-based pagination
+      parameters:
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Cursor for the next page
+      responses:
+        "200":
+          description: Paginated search results
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Pet"
+                  nextCursor:
+                    type: string
+                    description: Cursor for the next page. Null if no more results.
+                  totalCount:
+                    type: integer
+                    description: Total number of matching pets
+        "400":
+          description: Invalid search query
+
 components:
   schemas:
     Pet:

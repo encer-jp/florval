@@ -3,7 +3,9 @@ import 'package:openapi_spec_plus/src/util/enums.dart' as oapi_enums;
 import 'package:openapi_spec_plus/v31.dart' as v31;
 import 'package:recase/recase.dart';
 
+import '../config/florval_config.dart';
 import '../model/api_endpoint.dart';
+import '../model/api_response.dart';
 import '../model/api_schema.dart';
 import '../model/api_type.dart';
 import '../parser/ref_resolver.dart';
@@ -15,8 +17,14 @@ class EndpointAnalyzer {
   final RefResolver resolver;
   final SchemaAnalyzer schemaAnalyzer;
   final ResponseAnalyzer responseAnalyzer;
+  final List<PaginationConfig> _paginationConfigs;
 
-  EndpointAnalyzer(this.resolver, this.schemaAnalyzer, this.responseAnalyzer);
+  EndpointAnalyzer(
+    this.resolver,
+    this.schemaAnalyzer,
+    this.responseAnalyzer, {
+    List<PaginationConfig> paginationConfigs = const [],
+  }) : _paginationConfigs = paginationConfigs;
 
   /// Analyzes all endpoints from the spec's paths.
   List<FlorvalEndpoint> analyzeAll(Map<String, v31.PathItem> paths) {
@@ -70,6 +78,38 @@ class EndpointAnalyzer {
     final requestBody = _analyzeRequestBody(operation.requestBody);
     final responses = responseAnalyzer.analyzeResponses(operation.responses);
 
+    // Check if this endpoint has a pagination config
+    PaginationInfo? pagination;
+    if (method == 'GET') {
+      final paginationConfig = _paginationConfigs
+          .where((c) => c.operationId == operationId)
+          .firstOrNull;
+      if (paginationConfig != null) {
+        pagination = _buildPaginationInfo(
+          paginationConfig,
+          operation.responses,
+          parameters,
+          operationId,
+        );
+        // Replace 200 response type with the wrapper model type
+        if (pagination != null && pagination.wrapperSchema != null) {
+          final wrapperName = pagination.wrapperSchema!.name;
+          final wrapperType = FlorvalType(
+            name: wrapperName,
+            dartType: wrapperName,
+            // Synthetic ref so import collection picks up the wrapper model
+            ref: '#/components/schemas/$wrapperName',
+          );
+          final existing200 = responses[200]!;
+          responses[200] = FlorvalResponse(
+            statusCode: 200,
+            description: existing200.description,
+            type: wrapperType,
+          );
+        }
+      }
+    }
+
     return FlorvalEndpoint(
       path: path,
       method: method,
@@ -79,6 +119,7 @@ class EndpointAnalyzer {
       responses: responses,
       tags: operation.tags,
       summary: operation.summary,
+      pagination: pagination,
     );
   }
 
@@ -226,6 +267,90 @@ class EndpointAnalyzer {
       default:
         return ParamLocation.query;
     }
+  }
+
+  /// Builds PaginationInfo by inspecting the 200 response schema.
+  PaginationInfo? _buildPaginationInfo(
+    PaginationConfig config,
+    Map<String, v31.Response> responses,
+    List<FlorvalParam> parameters,
+    String operationId,
+  ) {
+    // Validate cursor param exists in query parameters
+    final hasCursorParam = parameters.any(
+      (p) => p.name == config.cursorParam && p.location == ParamLocation.query,
+    );
+    if (!hasCursorParam) return null;
+
+    // Find 200 response schema
+    final response200 = responses['200'];
+    if (response200 == null) return null;
+
+    final resolved200 = resolver.resolveResponse(response200);
+    final jsonContent = resolved200.content?['application/json'];
+    if (jsonContent == null) return null;
+
+    final schema = jsonContent.schema;
+    if (schema == null) return null;
+
+    final resolvedSchema = resolver.resolveSchema(schema);
+    final properties = resolvedSchema.properties;
+    if (properties == null) return null;
+
+    // Validate items_field exists and is an array
+    final itemsSchema = properties[config.itemsField];
+    if (itemsSchema == null) return null;
+
+    final resolvedItems = resolver.resolveSchema(itemsSchema);
+    final itemsType = _extractType(resolvedItems);
+    if (itemsType != 'array') return null;
+
+    // Extract item element type
+    final itemType = resolvedItems.items != null
+        ? schemaAnalyzer.schemaToType(resolvedItems.items!)
+        : const FlorvalType(name: 'dynamic', dartType: 'dynamic');
+
+    // Validate next_cursor_field exists
+    final cursorSchema = properties[config.nextCursorField];
+    if (cursorSchema == null) return null;
+
+    // If the 200 response is an inline object (no $ref), auto-generate a
+    // wrapper model so the Union type uses a proper class instead of
+    // Map<String, dynamic>.
+    FlorvalSchema? wrapperSchema;
+    if (schema.ref == null) {
+      final wrapperName =
+          '${ReCase(operationId).pascalCase}Page';
+      final wrapperFields = <FlorvalField>[];
+      final requiredFields = resolvedSchema.$required ?? [];
+
+      for (final entry in properties.entries) {
+        final fieldName = ReCase(entry.key).camelCase;
+        final fieldSchema = entry.value;
+        final isRequired = requiredFields.contains(entry.key);
+        final type = schemaAnalyzer.schemaToType(fieldSchema);
+
+        wrapperFields.add(FlorvalField(
+          name: fieldName,
+          jsonKey: entry.key,
+          type: isRequired ? type : type.asNullable(),
+          isRequired: isRequired,
+        ));
+      }
+
+      wrapperSchema = FlorvalSchema(
+        name: wrapperName,
+        fields: wrapperFields,
+      );
+    }
+
+    return PaginationInfo(
+      cursorParam: config.cursorParam,
+      nextCursorField: config.nextCursorField,
+      itemsField: config.itemsField,
+      itemType: itemType,
+      wrapperSchema: wrapperSchema,
+    );
   }
 
   /// Generates an operationId from path and method.

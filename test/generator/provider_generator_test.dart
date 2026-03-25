@@ -429,5 +429,146 @@ void main() {
       expect(code,
           contains("import 'package:riverpod_annotation/riverpod_annotation.dart';"));
     });
+
+    // Pagination tests
+    group('pagination', () {
+      FlorvalEndpoint makePaginatedEndpoint() => FlorvalEndpoint(
+            path: '/pets/paginated',
+            method: 'GET',
+            operationId: 'listPetsPaginated',
+            parameters: [
+              FlorvalParam(
+                name: 'limit',
+                dartName: 'limit',
+                location: ParamLocation.query,
+                type: FlorvalType(name: 'int', dartType: 'int'),
+                isRequired: false,
+              ),
+              FlorvalParam(
+                name: 'after',
+                dartName: 'after',
+                location: ParamLocation.query,
+                type: FlorvalType(name: 'String', dartType: 'String'),
+                isRequired: false,
+              ),
+            ],
+            responses: {
+              200: FlorvalResponse(
+                statusCode: 200,
+                type: FlorvalType(
+                    name: 'ListPetsPaginatedPage',
+                    dartType: 'ListPetsPaginatedPage',
+                    ref: '#/components/schemas/ListPetsPaginatedPage'),
+              ),
+              400: FlorvalResponse(
+                statusCode: 400,
+                type: FlorvalType(
+                    name: 'Error',
+                    dartType: 'Error',
+                    ref: '#/components/schemas/Error'),
+              ),
+            },
+            tags: ['pets'],
+            pagination: PaginationInfo(
+              cursorParam: 'after',
+              nextCursorField: 'nextCursor',
+              itemsField: 'items',
+              itemType: FlorvalType(
+                  name: 'Pet',
+                  dartType: 'Pet',
+                  ref: '#/components/schemas/Pet'),
+            ),
+          );
+
+      test('generates paginated provider with fetchMore', () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        expect(code, contains('class ListPetsPaginated extends _\$ListPetsPaginated'));
+        expect(code, contains('FutureOr<PaginatedData<Pet, ListPetsPaginatedPage>> build('));
+        expect(code, contains('Future<void> fetchMore()'));
+      });
+
+      test('paginated provider contains _allItems and _nextCursor fields', () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        expect(code, contains('final List<Pet> _allItems = [];'));
+        expect(code, contains('String? _nextCursor;'));
+        expect(code, contains('bool _hasMore = true;'));
+      });
+
+      test('paginated provider build() resets state', () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        expect(code, contains('_allItems.clear();'));
+        expect(code, contains('_nextCursor = null;'));
+        expect(code, contains('_hasMore = true;'));
+      });
+
+      test('paginated provider build() switches on Union type', () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        expect(code, contains('switch (response)'));
+        expect(code, contains('case ListPetsPaginatedResponseSuccess(:final data):'));
+        expect(code, contains('_allItems.addAll(data.items)'));
+        expect(code, contains('_nextCursor = data.nextCursor'));
+        expect(code, contains('lastPage: data,'));
+        expect(code, contains('throw ApiException(response)'));
+      });
+
+      test('paginated provider fetchMore() uses cursor param', () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        expect(code, contains('if (!_hasMore || _nextCursor == null) return;'));
+        expect(code, contains('after: _nextCursor'));
+      });
+
+      test('paginated provider fetchMore() appends items', () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        // fetchMore should update state with AsyncData
+        expect(code, contains('state = AsyncData(PaginatedData('));
+      });
+
+      test('paginated provider fetchMore() handles errors with AsyncError', () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        expect(code, contains('state = AsyncError(ApiException(response), StackTrace.current)'));
+      });
+
+      test('paginated provider excludes cursor param from build()', () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        // build() should have limit but NOT after
+        expect(code, contains('int? limit,'));
+        // The build signature should not contain 'after' as a parameter
+        final buildMatch = RegExp(r'build\(\{(.*?)\}\)', dotAll: true)
+            .firstMatch(code);
+        expect(buildMatch, isNotNull);
+        expect(buildMatch!.group(1), isNot(contains('after')));
+      });
+
+      test('paginated provider imports pagination utilities', () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        expect(code, contains("import '../models/paginated_data.dart';"));
+        expect(code, contains("import '../models/api_exception.dart';"));
+      });
+
+      test('non-paginated endpoints do not import pagination utilities', () {
+        final code = generator.generate('users', [makeGetEndpoint()]);
+
+        expect(code, isNot(contains("paginated_data.dart")));
+        expect(code, isNot(contains("api_exception.dart")));
+      });
+
+      test('normal GET endpoint is unchanged when paginated endpoint exists in different tag', () {
+        final code = generator.generate('users', [makeGetEndpoint()]);
+
+        expect(code, contains('class GetUser extends _\$GetUser'));
+        expect(code, contains('FutureOr<GetUserResponse> build('));
+        expect(code, isNot(contains('fetchMore')));
+        expect(code, isNot(contains('PaginatedData')));
+      });
+    });
   });
 }

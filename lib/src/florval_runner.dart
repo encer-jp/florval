@@ -35,8 +35,12 @@ class FlorvalRunner {
     // 3. Analyze
     final schemaAnalyzer = SchemaAnalyzer(resolver);
     final responseAnalyzer = ResponseAnalyzer(resolver, schemaAnalyzer);
-    final endpointAnalyzer =
-        EndpointAnalyzer(resolver, schemaAnalyzer, responseAnalyzer);
+    final endpointAnalyzer = EndpointAnalyzer(
+      resolver,
+      schemaAnalyzer,
+      responseAnalyzer,
+      paginationConfigs: config.riverpod.pagination,
+    );
 
     final schemas = spec.components?.schemas != null
         ? schemaAnalyzer.analyzeAll(spec.components!.schemas!)
@@ -63,6 +67,30 @@ class FlorvalRunner {
       writer.writeModel(schema.name, code);
       modelNames.add(schema.name);
       logger.debug('Generated model: ${schema.name}');
+    }
+
+    // Pagination utility models (generated only when pagination is configured)
+    if (config.riverpod.pagination.isNotEmpty) {
+      final paginatedDataCode = modelGenerator.generatePaginatedData();
+      writer.writeUtilityModel('paginated_data.dart', paginatedDataCode);
+      modelNames.add('paginated_data');
+      logger.debug('Generated utility: paginated_data');
+
+      final apiExceptionCode = modelGenerator.generateApiException();
+      writer.writeUtilityModel('api_exception.dart', apiExceptionCode);
+      modelNames.add('api_exception');
+      logger.debug('Generated utility: api_exception');
+
+      // Generate wrapper models for inline paginated response schemas
+      for (final endpoint in endpoints) {
+        if (endpoint.pagination?.wrapperSchema != null) {
+          final wrapper = endpoint.pagination!.wrapperSchema!;
+          final code = modelGenerator.generate(wrapper);
+          writer.writeModel(wrapper.name, code);
+          modelNames.add(wrapper.name);
+          logger.debug('Generated pagination wrapper: ${wrapper.name}');
+        }
+      }
     }
 
     // Responses
