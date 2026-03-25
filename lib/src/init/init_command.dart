@@ -33,10 +33,13 @@ class InitCommand {
 
     # Cursor-based pagination endpoints
     # pagination:
-    #   - operation_id: listItems
+    #   defaults:
     #     cursor_param: after
     #     next_cursor_field: nextCursor
     #     items_field: items
+    #   endpoints:
+    #     - listUsers
+    #     - listPosts
 
   # templates:
   #   header: "// Custom header"
