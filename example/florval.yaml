@@ -1,24 +1,35 @@
 florval:
+  # Path to your OpenAPI spec file (required)
   schema_path: openapi.yaml
+
+  # Output directory for generated code
   output_directory: lib/api/generated
 
   client:
+    # Environment variable name for base URL
     base_url_env: API_BASE_URL
+    # Default request timeout in milliseconds
     timeout: 30000
 
   riverpod:
+    # Generate Riverpod providers
     enabled: true
+    # Invalidate same-tag GET providers after mutations
     auto_invalidate: true
     retry:
       max_attempts: 3
       delay: 1000
-    pagination:
-      defaults:
-        cursor_param: after
-        next_cursor_field: nextCursor
-        items_field: items
-      endpoints:
-        # インラインobject → SearchPetsPageが自動生成される
-        - searchPets
-        # $ref → CommentPageがそのまま使われる
-        - listPetComments
+
+    # Cursor-based pagination endpoints
+    # pagination:
+    #   defaults:
+    #     cursor_param: after
+    #     next_cursor_field: nextCursor
+    #     items_field: items
+    #   endpoints:
+    #     - listUsers
+    #     - listPosts
+    #     - operation_id: listComments
+    #       cursor_param: cursor
+    #       next_cursor_field: next
+    #       items_field: data
