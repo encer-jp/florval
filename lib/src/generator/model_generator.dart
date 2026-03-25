@@ -33,7 +33,6 @@ class ModelGenerator {
     // Imports
     buffer.writeln(
         "import 'package:freezed_annotation/freezed_annotation.dart';");
-    buffer.writeln("import 'package:json_annotation/json_annotation.dart';");
 
     // Custom model imports
     if (templateConfig != null) {
@@ -89,7 +88,6 @@ class ModelGenerator {
     // Imports
     buffer.writeln(
         "import 'package:freezed_annotation/freezed_annotation.dart';");
-    buffer.writeln("import 'package:json_annotation/json_annotation.dart';");
 
     // Custom model imports
     if (templateConfig != null) {
