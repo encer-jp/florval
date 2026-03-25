@@ -2,6 +2,7 @@ import 'package:test/test.dart';
 import 'package:florval/src/generator/client_generator.dart';
 import 'package:florval/src/model/api_endpoint.dart';
 import 'package:florval/src/model/api_response.dart';
+import 'package:florval/src/model/api_schema.dart';
 import 'package:florval/src/model/api_type.dart';
 
 void main() {
@@ -188,6 +189,61 @@ void main() {
       final code = generator.generate('users', [makeGetEndpoint()]);
 
       expect(code, isNot(contains('ResponseType.plain')));
+    });
+
+    test('generates multipart method with form fields as params', () {
+      final endpoint = FlorvalEndpoint(
+        path: '/pets/{petId}/photo',
+        method: 'POST',
+        operationId: 'uploadPetPhoto',
+        parameters: [
+          FlorvalParam(
+            name: 'petId',
+            dartName: 'petId',
+            location: ParamLocation.path,
+            type: FlorvalType(name: 'int', dartType: 'int'),
+            isRequired: true,
+          ),
+        ],
+        requestBody: FlorvalRequestBody(
+          type: FlorvalType(name: 'FormData', dartType: 'FormData'),
+          isRequired: true,
+          contentType: ContentType.multipart,
+          formFields: [
+            FlorvalField(
+              name: 'file',
+              jsonKey: 'file',
+              type: FlorvalType(name: 'MultipartFile', dartType: 'MultipartFile'),
+              isRequired: true,
+            ),
+            FlorvalField(
+              name: 'description',
+              jsonKey: 'description',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: false,
+            ),
+          ],
+        ),
+        responses: {
+          200: FlorvalResponse(
+            statusCode: 200,
+            type: FlorvalType(
+                name: 'Pet',
+                dartType: 'Pet',
+                ref: '#/components/schemas/Pet'),
+          ),
+        },
+        tags: ['pets'],
+      );
+
+      final code = generator.generate('pets', [endpoint]);
+
+      expect(code, contains('required MultipartFile file,'));
+      expect(code, contains('String? description,'));
+      expect(code, contains('FormData.fromMap({'));
+      expect(code, contains("'file': file,"));
+      expect(code, contains("if (description != null) 'description': description,"));
+      expect(code, isNot(contains('body.toJson()')));
     });
 
     test('generates list deserialization', () {

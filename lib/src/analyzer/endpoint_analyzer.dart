@@ -4,6 +4,7 @@ import 'package:openapi_spec_plus/v31.dart' as v31;
 import 'package:recase/recase.dart';
 
 import '../model/api_endpoint.dart';
+import '../model/api_schema.dart';
 import '../model/api_type.dart';
 import '../parser/ref_resolver.dart';
 import 'response_analyzer.dart';
@@ -102,19 +103,114 @@ class EndpointAnalyzer {
   FlorvalRequestBody? _analyzeRequestBody(v31.RequestBody? requestBody) {
     if (requestBody == null) return null;
 
+    // Prefer application/json
     final jsonContent = requestBody.content['application/json'];
-    if (jsonContent == null) return null;
+    if (jsonContent != null) {
+      final schema = jsonContent.schema;
+      if (schema == null) return null;
 
-    final schema = jsonContent.schema;
+      final type = schemaAnalyzer.schemaToType(schema);
+
+      return FlorvalRequestBody(
+        type: type,
+        isRequired: requestBody.$required ?? false,
+        description: requestBody.description,
+        contentType: ContentType.json,
+      );
+    }
+
+    // Fall back to multipart/form-data
+    final multipartContent = requestBody.content['multipart/form-data'];
+    if (multipartContent != null) {
+      return _analyzeMultipartRequestBody(
+        multipartContent,
+        requestBody.$required ?? false,
+        requestBody.description,
+      );
+    }
+
+    return null;
+  }
+
+  FlorvalRequestBody? _analyzeMultipartRequestBody(
+    v31.MediaType mediaType,
+    bool isRequired,
+    String? description,
+  ) {
+    final schema = mediaType.schema;
     if (schema == null) return null;
 
-    final type = schemaAnalyzer.schemaToType(schema);
+    final resolved = resolver.resolveSchema(schema);
+    final properties = resolved.properties ?? {};
+    final requiredFields = resolved.$required ?? [];
+
+    final formFields = <FlorvalField>[];
+    for (final entry in properties.entries) {
+      final fieldName = entry.key;
+      final fieldSchema = resolver.resolveSchema(entry.value);
+      final fieldRequired = requiredFields.contains(fieldName);
+
+      final type = _multipartFieldType(fieldSchema);
+
+      formFields.add(FlorvalField(
+        name: ReCase(fieldName).camelCase,
+        jsonKey: fieldName,
+        type: type,
+        isRequired: fieldRequired,
+      ));
+    }
+
+    // Use a placeholder type for the multipart body as a whole
+    const multipartType = FlorvalType(name: 'FormData', dartType: 'FormData');
 
     return FlorvalRequestBody(
-      type: type,
-      isRequired: requestBody.$required ?? false,
-      description: requestBody.description,
+      type: multipartType,
+      isRequired: isRequired,
+      description: description,
+      contentType: ContentType.multipart,
+      formFields: formFields,
     );
+  }
+
+  /// Maps a schema field within a multipart body to the appropriate Dart type.
+  /// `string` + `format: binary` → `MultipartFile`
+  /// `array` of `string/binary` → `List<MultipartFile>`
+  FlorvalType _multipartFieldType(v31.Schema schema) {
+    if (_isBinaryString(schema)) {
+      return const FlorvalType(name: 'MultipartFile', dartType: 'MultipartFile');
+    }
+    final extractedType = _extractType(schema);
+    if (extractedType == 'array' && schema.items != null) {
+      final itemSchema = resolver.resolveSchema(schema.items!);
+      if (_isBinaryString(itemSchema)) {
+        return const FlorvalType(
+          name: 'List<MultipartFile>',
+          dartType: 'List<MultipartFile>',
+          isList: true,
+          itemType: FlorvalType(name: 'MultipartFile', dartType: 'MultipartFile'),
+        );
+      }
+    }
+    // For non-binary fields, use the standard schema-to-type mapping
+    return schemaAnalyzer.schemaToType(schema);
+  }
+
+  /// Returns true if the schema represents a binary string (format: binary).
+  bool _isBinaryString(v31.Schema schema) {
+    return _extractType(schema) == 'string' && schema.format == 'binary';
+  }
+
+  /// Extracts the primary type string from a schema, handling OpenAPI 3.1
+  /// array-style types like `["string", "null"]`.
+  String _extractType(v31.Schema schema) {
+    final type = schema.type;
+    if (type == null) return 'object';
+    if (type is String) return type;
+    if (type is List) {
+      final types = type.cast<String>();
+      return types.firstWhere((t) => t != 'null', orElse: () => 'object');
+    }
+    return 'object';
   }
 
   ParamLocation _toParamLocation(oapi_enums.ParameterLocation? location) {

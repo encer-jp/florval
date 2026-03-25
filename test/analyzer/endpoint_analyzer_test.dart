@@ -22,8 +22,8 @@ void main() {
 
     test('extracts all endpoints', () {
       final endpoints = analyzer.analyzeAll(spec.paths);
-      // GET /pets, POST /pets, GET /pets/{petId}, PUT /pets/{petId}, DELETE /pets/{petId}
-      expect(endpoints.length, 5);
+      // GET /pets, POST /pets, POST /pets/{petId}/photo, GET /pets/{petId}, PUT /pets/{petId}, DELETE /pets/{petId}
+      expect(endpoints.length, 6);
     });
 
     test('parses GET /pets correctly', () {
@@ -98,6 +98,34 @@ void main() {
 
       expect(deletePet.responses[204]!.hasBody, isFalse);
       expect(deletePet.responses[404]!.hasBody, isFalse);
+    });
+
+    test('parses multipart/form-data request body', () {
+      final endpoints = analyzer.analyzeAll(spec.paths);
+      final uploadPhoto =
+          endpoints.firstWhere((e) => e.operationId == 'uploadPetPhoto');
+
+      expect(uploadPhoto.requestBody, isNotNull);
+      expect(uploadPhoto.requestBody!.contentType, ContentType.multipart);
+      expect(uploadPhoto.requestBody!.isMultipart, isTrue);
+      expect(uploadPhoto.requestBody!.isRequired, isTrue);
+    });
+
+    test('multipart form fields contain file and description', () {
+      final endpoints = analyzer.analyzeAll(spec.paths);
+      final uploadPhoto =
+          endpoints.firstWhere((e) => e.operationId == 'uploadPetPhoto');
+
+      final fields = uploadPhoto.requestBody!.formFields!;
+      expect(fields.length, 2);
+
+      final fileField = fields.firstWhere((f) => f.jsonKey == 'file');
+      expect(fileField.type.dartType, 'MultipartFile');
+      expect(fileField.isRequired, isTrue);
+
+      final descField = fields.firstWhere((f) => f.jsonKey == 'description');
+      expect(descField.type.dartType, 'String');
+      expect(descField.isRequired, isFalse);
     });
   });
 }
