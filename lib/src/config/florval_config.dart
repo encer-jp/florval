@@ -2,6 +2,9 @@ import 'dart:io';
 
 import 'package:yaml/yaml.dart';
 
+import 'config_validator.dart';
+import 'template_config.dart';
+
 /// Configuration loaded from florval.yaml.
 class FlorvalConfig {
   /// Path to the OpenAPI spec file.
@@ -16,11 +19,15 @@ class FlorvalConfig {
   /// Riverpod configuration.
   final RiverpodConfig riverpod;
 
+  /// Template customization configuration.
+  final TemplateConfig templates;
+
   const FlorvalConfig({
     required this.schemaPath,
     required this.outputDirectory,
     this.client = const ClientConfig(),
     this.riverpod = const RiverpodConfig(),
+    this.templates = const TemplateConfig(),
   });
 
   /// Loads config from a YAML file.
@@ -39,19 +46,31 @@ class FlorvalConfig {
 
   /// Creates config from parsed YAML.
   factory FlorvalConfig.fromYaml(YamlMap yaml) {
-    final florval = yaml['florval'] as YamlMap?;
-    if (florval == null) {
+    // Validate config
+    final validator = ConfigValidator();
+    final validationErrors = validator.validate(yaml);
+
+    final errors = validationErrors
+        .where((e) => e.severity == ValidationSeverity.error)
+        .toList();
+    final warnings = validationErrors
+        .where((e) => e.severity == ValidationSeverity.warning)
+        .toList();
+
+    // Print warnings to stderr
+    for (final warning in warnings) {
+      stderr.writeln('florval [WARN]: $warning');
+    }
+
+    // Throw on errors
+    if (errors.isNotEmpty) {
       throw FlorvalConfigException(
-        'Missing "florval" key in config file.',
+        errors.map((e) => e.toString()).join('\n'),
       );
     }
 
-    final schemaPath = florval['schema_path'] as String?;
-    if (schemaPath == null) {
-      throw FlorvalConfigException(
-        'Missing "schema_path" in florval config.',
-      );
-    }
+    final florval = yaml['florval'] as YamlMap;
+    final schemaPath = florval['schema_path'] as String;
 
     return FlorvalConfig(
       schemaPath: schemaPath,
@@ -63,6 +82,9 @@ class FlorvalConfig {
       riverpod: florval['riverpod'] != null
           ? RiverpodConfig.fromYaml(florval['riverpod'] as YamlMap)
           : const RiverpodConfig(),
+      templates: florval['templates'] != null
+          ? TemplateConfig.fromYaml(florval['templates'] as YamlMap)
+          : const TemplateConfig(),
     );
   }
 

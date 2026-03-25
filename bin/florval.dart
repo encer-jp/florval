@@ -3,8 +3,12 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:florval/src/config/florval_config.dart';
 import 'package:florval/src/florval_runner.dart';
+import 'package:florval/src/parser/ref_resolver.dart';
+import 'package:florval/src/parser/spec_reader.dart';
+import 'package:florval/src/utils/logger.dart';
+import 'package:florval/src/watcher/spec_watcher.dart';
 
-void main(List<String> arguments) {
+void main(List<String> arguments) async {
   final parser = ArgParser();
 
   final generateParser = ArgParser()
@@ -16,7 +20,13 @@ void main(List<String> arguments) {
         abbr: 's', help: 'Path to OpenAPI spec file (overrides config).')
     ..addOption('output',
         abbr: 'o',
-        help: 'Output directory for generated code (overrides config).');
+        help: 'Output directory for generated code (overrides config).')
+    ..addFlag('verbose',
+        abbr: 'v', help: 'Enable verbose debug output.', defaultsTo: false)
+    ..addFlag('watch',
+        abbr: 'w',
+        help: 'Watch spec file for changes and auto-regenerate.',
+        defaultsTo: false);
 
   parser.addCommand('generate', generateParser);
 
@@ -28,15 +38,30 @@ void main(List<String> arguments) {
   }
 
   final command = results.command!;
+  final verbose = command['verbose'] as bool;
+  final watch = command['watch'] as bool;
+  final logger = FlorvalLogger(verbose: verbose);
 
   try {
     final config = _resolveConfig(command);
-    FlorvalRunner().run(config);
+
+    if (watch) {
+      final watcher = SpecWatcher(config: config, logger: logger);
+      await watcher.start();
+    } else {
+      FlorvalRunner(logger: logger).run(config);
+    }
   } on FlorvalConfigException catch (e) {
-    stderr.writeln('Error: $e');
+    logger.error(e.message);
+    exit(1);
+  } on SpecReaderException catch (e) {
+    logger.error(e.message);
+    exit(1);
+  } on RefResolveException catch (e) {
+    logger.error(e.message);
     exit(1);
   } catch (e) {
-    stderr.writeln('Error: $e');
+    logger.error('$e');
     exit(1);
   }
 }

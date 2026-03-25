@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:recase/recase.dart';
 
 import 'analyzer/endpoint_analyzer.dart';
@@ -13,16 +11,23 @@ import 'generator/provider_generator.dart';
 import 'generator/response_generator.dart';
 import 'parser/ref_resolver.dart';
 import 'parser/spec_reader.dart';
+import 'utils/logger.dart';
 
 /// Orchestrates the full code generation pipeline.
 class FlorvalRunner {
+  final FlorvalLogger logger;
+
+  FlorvalRunner({FlorvalLogger? logger})
+      : logger = logger ?? FlorvalLogger();
+
   /// Runs the code generation pipeline.
   void run(FlorvalConfig config) {
-    stdout.writeln('florval: Reading OpenAPI spec from ${config.schemaPath}');
+    logger.info('Reading OpenAPI spec from ${config.schemaPath}');
 
     // 1. Parse
     final specReader = SpecReader();
     final spec = specReader.readFile(config.schemaPath);
+    logger.debug('Spec parsed successfully: ${spec.info.title} v${spec.info.version}');
 
     // 2. Resolve
     final resolver = RefResolver(spec);
@@ -38,13 +43,14 @@ class FlorvalRunner {
         : [];
     final endpoints = endpointAnalyzer.analyzeAll(spec.paths);
 
-    stdout.writeln(
-        'florval: Found ${schemas.length} schemas and ${endpoints.length} endpoints');
+    logger.info(
+        'Found ${schemas.length} schemas and ${endpoints.length} endpoints');
 
     // 4. Generate
-    final modelGenerator = ModelGenerator();
-    final responseGenerator = ResponseGenerator();
-    final clientGenerator = ClientGenerator();
+    final tc = config.templates;
+    final modelGenerator = ModelGenerator(templateConfig: tc);
+    final responseGenerator = ResponseGenerator(templateConfig: tc);
+    final clientGenerator = ClientGenerator(templateConfig: tc);
 
     // 5. Write
     final writer = FileWriter(config.outputDirectory);
@@ -56,6 +62,7 @@ class FlorvalRunner {
       final code = modelGenerator.generate(schema);
       writer.writeModel(schema.name, code);
       modelNames.add(schema.name);
+      logger.debug('Generated model: ${schema.name}');
     }
 
     // Responses
@@ -64,6 +71,7 @@ class FlorvalRunner {
       final code = responseGenerator.generate(endpoint);
       writer.writeResponse(endpoint.operationId, code);
       responseNames.add(endpoint.operationId);
+      logger.debug('Generated response: ${endpoint.operationId}');
     }
 
     // Clients (grouped by tag)
@@ -78,17 +86,19 @@ class FlorvalRunner {
       final code = clientGenerator.generate(entry.key, entry.value.cast());
       writer.writeClient(entry.key, code);
       clientNames.add(entry.key);
+      logger.debug('Generated client: ${entry.key}');
     }
 
     // Providers (optional)
     final providerNames = <String>[];
     if (config.riverpod.enabled) {
-      final providerGenerator = ProviderGenerator();
+      final providerGenerator = ProviderGenerator(templateConfig: tc);
       for (final entry in endpointsByTag.entries) {
         final code =
             providerGenerator.generate(entry.key, entry.value.cast());
         writer.writeProvider(entry.key, code);
         providerNames.add(entry.key);
+        logger.debug('Generated provider: ${entry.key}');
       }
     }
 
@@ -100,8 +110,8 @@ class FlorvalRunner {
       providerNames,
     );
 
-    stdout.writeln(
-        'florval: Generated ${modelNames.length} models, ${responseNames.length} responses, ${clientNames.length} clients${providerNames.isNotEmpty ? ', ${providerNames.length} providers' : ''}');
-    stdout.writeln('florval: Output written to ${config.outputDirectory}');
+    logger.success(
+        'Generated ${modelNames.length} models, ${responseNames.length} responses, ${clientNames.length} clients${providerNames.isNotEmpty ? ', ${providerNames.length} providers' : ''}');
+    logger.info('Output written to ${config.outputDirectory}');
   }
 }

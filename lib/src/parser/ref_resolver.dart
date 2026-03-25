@@ -21,8 +21,12 @@ class RefResolver {
     final name = _extractName(schema.ref!);
     final resolved = spec.components?.schemas?[name];
     if (resolved == null) {
+      final available = spec.components?.schemas?.keys.toList() ?? [];
+      final suggestion = _suggest(name, available);
       throw RefResolveException(
-        'Cannot resolve schema ref: ${schema.ref}',
+        'Cannot resolve schema ref: ${schema.ref}\n'
+        '  Available schemas: ${available.isEmpty ? "(none)" : available.join(", ")}'
+        '${suggestion != null ? "\n  Did you mean: $suggestion?" : ""}',
       );
     }
 
@@ -50,8 +54,10 @@ class RefResolver {
     final name = _extractName(response.ref!);
     final resolved = spec.components?.responses?[name];
     if (resolved == null) {
+      final available = spec.components?.responses?.keys.toList() ?? [];
       throw RefResolveException(
-        'Cannot resolve response ref: ${response.ref}',
+        'Cannot resolve response ref: ${response.ref}\n'
+        '  Available responses: ${available.isEmpty ? "(none)" : available.join(", ")}',
       );
     }
 
@@ -65,8 +71,10 @@ class RefResolver {
     final name = _extractName(parameter.ref!);
     final resolved = spec.components?.parameters?[name];
     if (resolved == null) {
+      final available = spec.components?.parameters?.keys.toList() ?? [];
       throw RefResolveException(
-        'Cannot resolve parameter ref: ${parameter.ref}',
+        'Cannot resolve parameter ref: ${parameter.ref}\n'
+        '  Available parameters: ${available.isEmpty ? "(none)" : available.join(", ")}',
       );
     }
 
@@ -77,6 +85,24 @@ class RefResolver {
   /// e.g. '#/components/schemas/User' → 'User'
   String _extractName(String ref) {
     return ref.split('/').last;
+  }
+
+  /// Suggests a similar name from the available list using simple matching.
+  String? _suggest(String name, List<String> available) {
+    if (available.isEmpty) return null;
+    final lower = name.toLowerCase();
+    // Find a name that starts with the same prefix or contains the input
+    for (final candidate in available) {
+      final candidateLower = candidate.toLowerCase();
+      if (candidateLower == lower ||
+          candidateLower.startsWith(lower) ||
+          lower.startsWith(candidateLower) ||
+          candidateLower.contains(lower) ||
+          lower.contains(candidateLower)) {
+        return candidate;
+      }
+    }
+    return null;
   }
 }
 
