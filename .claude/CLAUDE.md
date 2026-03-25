@@ -202,8 +202,8 @@ Future<CreateUserResponse> runCreateUser(
   return createUser.run(ref, (tsx) async {
     final client = tsx.get(usersApiClientProvider);
     final result = await client.createUser(body: body);
-    ref.invalidate(getUserProvider);
-    ref.invalidate(listUsersProvider);
+    ref.container.invalidate(getUserProvider);
+    ref.container.invalidate(listUsersProvider);
     return result;
   });
 }

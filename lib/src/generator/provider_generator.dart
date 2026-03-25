@@ -212,7 +212,7 @@ class ProviderGenerator {
     for (final getEndpoint in getEndpoints) {
       final providerName =
           '${ReCase(getEndpoint.operationId).camelCase}Provider';
-      buffer.writeln('    ref.invalidate($providerName);');
+      buffer.writeln('    ref.container.invalidate($providerName);');
     }
 
     buffer.writeln('    return result;');

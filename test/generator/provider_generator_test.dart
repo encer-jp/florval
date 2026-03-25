@@ -284,7 +284,7 @@ void main() {
           'users', [makeGetEndpoint(), makePostEndpoint()]);
 
       expect(code, isNot(contains('runCreateUser')));
-      expect(code, isNot(contains('ref.invalidate(')));
+      expect(code, isNot(contains('ref.container.invalidate(')));
     });
 
     test('mutation generates helper with invalidation when autoInvalidate is true', () {
@@ -297,7 +297,7 @@ void main() {
       expect(code, contains('MutationTarget ref'));
       expect(code, contains('createUser.run(ref, (tsx) async {'));
       expect(code, contains('tsx.get(usersApiClientProvider)'));
-      expect(code, contains('ref.invalidate(getUserProvider)'));
+      expect(code, contains('ref.container.invalidate(getUserProvider)'));
     });
 
     test('mutation helper with multiple GET endpoints invalidates all when autoInvalidate is true', () {
@@ -306,8 +306,8 @@ void main() {
       final code = autoInvalidateGenerator.generate(
           'users', [makeGetEndpoint(), makeListEndpoint(), makePostEndpoint()]);
 
-      expect(code, contains('ref.invalidate(getUserProvider)'));
-      expect(code, contains('ref.invalidate(listUsersProvider)'));
+      expect(code, contains('ref.container.invalidate(getUserProvider)'));
+      expect(code, contains('ref.container.invalidate(listUsersProvider)'));
     });
 
     test('mutation helper not generated when autoInvalidate is false', () {
@@ -411,7 +411,7 @@ void main() {
     test('GET providers do not have invalidation calls', () {
       final code = generator.generate('users', [makeGetEndpoint()]);
 
-      expect(code, isNot(contains('ref.invalidate(')));
+      expect(code, isNot(contains('ref.container.invalidate(')));
     });
 
     test('mutation comment includes method and path', () {
