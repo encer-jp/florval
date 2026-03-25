@@ -45,7 +45,6 @@ class ConfigValidator {
 
   static const _validRiverpodKeys = {
     'enabled',
-    'state_type',
     'auto_invalidate',
   };
 
@@ -54,11 +53,6 @@ class ConfigValidator {
     'model_imports',
     'client_imports',
     'provider_imports',
-  };
-
-  static const _validStateTypes = {
-    'async_notifier',
-    'future_provider',
   };
 
   /// Validates a parsed YAML config and returns all errors/warnings.
@@ -256,21 +250,6 @@ class ConfigValidator {
       ));
     }
 
-    final stateType = riverpod['state_type'];
-    if (stateType != null) {
-      if (stateType is! String) {
-        errors.add(const ConfigValidationError(
-          field: 'florval.riverpod.state_type',
-          message: '"state_type" must be a string.',
-        ));
-      } else if (!_validStateTypes.contains(stateType)) {
-        errors.add(ConfigValidationError(
-          field: 'florval.riverpod.state_type',
-          message:
-              'Invalid state_type "$stateType". Must be one of: ${_validStateTypes.join(", ")}.',
-        ));
-      }
-    }
   }
 
   void _checkUnknownKeys(YamlMap yaml, Set<String> validKeys,

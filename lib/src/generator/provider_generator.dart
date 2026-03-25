@@ -5,17 +5,16 @@ import '../config/template_config.dart';
 import '../model/api_endpoint.dart';
 
 /// Generates Riverpod 3.x providers grouped by tag.
+///
+/// - GET endpoints → @riverpod Notifier with build() params
+/// - POST/PUT/DELETE/PATCH → Mutation<ResponseType>() constant + optional helper
 class ProviderGenerator {
   final TemplateConfig? templateConfig;
   final bool autoInvalidate;
 
   ProviderGenerator({this.templateConfig, this.autoInvalidate = false});
+
   /// Generates a provider file for a group of endpoints sharing a tag.
-  ///
-  /// Produces:
-  /// - A client provider for the API client
-  /// - GET endpoints → @riverpod Notifier with build() params
-  /// - POST/PUT/DELETE/PATCH → @riverpod Notifier with call() method
   String generate(String tag, List<FlorvalEndpoint> endpoints) {
     final buffer = StringBuffer();
 
@@ -29,25 +28,31 @@ class ProviderGenerator {
     _writeImports(buffer, tag, endpoints);
     buffer.writeln();
 
-    // Part directive
-    buffer.writeln("part '${ReCase(tag).snakeCase}_providers.g.dart';");
-    buffer.writeln();
+    // Part directive (for riverpod_generator on GET notifiers)
+    final hasGetEndpoints = endpoints.any((e) => e.method == 'GET');
+    if (hasGetEndpoints) {
+      buffer.writeln("part '${ReCase(tag).snakeCase}_providers.g.dart';");
+      buffer.writeln();
+    }
 
     // Client provider
     _writeClientProvider(buffer, tag);
     buffer.writeln();
 
-    // Separate GET and mutation endpoints for cache invalidation
+    // Separate GET endpoints for cache invalidation references
     final getEndpoints =
         autoInvalidate ? endpoints.where((e) => e.method == 'GET').toList() : <FlorvalEndpoint>[];
 
-    // Endpoint providers
+    // Endpoint providers / mutations
     for (final endpoint in endpoints) {
       if (endpoint.method == 'GET') {
         _writeGetProvider(buffer, tag, endpoint);
       } else {
-        _writeMutationProvider(buffer, tag, endpoint,
-            getEndpoints: getEndpoints);
+        _writeMutationDefinition(buffer, endpoint);
+        if (autoInvalidate && getEndpoints.isNotEmpty) {
+          _writeMutationHelper(buffer, tag, endpoint,
+              getEndpoints: getEndpoints);
+        }
       }
       buffer.writeln();
     }
@@ -57,8 +62,13 @@ class ProviderGenerator {
 
   void _writeImports(
       StringBuffer buffer, String tag, List<FlorvalEndpoint> endpoints) {
-    buffer.writeln("import 'dart:async';");
-    buffer.writeln();
+    final hasGetEndpoints = endpoints.any((e) => e.method == 'GET');
+    final hasMutationEndpoints = endpoints.any((e) => e.method != 'GET');
+
+    if (hasGetEndpoints) {
+      buffer.writeln("import 'dart:async';");
+      buffer.writeln();
+    }
 
     // Import dio if any endpoint uses multipart (for MultipartFile type)
     final hasMultipart = endpoints.any(
@@ -66,8 +76,14 @@ class ProviderGenerator {
     if (hasMultipart) {
       buffer.writeln("import 'package:dio/dio.dart';");
     }
-    buffer.writeln(
-        "import 'package:riverpod_annotation/riverpod_annotation.dart';");
+    if (hasMutationEndpoints) {
+      buffer.writeln(
+          "import 'package:riverpod/experimental/mutation.dart';");
+    }
+    if (hasGetEndpoints) {
+      buffer.writeln(
+          "import 'package:riverpod_annotation/riverpod_annotation.dart';");
+    }
 
     // Custom provider imports
     if (templateConfig != null) {
@@ -144,42 +160,55 @@ class ProviderGenerator {
     buffer.writeln('}');
   }
 
-  void _writeMutationProvider(
+  void _writeMutationDefinition(
+      StringBuffer buffer, FlorvalEndpoint endpoint) {
+    final className = ReCase(endpoint.operationId).pascalCase;
+    final responseType = '${className}Response';
+
+    buffer.writeln('/// Mutation for ${endpoint.operationId} (${endpoint.method} ${endpoint.path})');
+    buffer.writeln('final ${ReCase(endpoint.operationId).camelCase} = Mutation<$responseType>();');
+  }
+
+  void _writeMutationHelper(
       StringBuffer buffer, String tag, FlorvalEndpoint endpoint,
       {List<FlorvalEndpoint> getEndpoints = const []}) {
     final className = ReCase(endpoint.operationId).pascalCase;
     final responseType = '${className}Response';
     final clientProvider = '${ReCase(tag).camelCase}ApiClientProvider';
     final methodName = ReCase(endpoint.operationId).camelCase;
+    final mutationName = ReCase(endpoint.operationId).camelCase;
+    final helperName = 'run${className}';
 
-    buffer.writeln('@riverpod');
-    buffer.writeln('class $className extends _\$$className {');
-    buffer.writeln('  @override');
-    buffer.writeln('  FutureOr<$responseType?> build() => null;');
+    // Build helper function signature
+    final helperParams = _buildMutationParams(endpoint);
+
     buffer.writeln();
-
-    // call() signature
-    final callParams = _buildMutationParams(endpoint);
-    if (callParams.isNotEmpty) {
-      buffer.writeln('  Future<$responseType> call({');
-      for (final param in callParams) {
-        buffer.writeln('    $param');
+    buffer.writeln('/// Runs $mutationName mutation and invalidates related GET providers.');
+    if (helperParams.isNotEmpty) {
+      buffer.writeln('Future<$responseType> $helperName(');
+      buffer.writeln('  MutationTarget ref, {');
+      for (final param in helperParams) {
+        buffer.writeln('  $param');
       }
-      buffer.writeln('  }) async {');
+      buffer.writeln('}) async {');
     } else {
-      buffer.writeln('  Future<$responseType> call() async {');
+      buffer.writeln('Future<$responseType> $helperName(');
+      buffer.writeln('  MutationTarget ref,');
+      buffer.writeln(') async {');
     }
 
-    // call() body
-    buffer.writeln('    final client = ref.watch($clientProvider);');
-    buffer.write('    final result = await client.$methodName(');
+    buffer.writeln('  return $mutationName.run(ref, (tsx) async {');
+    buffer.writeln('    final client = tsx.get($clientProvider);');
+
+    // Client method call
     final callArgs = _buildMutationCallArgs(endpoint);
     if (callArgs.isNotEmpty) {
-      buffer.write(callArgs);
+      buffer.writeln('    final result = await client.$methodName($callArgs);');
+    } else {
+      buffer.writeln('    final result = await client.$methodName();');
     }
-    buffer.writeln(');');
 
-    // Invalidate related GET providers for cache invalidation
+    // Invalidate GET providers
     for (final getEndpoint in getEndpoints) {
       final providerName =
           '${ReCase(getEndpoint.operationId).camelCase}Provider';
@@ -187,7 +216,7 @@ class ProviderGenerator {
     }
 
     buffer.writeln('    return result;');
-    buffer.writeln('  }');
+    buffer.writeln('  });');
     buffer.writeln('}');
   }
 
@@ -224,7 +253,7 @@ class ProviderGenerator {
     return args.isEmpty ? '' : args.join(', ');
   }
 
-  /// Build params for mutation's call() method.
+  /// Build params for mutation helper function.
   /// Path params + request body.
   List<String> _buildMutationParams(FlorvalEndpoint endpoint) {
     final params = <String>[];
@@ -255,7 +284,7 @@ class ProviderGenerator {
     return params;
   }
 
-  /// Build call arguments for the client method invocation in mutation providers.
+  /// Build call arguments for the client method invocation in mutation helpers.
   String _buildMutationCallArgs(FlorvalEndpoint endpoint) {
     final args = <String>[];
 

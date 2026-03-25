@@ -223,16 +223,20 @@ void main() {
       expect(providerCode, contains('class ListPets extends _\$ListPets'));
       expect(providerCode, contains('class GetPet extends _\$GetPet'));
 
-      // POST/PUT/DELETE → Mutation Notifier
-      expect(providerCode, contains('class CreatePet extends _\$CreatePet'));
-      expect(providerCode, contains('class UpdatePet extends _\$UpdatePet'));
-      expect(providerCode, contains('class DeletePet extends _\$DeletePet'));
+      // POST/PUT/DELETE → Mutation constants
+      expect(providerCode, contains('final createPet = Mutation<CreatePetResponse>();'));
+      expect(providerCode, contains('final updatePet = Mutation<UpdatePetResponse>();'));
+      expect(providerCode, contains('final deletePet = Mutation<DeletePetResponse>();'));
+      expect(providerCode, isNot(contains('class CreatePet extends _\$CreatePet')));
+      expect(providerCode, isNot(contains('class UpdatePet extends _\$UpdatePet')));
+      expect(providerCode, isNot(contains('class DeletePet extends _\$DeletePet')));
 
-      // Multipart endpoint → Mutation with form fields
+      // Multipart endpoint → Mutation constant
       expect(providerCode,
-          contains('class UploadPetPhoto extends _\$UploadPetPhoto'));
-      expect(providerCode, contains('required MultipartFile file,'));
+          contains('final uploadPetPhoto = Mutation<UploadPetPhotoResponse>();'));
+      expect(providerCode, isNot(contains('class UploadPetPhoto extends _\$UploadPetPhoto')));
       expect(providerCode, contains("import 'package:dio/dio.dart';"));
+      expect(providerCode, contains("import 'package:riverpod/experimental/mutation.dart';"));
     });
 
     test('barrel file includes provider exports when riverpod enabled', () {

@@ -317,9 +317,9 @@ class ResponseGenerator {
 
 **Riverpod 3.x対応：**
 - GETエンドポイント → `@riverpod` Notifier（buildのパラメータでfamily化）
-- POST/PUT/DELETE → Mutation活用（実験的機能。MutationState経由でUI状態管理）
-- 自動リトライはRiverpod 3.xのビルトイン機能に委譲（florvalでリトライコードは基本生成しない）
-- パスパラメータ・クエリパラメータ → buildメソッドの引数として定義
+- POST/PUT/DELETE/PATCH → `Mutation<ResponseType>()`定数のみ生成。Notifierは生成しない
+- autoInvalidate有効時 → `runXxx()`ヘルパー関数を生成（tsx.get()でクライアント取得、GETプロバイダー無効化）
+- 自動リトライはRiverpod 3.xのビルトイン機能に委譲
 
 生成例（GET）:
 ```dart
@@ -333,18 +333,26 @@ class GetUser extends _$GetUser {
 }
 ```
 
-生成例（POST / Mutation）:
+生成例（POST / Mutation定数）:
 ```dart
-@riverpod
-class CreateUser extends _$CreateUser {
-  @override
-  FutureOr<CreateUserResponse?> build() => null;
+/// Mutation for createUser (POST /users)
+final createUser = Mutation<CreateUserResponse>();
+```
 
-  @mutation
-  Future<CreateUserResponse> call(CreateUserRequest body) async {
-    final client = ref.watch(userApiClientProvider);
-    return client.createUser(body: body);
-  }
+生成例（autoInvalidate有効時のヘルパー関数）:
+```dart
+/// Runs createUser mutation and invalidates related GET providers.
+Future<CreateUserResponse> runCreateUser(
+  MutationTarget ref, {
+  required CreateUserRequest body,
+}) async {
+  return createUser.run(ref, (tsx) async {
+    final client = tsx.get(usersApiClientProvider);
+    final result = await client.createUser(body: body);
+    ref.invalidate(getUserProvider);
+    ref.invalidate(listUsersProvider);
+    return result;
+  });
 }
 ```
 
@@ -416,7 +424,8 @@ dependencies:
   freezed_annotation: ^3.0.0
   json_annotation: ^4.9.0
   flutter_riverpod: ^3.0.0          # Riverpod 3.x
-  riverpod_annotation: ^3.0.0       # Riverpod 3.x
+  riverpod: ^3.0.0                  # Mutation APIはriverpod本体に含まれる（experimental）
+  riverpod_annotation: ^3.0.0       # GET用Notifierのcodegen（@riverpod）で必要
 
 dev_dependencies:
   build_runner: ^2.4.0
@@ -428,8 +437,10 @@ dev_dependencies:
 ### Riverpod 3.x固有の設計判断
 
 - **自動リトライ**: Riverpod 3.xに内蔵されたため、florvalでリトライコードを生成する必要は基本的にない。ProviderScopeのretryパラメータで制御可能。ただしflorval.yamlでカスタムリトライポリシーを定義した場合は、provider単位のretryオーバーライドとして生成する。
-- **Mutation**: 実験的機能だが、POST/PUT/DELETEのプロバイダー生成に活用。MutationState（isPending/isIdle/hasError/isSuccess）を通じてUI側での状態管理が容易になる。
-- **FamilyNotifier廃止**: buildメソッドのパラメータでfamily化する。florvalのプロバイダー生成はこの形式に準拠する。
+- **Mutation API**: POST/PUT/DELETE/PATCHは`Mutation<T>()`定数として生成。Notifierは生成しない。`Mutation<T>()`はexperimentalで、import先は`package:riverpod/experimental/mutation.dart`。安定版昇格時にimportパス変更の可能性あり。
+- **autoInvalidate**: 有効時は`runXxx()`ヘルパー関数を生成。`tsx.get()`でクライアント取得、`ref.invalidate()`でGETプロバイダー無効化。
+- **FamilyNotifier廃止**: buildメソッドのパラメータでfamily化する。florvalのGETプロバイダー生成はこの形式に準拠する。
+- **state_type設定廃止**: Mutation API全面移行により、async_notifier/future_providerの選択は不要。
 
 ---
 
