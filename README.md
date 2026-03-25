@@ -160,16 +160,16 @@ class GetPet extends _$GetPet {
 **POST/PUT/DELETE → Mutation:**
 
 ```dart
-final createPet = Mutation<CreatePetResponse>();
+final createPetMutation = Mutation<CreatePetResponse>();
 ```
 
 **Auto-invalidation helper (opt-in):**
 
 ```dart
-Future<CreatePetResponse> runCreatePet(
+Future<CreatePetResponse> createPet(
   MutationTarget ref, {required CreatePetRequest body}
 ) async {
-  return createPet.run(ref, (tsx) async {
+  return createPetMutation.run(ref, (tsx) async {
     final client = tsx.get(petsApiClientProvider);
     final result = await client.createPet(body: body);
     ref.container.invalidate(listPetsProvider);
