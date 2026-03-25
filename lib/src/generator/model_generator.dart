@@ -20,7 +20,8 @@ class ModelGenerator {
     final buffer = StringBuffer();
 
     // Imports
-    buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
+    buffer.writeln(
+        "import 'package:freezed_annotation/freezed_annotation.dart';");
     buffer.writeln("import 'package:json_annotation/json_annotation.dart';");
     buffer.writeln();
 
@@ -62,7 +63,8 @@ class ModelGenerator {
     final buffer = StringBuffer();
 
     // Imports
-    buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
+    buffer.writeln(
+        "import 'package:freezed_annotation/freezed_annotation.dart';");
     buffer.writeln("import 'package:json_annotation/json_annotation.dart';");
     buffer.writeln();
 
@@ -83,8 +85,7 @@ class ModelGenerator {
 
     // Sealed class definition
     buffer.writeln('@freezed');
-    buffer.writeln(
-        'sealed class ${schema.name} with _\$${schema.name} {');
+    buffer.writeln('sealed class ${schema.name} with _\$${schema.name} {');
 
     // Factory constructors for each variant
     for (final variant in variants) {
@@ -110,8 +111,7 @@ class ModelGenerator {
   }
 
   /// Writes a fromJson factory that switches on a discriminator property.
-  void _writeDiscriminatorFromJson(
-      StringBuffer buffer, FlorvalSchema schema) {
+  void _writeDiscriminatorFromJson(StringBuffer buffer, FlorvalSchema schema) {
     final disc = schema.discriminator!;
     final variants = schema.oneOf ?? schema.anyOf ?? [];
 
@@ -122,18 +122,14 @@ class ModelGenerator {
     for (final variant in variants) {
       final factoryName = ReCase(variant.name).camelCase;
       // Use explicit mapping if available, otherwise infer from variant name
-      final discriminatorValue = disc.mapping != null
-          ? disc.mapping!.entries
-              .where((e) =>
-                  e.value == variant.name ||
-                  e.value.endsWith('/${variant.name}'))
-              .map((e) => e.key)
-              .firstOrNull
-          : null;
+      final discriminatorValue = disc.mapping?.entries
+          .where((e) =>
+              e.value == variant.name || e.value.endsWith('/${variant.name}'))
+          .map((e) => e.key)
+          .firstOrNull;
       final value = discriminatorValue ?? ReCase(variant.name).snakeCase;
 
-      buffer.writeln(
-          "      case '$value':");
+      buffer.writeln("      case '$value':");
       buffer.writeln(
           '        return ${schema.name}.$factoryName(${variant.name}.fromJson(json));');
     }

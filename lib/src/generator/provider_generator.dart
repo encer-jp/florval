@@ -129,7 +129,7 @@ class ProviderGenerator {
     buffer.writeln('@riverpod');
     buffer.writeln('class $className extends _\$$className {');
     buffer.writeln('  @override');
-    buffer.writeln('  FutureOr<${responseType}?> build() => null;');
+    buffer.writeln('  FutureOr<$responseType?> build() => null;');
     buffer.writeln();
     buffer.writeln('  @mutation');
 
