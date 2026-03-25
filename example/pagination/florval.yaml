@@ -10,7 +10,13 @@ florval:
     enabled: true
     auto_invalidate: true
     pagination:
+      # インラインobject → ラッパーモデル(ListTasksPage)が自動生成される
       - operation_id: listTasks
+        cursor_param: after
+        next_cursor_field: nextCursor
+        items_field: items
+      # $refで定義済みスキーマ → CommentPageがそのまま使われる
+      - operation_id: listTaskComments
         cursor_param: after
         next_cursor_field: nextCursor
         items_field: items
