@@ -23,13 +23,13 @@ class InitCommand {
     timeout: 30000
 
   riverpod:
-    # Set to true to generate Riverpod providers
-    enabled: false
+    # Generate Riverpod providers
+    enabled: true
     # Invalidate same-tag GET providers after mutations
-    auto_invalidate: false
-    # retry:
-    #   max_attempts: 3
-    #   delay: 1000
+    auto_invalidate: true
+    retry:
+      max_attempts: 3
+      delay: 1000
 
     # Cursor-based pagination endpoints
     # pagination:
