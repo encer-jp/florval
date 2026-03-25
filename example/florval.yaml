@@ -9,3 +9,8 @@ florval:
   riverpod:
     enabled: true
     auto_invalidate: true
+    pagination:
+      - operation_id: searchPets
+        cursor_param: after
+        next_cursor_field: nextCursor
+        items_field: items

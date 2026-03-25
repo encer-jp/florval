@@ -15,3 +15,8 @@ florval:
   riverpod:
     enabled: true
     auto_invalidate: false
+    # pagination:                          # Cursor-based pagination config
+    #   - operation_id: listItems          # operationId of the paginated endpoint
+    #     cursor_param: after              # Query parameter used as cursor
+    #     next_cursor_field: nextCursor    # Response field for next page cursor
+    #     items_field: items               # Response field for data array
