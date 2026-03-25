@@ -283,7 +283,7 @@ void main() {
       final paginatedDataCode =
           File(p.join(outputDir.path, 'models', 'paginated_data.dart'))
               .readAsStringSync();
-      expect(paginatedDataCode, contains('class PaginatedData<T>'));
+      expect(paginatedDataCode, contains('class PaginatedData<T, P>'));
 
       final apiExceptionCode =
           File(p.join(outputDir.path, 'models', 'api_exception.dart'))
