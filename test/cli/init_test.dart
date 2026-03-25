@@ -103,7 +103,7 @@ void main() {
       final result = await Process.run(
         'dart',
         ['run', 'florval', 'init', '--config', '${tempDir.path}/florval.yaml'],
-        workingDirectory: '/home/user/florval',
+        workingDirectory: Directory.current.path,
       );
 
       expect(result.exitCode, equals(0));
@@ -119,7 +119,7 @@ void main() {
       final result = await Process.run(
         'dart',
         ['run', 'florval', 'init', '--config', configPath],
-        workingDirectory: '/home/user/florval',
+        workingDirectory: Directory.current.path,
       );
 
       expect(result.exitCode, equals(1));
@@ -134,7 +134,7 @@ void main() {
       final result = await Process.run(
         'dart',
         ['run', 'florval', 'init', '--config', configPath, '--force'],
-        workingDirectory: '/home/user/florval',
+        workingDirectory: Directory.current.path,
       );
 
       expect(result.exitCode, equals(0));
