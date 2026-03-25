@@ -20,13 +20,65 @@ class SpecNormalizer {
   }
 
   /// Normalizes an OpenAPI 3.0 spec map to 3.1 format.
-  /// The main difference is the `openapi` version string.
-  /// Structural differences (like `nullable`) are already handled
-  /// by SchemaAnalyzer._isNullable which checks both styles.
+  ///
+  /// Converts v3.0-specific constructs to v3.1 equivalents:
+  /// - `nullable: true` → `type: [originalType, "null"]`
+  /// - `exclusiveMinimum: true` + `minimum: N` → `exclusiveMinimum: N`
+  /// - `exclusiveMaximum: true` + `maximum: N` → `exclusiveMaximum: N`
   Map<String, dynamic> normalizeV30(Map<String, dynamic> spec) {
-    final result = Map<String, dynamic>.from(spec);
+    final result = _normalizeV30Schema(spec) as Map<String, dynamic>;
     result['openapi'] = '3.1.0';
     return result;
+  }
+
+  /// Recursively walks a value (Map, List, or scalar) and applies
+  /// v3.0 → v3.1 schema transformations to every Map encountered.
+  dynamic _normalizeV30Schema(dynamic value) {
+    if (value == null) return null;
+
+    if (value is Map) {
+      final map = _toStringDynMap(value);
+      final result = <String, dynamic>{};
+
+      // First, recursively normalise all children.
+      for (final entry in map.entries) {
+        result[entry.key] = _normalizeV30Schema(entry.value);
+      }
+
+      // --- nullable → type array ---
+      if (result['nullable'] == true && result['type'] is String) {
+        result['type'] = [result['type'], 'null'];
+      }
+      result.remove('nullable');
+
+      // --- exclusiveMinimum (bool → number) ---
+      if (result['exclusiveMinimum'] is bool) {
+        if (result['exclusiveMinimum'] == true && result.containsKey('minimum')) {
+          result['exclusiveMinimum'] = result['minimum'];
+          result.remove('minimum');
+        } else {
+          result.remove('exclusiveMinimum');
+        }
+      }
+
+      // --- exclusiveMaximum (bool → number) ---
+      if (result['exclusiveMaximum'] is bool) {
+        if (result['exclusiveMaximum'] == true && result.containsKey('maximum')) {
+          result['exclusiveMaximum'] = result['maximum'];
+          result.remove('maximum');
+        } else {
+          result.remove('exclusiveMaximum');
+        }
+      }
+
+      return result;
+    }
+
+    if (value is List) {
+      return value.map((e) => _normalizeV30Schema(e)).toList();
+    }
+
+    return value;
   }
 
   /// Normalizes a Swagger 2.0 spec map to OpenAPI 3.1 format.
