@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:florval/src/config/florval_config.dart';
 import 'package:florval/src/florval_runner.dart';
+import 'package:florval/src/init/init_command.dart';
 import 'package:florval/src/parser/ref_resolver.dart';
 import 'package:florval/src/parser/spec_reader.dart';
 import 'package:florval/src/utils/logger.dart';
@@ -28,16 +29,53 @@ void main(List<String> arguments) async {
         help: 'Watch spec file for changes and auto-regenerate.',
         defaultsTo: false);
 
+  final initParser = ArgParser()
+    ..addOption('config',
+        abbr: 'c',
+        help: 'Output file path.',
+        defaultsTo: 'florval.yaml')
+    ..addFlag('force',
+        abbr: 'f',
+        help: 'Overwrite existing file.',
+        defaultsTo: false);
+
   parser.addCommand('generate', generateParser);
+  parser.addCommand('init', initParser);
 
   final results = parser.parse(arguments);
 
-  if (results.command == null || results.command!.name != 'generate') {
+  if (results.command == null) {
     _printUsage(parser, generateParser);
-    exit(results.command == null ? 1 : 0);
+    exit(1);
   }
 
-  final command = results.command!;
+  switch (results.command!.name) {
+    case 'generate':
+      await _runGenerate(results.command!);
+    case 'init':
+      _runInit(results.command!);
+    default:
+      _printUsage(parser, generateParser);
+      exit(1);
+  }
+}
+
+void _runInit(ArgResults command) {
+  final configPath = command['config'] as String;
+  final force = command['force'] as bool;
+  final result = InitCommand.run(configPath: configPath, force: force);
+
+  switch (result) {
+    case InitResult.created:
+      stdout.writeln('Created $configPath');
+    case InitResult.alreadyExists:
+      stderr.writeln(
+          'Error: $configPath already exists. Use --force to overwrite.');
+      exit(1);
+  }
+}
+
+Future<void> _runGenerate(ArgResults command) async {
   final verbose = command['verbose'] as bool;
   final watch = command['watch'] as bool;
   final logger = FlorvalLogger(verbose: verbose);
@@ -101,6 +139,7 @@ void _printUsage(ArgParser parser, ArgParser generateParser) {
   stdout.writeln();
   stdout.writeln('Commands:');
   stdout.writeln('  generate    Generate Dart code from OpenAPI spec');
+  stdout.writeln('  init        Generate a florval.yaml config template');
   stdout.writeln();
   stdout.writeln('Generate options:');
   stdout.writeln(generateParser.usage);
