@@ -367,7 +367,7 @@ void main() {
           isFalse);
     });
 
-    test('generated providers contain retry function when retry is configured', () {
+    test('generates retry.dart utility and imports it when retry is configured', () {
       final config = _makeConfig(
         outputDir.path,
         riverpodEnabled: true,
@@ -376,32 +376,46 @@ void main() {
 
       FlorvalRunner().run(config);
 
+      // Verify retry.dart utility file
+      final retryFile =
+          File(p.join(outputDir.path, 'providers', 'retry.dart'));
+      expect(retryFile.existsSync(), isTrue);
+
+      final retryCode = retryFile.readAsStringSync();
+      expect(retryCode, contains('Duration? retry(int retryCount, Object error)'));
+      expect(retryCode, contains('if (retryCount >= 3) return null;'));
+      expect(retryCode, contains('Duration(milliseconds: 1000 * (retryCount + 1))'));
+
+      // Verify provider imports retry.dart and uses @Riverpod(retry: retry)
       final providerCode =
           File(p.join(outputDir.path, 'providers', 'pets_providers.dart'))
               .readAsStringSync();
 
-      // Retry function
-      expect(providerCode, contains('Duration? _retry(int retryCount, Object error)'));
-      expect(providerCode, contains('if (retryCount >= 3) return null;'));
-      expect(providerCode, contains('Duration(milliseconds: 1000 * (retryCount + 1))'));
-
-      // GET Notifiers use @Riverpod(retry: _retry)
-      expect(providerCode, contains('@Riverpod(retry: _retry)'));
-
-      // Mutation constants are unaffected
+      expect(providerCode, contains("import 'retry.dart';"));
+      expect(providerCode, contains('@Riverpod(retry: retry)'));
       expect(providerCode, contains('final createPet = Mutation<CreatePetResponse>();'));
+
+      // Verify barrel file exports retry.dart
+      final barrelCode =
+          File(p.join(outputDir.path, 'api.dart')).readAsStringSync();
+      expect(barrelCode, contains("export 'providers/retry.dart';"));
     });
 
-    test('generated providers do not contain retry function when retry is not configured', () {
+    test('does not generate retry.dart when retry is not configured', () {
       final config = _makeConfig(outputDir.path, riverpodEnabled: true);
 
       FlorvalRunner().run(config);
 
+      expect(
+          File(p.join(outputDir.path, 'providers', 'retry.dart'))
+              .existsSync(),
+          isFalse);
+
       final providerCode =
           File(p.join(outputDir.path, 'providers', 'pets_providers.dart'))
               .readAsStringSync();
 
-      expect(providerCode, isNot(contains('Duration? _retry')));
+      expect(providerCode, isNot(contains("import 'retry.dart';")));
       expect(providerCode, isNot(contains('@Riverpod(retry:')));
     });
   });

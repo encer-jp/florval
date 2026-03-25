@@ -119,12 +119,23 @@ class FlorvalRunner {
 
     // Providers (optional)
     final providerNames = <String>[];
+    final providerUtilityNames = <String>[];
     if (config.riverpod.enabled) {
       final providerGenerator = ProviderGenerator(
         templateConfig: tc,
         autoInvalidate: config.riverpod.autoInvalidate,
         retry: config.riverpod.retry,
       );
+
+      // Generate retry utility if configured
+      if (config.riverpod.retry != null) {
+        final retryCode =
+            providerGenerator.generateRetryUtility(config.riverpod.retry!);
+        writer.writeProviderUtility('retry.dart', retryCode);
+        providerUtilityNames.add('retry.dart');
+        logger.debug('Generated utility: retry');
+      }
+
       for (final entry in endpointsByTag.entries) {
         final code =
             providerGenerator.generate(entry.key, entry.value.cast());
@@ -140,6 +151,7 @@ class FlorvalRunner {
       responseNames.map((n) => ReCase(n).snakeCase).toList(),
       clientNames,
       providerNames,
+      providerUtilityNames,
     );
 
     logger.success(
