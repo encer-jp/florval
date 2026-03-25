@@ -107,6 +107,114 @@ paths:
         "422":
           description: Validation exception
 
+  # ── Pagination examples ──────────────────────────────────
+
+  # Pattern 1: inline object → wrapper model auto-generated
+  /pet/search:
+    get:
+      operationId: searchPets
+      tags:
+        - pet
+      summary: Search pets with cursor-based pagination (inline response)
+      parameters:
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: after
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated search results
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Pet"
+                  nextCursor:
+                    type: string
+                  totalCount:
+                    type: integer
+        "400":
+          description: Invalid search query
+
+  # Pattern 2: $ref → existing schema used as-is
+  /pet/{petId}/comments:
+    get:
+      operationId: listPetComments
+      tags:
+        - pet
+      summary: List comments on a pet with cursor-based pagination ($ref response)
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: after
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated list of comments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentPage"
+        "404":
+          description: Pet not found
+
+    post:
+      operationId: addPetComment
+      tags:
+        - pet
+      summary: Add a comment to a pet
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommentRequest"
+      responses:
+        "201":
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "404":
+          description: Pet not found
+
 components:
   schemas:
     Pet:
@@ -154,4 +262,43 @@ components:
           type: integer
           format: int64
         name:
+          type: string
+
+    Comment:
+      type: object
+      required:
+        - id
+        - body
+      properties:
+        id:
+          type: integer
+          format: int64
+        body:
+          type: string
+        author:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    CommentPage:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Comment"
+        nextCursor:
+          type: string
+        totalCount:
+          type: integer
+
+    CreateCommentRequest:
+      type: object
+      required:
+        - body
+      properties:
+        body:
           type: string
