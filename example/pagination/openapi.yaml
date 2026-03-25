@@ -1,0 +1,247 @@
+openapi: "3.1.0"
+info:
+  title: Task Management API
+  description: >
+    架空のタスク管理API。cursorベースページネーションのflorval生成コードを
+    確認するためのサンプル仕様。実際のAPIサーバーは存在しない。
+  version: "1.0.0"
+
+servers:
+  - url: https://api.example.com/v1
+
+paths:
+  /tasks:
+    get:
+      operationId: listTasks
+      tags:
+        - tasks
+      summary: List tasks with cursor-based pagination
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - todo
+              - in_progress
+              - done
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+        - name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Cursor for the next page
+      responses:
+        "200":
+          description: Paginated list of tasks
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Task"
+                  nextCursor:
+                    type: string
+                    description: Cursor for the next page. Null if no more results.
+                  totalCount:
+                    type: integer
+                    description: Total number of matching tasks
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+    post:
+      operationId: createTask
+      tags:
+        - tasks
+      summary: Create a new task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskRequest"
+      responses:
+        "201":
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /tasks/{taskId}:
+    get:
+      operationId: getTask
+      tags:
+        - tasks
+      summary: Get a task by ID
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          description: Task not found
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+    put:
+      operationId: updateTask
+      tags:
+        - tasks
+      summary: Update a task
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskRequest"
+      responses:
+        "200":
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          description: Task not found
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+    delete:
+      operationId: deleteTask
+      tags:
+        - tasks
+      summary: Delete a task
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Task deleted
+        "404":
+          description: Task not found
+
+components:
+  schemas:
+    Task:
+      type: object
+      required:
+        - id
+        - title
+        - status
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum:
+            - todo
+            - in_progress
+            - done
+        assignee:
+          $ref: "#/components/schemas/User"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    User:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+
+    CreateTaskRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum:
+            - todo
+            - in_progress
+            - done
+        assigneeId:
+          type: string
+
+    ApiError:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
