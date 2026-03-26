@@ -70,11 +70,6 @@ class ProviderGenerator {
     final hasGetEndpoints = endpoints.any((e) => e.method == 'GET');
     final hasMutationEndpoints = endpoints.any((e) => e.method != 'GET');
 
-    if (hasGetEndpoints) {
-      buffer.writeln("import 'dart:async';");
-      buffer.writeln();
-    }
-
     // Import dio if any endpoint uses multipart (for MultipartFile type)
     final hasMultipart = endpoints.any(
         (e) => e.requestBody != null && e.requestBody!.isMultipart);
