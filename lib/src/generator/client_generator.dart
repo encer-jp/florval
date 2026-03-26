@@ -147,13 +147,14 @@ class ClientGenerator {
       buffer.writeln(',');
       buffer.writeln('        queryParameters: {');
       for (final p in endpoint.queryParameters) {
-        // Enum types need .name to serialize as the string value
-        final valueExpr = p.type.isEnum
-            ? '${p.dartName}${p.isRequired ? '' : '?'}.name'
-            : p.dartName;
         if (p.isRequired) {
+          // Enum types need .name to serialize as the string value
+          final valueExpr = p.type.isEnum ? '${p.dartName}.name' : p.dartName;
           buffer.writeln("          '${p.name}': $valueExpr,");
         } else {
+          // Inside null-check guard, so use . not ?. for enum .name
+          final valueExpr =
+              p.type.isEnum ? '${p.dartName}.name' : p.dartName;
           buffer.writeln(
               "          if (${p.dartName} != null) '${p.name}': $valueExpr,");
         }
