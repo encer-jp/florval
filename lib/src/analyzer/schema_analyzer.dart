@@ -52,13 +52,13 @@ class SchemaAnalyzer {
 
   /// Checks if a schema is an enum (has enum values and no properties).
   bool _isEnumSchema(v31.Schema schema) {
-    final enumValues = schema.$enum;
+    final enumValues = schema.enumValues;
     return enumValues != null && enumValues.isNotEmpty;
   }
 
   /// Analyzes an enum schema into a FlorvalSchema with enumValues.
   FlorvalSchema _analyzeEnum(String name, v31.Schema schema) {
-    final values = schema.$enum!
+    final values = schema.enumValues!
         .where((v) => v != null)
         .map((v) => v.toString())
         .toList();
