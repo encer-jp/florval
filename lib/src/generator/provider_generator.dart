@@ -521,6 +521,10 @@ class ProviderGenerator {
         _addTypeImport(imports, pageType);
       }
     }
+    // Import types from path and query parameters (e.g. enum types)
+    for (final p in endpoint.parameters) {
+      _addTypeImport(imports, p.type);
+    }
   }
 
   void _addTypeImport(Set<String> imports, FlorvalType type) {

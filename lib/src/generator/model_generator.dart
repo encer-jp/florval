@@ -11,6 +11,10 @@ class ModelGenerator {
 
   /// Generates a freezed model file for a single schema.
   String generate(FlorvalSchema schema) {
+    // Enum schemas → Dart enum with @JsonValue annotations
+    if (schema.isEnum) {
+      return _generateEnum(schema);
+    }
     // Union types (oneOf/anyOf) → sealed class
     if (_isUnionType(schema)) {
       return _generateSealedClass(schema);
@@ -72,6 +76,73 @@ class ModelGenerator {
 
     return buffer.toString();
   }
+
+  /// Generates a Dart enum with @JsonValue annotations for JSON serialization.
+  String _generateEnum(FlorvalSchema schema) {
+    final buffer = StringBuffer();
+
+    // Custom header
+    if (templateConfig?.header != null) {
+      buffer.writeln(templateConfig!.header);
+      buffer.writeln();
+    }
+
+    // Imports
+    buffer.writeln("import 'package:json_annotation/json_annotation.dart';");
+
+    // Custom model imports
+    if (templateConfig != null) {
+      for (final import_ in templateConfig!.modelImports) {
+        buffer.writeln(import_);
+      }
+    }
+    buffer.writeln();
+
+    // Enum definition
+    buffer.writeln('enum ${schema.name} {');
+
+    for (var i = 0; i < schema.enumValues!.length; i++) {
+      final value = schema.enumValues![i];
+      final dartName = _enumValueToDartName(value);
+      final isLast = i == schema.enumValues!.length - 1;
+
+      buffer.writeln("  @JsonValue('$value')");
+      buffer.writeln('  $dartName${isLast ? ';' : ','}');
+    }
+
+    buffer.writeln('}');
+
+    return buffer.toString();
+  }
+
+  /// Converts an OpenAPI enum value to a valid Dart enum member name.
+  String _enumValueToDartName(String value) {
+    // Handle empty strings
+    if (value.isEmpty) return 'empty';
+
+    // Convert to camelCase using ReCase
+    final camel = ReCase(value).camelCase;
+
+    // Ensure it doesn't start with a digit
+    if (camel.isNotEmpty && RegExp(r'^[0-9]').hasMatch(camel)) {
+      return 'value$camel';
+    }
+
+    // Handle Dart reserved words
+    if (_dartReservedWords.contains(camel)) {
+      return '${camel}_';
+    }
+
+    return camel.isEmpty ? 'unknown' : camel;
+  }
+
+  static const _dartReservedWords = {
+    'assert', 'break', 'case', 'catch', 'class', 'const', 'continue',
+    'default', 'do', 'else', 'enum', 'extends', 'false', 'final',
+    'finally', 'for', 'if', 'in', 'is', 'new', 'null', 'rethrow',
+    'return', 'super', 'switch', 'this', 'throw', 'true', 'try',
+    'var', 'void', 'while', 'with', 'yield',
+  };
 
   /// Generates a freezed sealed class for union types (oneOf/anyOf).
   String _generateSealedClass(FlorvalSchema schema) {

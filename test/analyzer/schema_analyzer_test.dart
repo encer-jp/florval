@@ -108,6 +108,68 @@ void main() {
           {'Pet', 'Category', 'CreatePetRequest', 'Error', 'ValidationError', 'FieldError'});
     });
 
+    test('detects enum schemas', () {
+      final enumSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    GenderEnum:
+      type: string
+      enum:
+        - male
+        - female
+      description: Gender
+''');
+      final enumAnalyzer = SchemaAnalyzer(RefResolver(enumSpec));
+      final schema = enumAnalyzer.analyze(
+        'GenderEnum',
+        enumSpec.components!.schemas!['GenderEnum']!,
+      );
+
+      expect(schema.isEnum, isTrue);
+      expect(schema.enumValues, ['male', 'female']);
+      expect(schema.fields, isEmpty);
+    });
+
+    test('resolves allOf with single \$ref to the referenced type', () {
+      final allOfSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    GenderEnum:
+      type: string
+      enum:
+        - male
+        - female
+    User:
+      type: object
+      required:
+        - gender
+      properties:
+        gender:
+          allOf:
+            - \$ref: '#/components/schemas/GenderEnum'
+''');
+      final allOfAnalyzer = SchemaAnalyzer(RefResolver(allOfSpec));
+      final user = allOfAnalyzer.analyze(
+        'User',
+        allOfSpec.components!.schemas!['User']!,
+      );
+
+      final genderField = user.fields.firstWhere((f) => f.name == 'gender');
+      expect(genderField.type.dartType, 'GenderEnum');
+      expect(genderField.type.ref, contains('GenderEnum'));
+      expect(genderField.type.isEnum, isTrue);
+    });
+
     test('preserves jsonKey for field name mapping', () {
       final pet = analyzer.analyze('Pet', spec.components!.schemas!['Pet']!);
       final createdAt = pet.fields.firstWhere((f) => f.name == 'createdAt');
