@@ -472,12 +472,19 @@ class ProviderGenerator {
   }
 
   /// Build params for mutation helper function.
-  /// Path params + request body.
+  /// Path params + query params + request body.
   List<String> _buildMutationParams(FlorvalEndpoint endpoint) {
     final params = <String>[];
 
     for (final p in endpoint.pathParameters) {
       params.add('required ${p.type.dartType} ${p.dartName},');
+    }
+    for (final p in endpoint.queryParameters) {
+      if (p.isRequired) {
+        params.add('required ${p.type.dartType} ${p.dartName},');
+      } else {
+        params.add('${p.type.asNullable().dartType} ${p.dartName},');
+      }
     }
     if (endpoint.requestBody != null) {
       final body = endpoint.requestBody!;
@@ -507,6 +514,9 @@ class ProviderGenerator {
     final args = <String>[];
 
     for (final p in endpoint.pathParameters) {
+      args.add('${p.dartName}: ${p.dartName}');
+    }
+    for (final p in endpoint.queryParameters) {
       args.add('${p.dartName}: ${p.dartName}');
     }
     if (endpoint.requestBody != null) {
