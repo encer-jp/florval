@@ -76,7 +76,10 @@ class EndpointAnalyzer {
 
     final parameters = _analyzeParameters(allParams);
     final requestBody = _analyzeRequestBody(operation.requestBody);
-    final responses = responseAnalyzer.analyzeResponses(operation.responses);
+    final responses = responseAnalyzer.analyzeResponses(
+      operation.responses,
+      operationId: operationId,
+    );
 
     // Check if this endpoint has a pagination config
     PaginationInfo? pagination;

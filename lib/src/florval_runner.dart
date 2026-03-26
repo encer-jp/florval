@@ -47,6 +47,13 @@ class FlorvalRunner {
         : [];
     final endpoints = endpointAnalyzer.analyzeAll(spec.paths);
 
+    // Collect inline union schemas discovered during response analysis
+    final inlineUnionSchemas = responseAnalyzer.inlineUnionSchemas;
+    if (inlineUnionSchemas.isNotEmpty) {
+      logger.debug(
+          'Found ${inlineUnionSchemas.length} inline union schemas from responses');
+    }
+
     logger.info(
         'Found ${schemas.length} schemas and ${endpoints.length} endpoints');
 
@@ -67,6 +74,14 @@ class FlorvalRunner {
       writer.writeModel(schema.name, code);
       modelNames.add(schema.name);
       logger.debug('Generated model: ${schema.name}');
+    }
+
+    // Inline union schemas (oneOf/anyOf with discriminator in response bodies)
+    for (final schema in inlineUnionSchemas) {
+      final code = modelGenerator.generate(schema);
+      writer.writeModel(schema.name, code);
+      modelNames.add(schema.name);
+      logger.debug('Generated inline union model: ${schema.name}');
     }
 
     // Pagination utility models (generated only when pagination is configured)
