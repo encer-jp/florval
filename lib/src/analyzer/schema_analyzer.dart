@@ -4,6 +4,7 @@ import 'package:recase/recase.dart';
 import '../model/api_schema.dart';
 import '../model/api_type.dart';
 import '../parser/ref_resolver.dart';
+import '../utils/dart_identifier.dart';
 
 /// Converts OpenAPI schemas to florval intermediate representations.
 class SchemaAnalyzer {
@@ -75,10 +76,20 @@ class SchemaAnalyzer {
   List<FlorvalField> _extractFields(v31.Schema schema) {
     final requiredFields = _requiredFields(schema);
     final fields = <FlorvalField>[];
+    final usedNames = <String>{};
 
     if (schema.properties != null) {
+      var index = 0;
       for (final entry in schema.properties!.entries) {
-        final fieldName = ReCase(entry.key).camelCase;
+        // Sanitize non-ASCII field names to valid Dart identifiers
+        var fieldName = sanitizeToCamelCase(entry.key) ?? 'field$index';
+
+        // Handle collisions
+        if (usedNames.contains(fieldName)) {
+          fieldName = '$fieldName$index';
+        }
+        usedNames.add(fieldName);
+
         final fieldSchema = entry.value;
         final isRequired = requiredFields.contains(entry.key);
         final type = schemaToType(fieldSchema);
@@ -90,6 +101,7 @@ class SchemaAnalyzer {
           isRequired: isRequired,
           description: fieldSchema.description,
         ));
+        index++;
       }
     }
 

@@ -2,6 +2,7 @@ import 'package:recase/recase.dart';
 
 import '../config/template_config.dart';
 import '../model/api_schema.dart';
+import '../utils/dart_identifier.dart';
 
 /// Generates freezed 3.x model classes from FlorvalSchemas.
 class ModelGenerator {
@@ -101,9 +102,10 @@ class ModelGenerator {
     // Enum definition
     buffer.writeln('enum ${schema.name} {');
 
+    final usedNames = <String>{};
     for (var i = 0; i < schema.enumValues!.length; i++) {
       final value = schema.enumValues![i];
-      final dartName = _enumValueToDartName(value);
+      final dartName = _enumValueToDartName(value, i, usedNames);
       final isLast = i == schema.enumValues!.length - 1;
 
       buffer.writeln("  @JsonValue('$value')");
@@ -116,24 +118,38 @@ class ModelGenerator {
   }
 
   /// Converts an OpenAPI enum value to a valid Dart enum member name.
-  String _enumValueToDartName(String value) {
+  String _enumValueToDartName(String value, int index, Set<String> usedNames) {
     // Handle empty strings
-    if (value.isEmpty) return 'empty';
+    if (value.isEmpty) return _uniqueName('empty', index, usedNames);
 
-    // Convert to camelCase using ReCase
-    final camel = ReCase(value).camelCase;
+    // Sanitize non-ASCII characters
+    final sanitized = sanitizeToCamelCase(value);
 
-    // Ensure it doesn't start with a digit
-    if (camel.isNotEmpty && RegExp(r'^[0-9]').hasMatch(camel)) {
-      return 'value$camel';
+    String name;
+    if (sanitized == null) {
+      // Entirely non-ASCII: use index-based fallback
+      name = 'value$index';
+    } else if (RegExp(r'^[0-9]').hasMatch(sanitized)) {
+      // Ensure it doesn't start with a digit
+      name = 'value$sanitized';
+    } else if (_dartReservedWords.contains(sanitized)) {
+      // Handle Dart reserved words
+      name = '${sanitized}_';
+    } else {
+      name = sanitized;
     }
 
-    // Handle Dart reserved words
-    if (_dartReservedWords.contains(camel)) {
-      return '${camel}_';
-    }
+    return _uniqueName(name, index, usedNames);
+  }
 
-    return camel.isEmpty ? 'unknown' : camel;
+  /// Returns a unique name by appending the index if [base] is already used.
+  String _uniqueName(String base, int index, Set<String> usedNames) {
+    var name = base;
+    if (usedNames.contains(name)) {
+      name = '$base$index';
+    }
+    usedNames.add(name);
+    return name;
   }
 
   static const _dartReservedWords = {
