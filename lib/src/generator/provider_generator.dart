@@ -4,6 +4,7 @@ import 'package:recase/recase.dart';
 import '../config/florval_config.dart';
 import '../config/template_config.dart';
 import '../model/api_endpoint.dart';
+import '../utils/dart_identifier.dart';
 
 /// Generates Riverpod 3.x providers grouped by tag.
 ///
@@ -311,14 +312,16 @@ class ProviderGenerator {
     final cursorParam = endpoint.pagination!.cursorParam;
 
     for (final p in endpoint.pathParameters) {
-      params.add('required ${p.type.dartType} ${p.dartName},');
+      final name = safeProviderParamName(p.dartName);
+      params.add('required ${p.type.dartType} $name,');
     }
     for (final p in endpoint.queryParameters) {
       if (p.name == cursorParam) continue; // Skip cursor param
+      final name = safeProviderParamName(p.dartName);
       if (p.isRequired) {
-        params.add('required ${p.type.dartType} ${p.dartName},');
+        params.add('required ${p.type.dartType} $name,');
       } else {
-        params.add('${p.type.asNullable().dartType} ${p.dartName},');
+        params.add('${p.type.asNullable().dartType} $name,');
       }
     }
 
@@ -331,11 +334,13 @@ class ProviderGenerator {
     final cursorParam = endpoint.pagination!.cursorParam;
 
     for (final p in endpoint.pathParameters) {
-      args.add('${p.dartName}: ${p.dartName}');
+      final safe = safeProviderParamName(p.dartName);
+      args.add('${p.dartName}: $safe');
     }
     for (final p in endpoint.queryParameters) {
       if (p.name == cursorParam) continue;
-      args.add('${p.dartName}: ${p.dartName}');
+      final safe = safeProviderParamName(p.dartName);
+      args.add('${p.dartName}: $safe');
     }
 
     return args.join(', ');
@@ -347,13 +352,15 @@ class ProviderGenerator {
     final args = <String>[];
 
     for (final p in endpoint.pathParameters) {
-      args.add('${p.dartName}: ${p.dartName}');
+      final safe = safeProviderParamName(p.dartName);
+      args.add('${p.dartName}: $safe');
     }
     for (final p in endpoint.queryParameters) {
       if (p.name == endpoint.pagination!.cursorParam) {
         args.add('$cursorDartName: _nextCursor');
       } else {
-        args.add('${p.dartName}: ${p.dartName}');
+        final safe = safeProviderParamName(p.dartName);
+        args.add('${p.dartName}: $safe');
       }
     }
 
@@ -426,17 +433,21 @@ class ProviderGenerator {
 
   /// Build params for GET provider's build() method.
   /// Path params → required, query params → optional or required based on spec.
+  /// Parameter names that conflict with Riverpod reserved names (e.g. `state`)
+  /// are suffixed with `Param`.
   List<String> _buildBuildParams(FlorvalEndpoint endpoint) {
     final params = <String>[];
 
     for (final p in endpoint.pathParameters) {
-      params.add('required ${p.type.dartType} ${p.dartName},');
+      final name = safeProviderParamName(p.dartName);
+      params.add('required ${p.type.dartType} $name,');
     }
     for (final p in endpoint.queryParameters) {
+      final name = safeProviderParamName(p.dartName);
       if (p.isRequired) {
-        params.add('required ${p.type.dartType} ${p.dartName},');
+        params.add('required ${p.type.dartType} $name,');
       } else {
-        params.add('${p.type.asNullable().dartType} ${p.dartName},');
+        params.add('${p.type.asNullable().dartType} $name,');
       }
     }
 
@@ -444,14 +455,17 @@ class ProviderGenerator {
   }
 
   /// Build call arguments for the client method invocation in GET providers.
+  /// Maps safe parameter names back to the original dartName for the client call.
   String _buildCallArgs(FlorvalEndpoint endpoint) {
     final args = <String>[];
 
     for (final p in endpoint.pathParameters) {
-      args.add('${p.dartName}: ${p.dartName}');
+      final safe = safeProviderParamName(p.dartName);
+      args.add('${p.dartName}: $safe');
     }
     for (final p in endpoint.queryParameters) {
-      args.add('${p.dartName}: ${p.dartName}');
+      final safe = safeProviderParamName(p.dartName);
+      args.add('${p.dartName}: $safe');
     }
 
     return args.isEmpty ? '' : args.join(', ');

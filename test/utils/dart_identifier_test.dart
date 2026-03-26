@@ -29,4 +29,22 @@ void main() {
       expect(sanitizeToCamelCase('日本語のみ'), isNull);
     });
   });
+
+  group('safeProviderParamName', () {
+    test('renames Riverpod reserved names', () {
+      expect(safeProviderParamName('state'), 'stateParam');
+      expect(safeProviderParamName('ref'), 'refParam');
+      expect(safeProviderParamName('future'), 'futureParam');
+      expect(safeProviderParamName('build'), 'buildParam');
+      expect(safeProviderParamName('update'), 'updateParam');
+      expect(safeProviderParamName('updateShouldNotify'),
+          'updateShouldNotifyParam');
+    });
+
+    test('does not rename non-reserved names', () {
+      expect(safeProviderParamName('code'), 'code');
+      expect(safeProviderParamName('userId'), 'userId');
+      expect(safeProviderParamName('status'), 'status');
+    });
+  });
 }
