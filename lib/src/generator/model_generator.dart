@@ -62,14 +62,16 @@ class ModelGenerator {
     // Class definition
     buffer.writeln('@freezed');
     buffer.writeln('abstract class ${schema.name} with _\$${schema.name} {');
-    buffer.writeln('  const factory ${schema.name}({');
-
-    // Fields
-    for (final field in schema.fields) {
-      _writeField(buffer, field);
+    // Empty fields → no named parameters (avoids freezed parse error)
+    if (schema.fields.isEmpty) {
+      buffer.writeln('  const factory ${schema.name}() = _${schema.name};');
+    } else {
+      buffer.writeln('  const factory ${schema.name}({');
+      for (final field in schema.fields) {
+        _writeField(buffer, field);
+      }
+      buffer.writeln('  }) = _${schema.name};');
     }
-
-    buffer.writeln('  }) = _${schema.name};');
     buffer.writeln();
     buffer.writeln(
         '  factory ${schema.name}.fromJson(Map<String, dynamic> json) => _\$${schema.name}FromJson(json);');
