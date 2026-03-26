@@ -269,6 +269,58 @@ void main() {
       expect(code, contains('osaka;'));
     });
 
+    test('generates enum with non-ASCII (Japanese) values', () {
+      final schema = FlorvalSchema(
+        name: 'SeverityType',
+        fields: [],
+        enumValues: ['正常', '軽度', '中等度', '重度', '極めて重度'],
+      );
+
+      final code = generator.generate(schema);
+
+      // Each non-ASCII value should get a unique index-based name
+      expect(code, contains("@JsonValue('正常')"));
+      expect(code, contains('value0,'));
+      expect(code, contains("@JsonValue('軽度')"));
+      expect(code, contains('value1,'));
+      expect(code, contains("@JsonValue('中等度')"));
+      expect(code, contains('value2,'));
+      expect(code, contains("@JsonValue('重度')"));
+      expect(code, contains('value3,'));
+      expect(code, contains("@JsonValue('極めて重度')"));
+      expect(code, contains('value4;'));
+    });
+
+    test('generates enum with mixed ASCII and non-ASCII values', () {
+      final schema = FlorvalSchema(
+        name: 'MixedEnum',
+        fields: [],
+        enumValues: ['normal', '異常', 'critical'],
+      );
+
+      final code = generator.generate(schema);
+
+      expect(code, contains('normal,'));
+      expect(code, contains('value1,'));
+      expect(code, contains('critical;'));
+    });
+
+    test('generates enum handling collision from non-ASCII stripping', () {
+      final schema = FlorvalSchema(
+        name: 'CollisionEnum',
+        fields: [],
+        enumValues: ['bmi', 'BMI値'],
+      );
+
+      final code = generator.generate(schema);
+
+      // 'bmi' is used first, 'BMI值' strips to 'bmi' which collides → 'bmi1'
+      expect(code, contains("@JsonValue('bmi')"));
+      expect(code, contains('bmi,'));
+      expect(code, contains("@JsonValue('BMI値')"));
+      expect(code, contains('bmi1;'));
+    });
+
     test('generates valid freezed 3.x syntax', () {
       final schema = FlorvalSchema(
         name: 'Category',

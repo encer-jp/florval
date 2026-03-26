@@ -718,5 +718,86 @@ void main() {
         expect(code, isNot(contains("import 'retry.dart';")));
       });
     });
+
+    test('does not produce double ?? for nullable optional query params', () {
+      final endpoint = FlorvalEndpoint(
+        path: '/items',
+        method: 'GET',
+        operationId: 'listItems',
+        parameters: [
+          FlorvalParam(
+            name: 'filter',
+            dartName: 'filter',
+            location: ParamLocation.query,
+            type: FlorvalType(
+                name: 'String', dartType: 'String?', isNullable: true),
+            isRequired: false,
+          ),
+          FlorvalParam(
+            name: 'limit',
+            dartName: 'limit',
+            location: ParamLocation.query,
+            type: FlorvalType(name: 'int', dartType: 'int'),
+            isRequired: false,
+          ),
+        ],
+        responses: {
+          200: FlorvalResponse(
+            statusCode: 200,
+            type: FlorvalType(name: 'String', dartType: 'String'),
+          ),
+        },
+        tags: ['items'],
+      );
+
+      final code = generator.generate('items', [endpoint]);
+
+      // 'String?' (already nullable) should NOT become 'String??'
+      expect(code, isNot(contains('??')));
+      // Should contain 'String? filter' (single ?)
+      expect(code, contains('String? filter'));
+      // Non-nullable optional should get single '?'
+      expect(code, contains('int? limit'));
+    });
+
+    test('renames Riverpod reserved param names with Param suffix', () {
+      final endpoint = FlorvalEndpoint(
+        path: '/auth/callback',
+        method: 'GET',
+        operationId: 'authCallback',
+        parameters: [
+          FlorvalParam(
+            name: 'code',
+            dartName: 'code',
+            location: ParamLocation.query,
+            type: FlorvalType(name: 'String', dartType: 'String'),
+            isRequired: true,
+          ),
+          FlorvalParam(
+            name: 'state',
+            dartName: 'state',
+            location: ParamLocation.query,
+            type: FlorvalType(name: 'String', dartType: 'String'),
+            isRequired: true,
+          ),
+        ],
+        responses: {
+          200: FlorvalResponse(
+            statusCode: 200,
+            type: FlorvalType(name: 'String', dartType: 'String'),
+          ),
+        },
+        tags: ['auth'],
+      );
+
+      final code = generator.generate('auth', [endpoint]);
+
+      // 'state' should be renamed to 'stateParam' in build()
+      expect(code, contains('required String stateParam'));
+      // 'code' should NOT be renamed (not a reserved name)
+      expect(code, contains('required String code'));
+      // Client call should map back: state: stateParam
+      expect(code, contains('state: stateParam'));
+    });
   });
 }
