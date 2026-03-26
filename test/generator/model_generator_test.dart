@@ -83,6 +83,17 @@ void main() {
       expect(code, isNot(contains('@JsonKey')));
     });
 
+    test('generates empty factory without named parameters for schema with no fields', () {
+      final schema = FlorvalSchema(
+        name: 'FbRoomEntity',
+        fields: [],
+      );
+
+      final code = generator.generate(schema);
+      expect(code, contains('const factory FbRoomEntity() = _FbRoomEntity;'));
+      expect(code, isNot(contains('const factory FbRoomEntity({')));
+    });
+
     test('imports referenced types', () {
       final schema = FlorvalSchema(
         name: 'Pet',
