@@ -109,9 +109,9 @@ void main() {
           contains("import 'package:riverpod/experimental/mutation.dart';"));
     });
 
-    test('generates dart:async import only for GET endpoints', () {
+    test('does not generate dart:async import (not needed in Riverpod 3.x)', () {
       final getCode = generator.generate('users', [makeGetEndpoint()]);
-      expect(getCode, contains("import 'dart:async';"));
+      expect(getCode, isNot(contains("import 'dart:async';")));
 
       final postCode = generator.generate('users', [makePostEndpoint()]);
       expect(postCode, isNot(contains("import 'dart:async';")));
