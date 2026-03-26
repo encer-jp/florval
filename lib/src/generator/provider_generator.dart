@@ -117,9 +117,14 @@ class ProviderGenerator {
     final responseImports = <String>{};
     final modelImports = <String>{};
 
+    // Mutation helpers (which reference request body types) are only generated
+    // when autoInvalidate is enabled AND the tag group has GET endpoints.
+    final generatesMutationHelpers = autoInvalidate && hasGetEndpoints;
+
     for (final endpoint in endpoints) {
       responseImports.add(ReCase(endpoint.operationId).snakeCase);
-      _collectModelImports(endpoint, modelImports);
+      _collectModelImports(endpoint, modelImports,
+          includeMutationBody: generatesMutationHelpers);
     }
 
     for (final import_ in modelImports) {
@@ -505,8 +510,13 @@ class ProviderGenerator {
     return args.isEmpty ? '' : args.join(', ');
   }
 
-  void _collectModelImports(FlorvalEndpoint endpoint, Set<String> imports) {
-    if (endpoint.requestBody != null && !endpoint.requestBody!.isMultipart) {
+  void _collectModelImports(FlorvalEndpoint endpoint, Set<String> imports,
+      {bool includeMutationBody = true}) {
+    // Only import request body types for mutation endpoints when helpers are generated.
+    // GET endpoints don't have request bodies, so the guard only affects mutations.
+    if (endpoint.requestBody != null &&
+        !endpoint.requestBody!.isMultipart &&
+        (endpoint.method == 'GET' || includeMutationBody)) {
       _addTypeImport(imports, endpoint.requestBody!.type);
     }
     if (endpoint.pagination != null) {
