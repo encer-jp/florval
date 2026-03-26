@@ -266,8 +266,19 @@ void main() {
       expect(code, isNot(contains('build() => null')));
     });
 
-    test('generates model imports for request body types', () {
+    test('does not import request body types for mutation-only providers without autoInvalidate', () {
       final code = generator.generate('users', [makePostEndpoint()]);
+
+      // Mutation-only providers generate only Mutation<T>() constants,
+      // which don't reference request body types.
+      expect(code,
+          isNot(contains("import '../models/create_user_request.dart';")));
+    });
+
+    test('imports request body types when autoInvalidate generates mutation helpers', () {
+      final autoInvalidateGenerator = ProviderGenerator(autoInvalidate: true);
+      final code = autoInvalidateGenerator.generate(
+          'users', [makeGetEndpoint(), makePostEndpoint()]);
 
       expect(code,
           contains("import '../models/create_user_request.dart';"));
