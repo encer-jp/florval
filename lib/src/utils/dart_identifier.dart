@@ -25,12 +25,22 @@ String? sanitizeToCamelCase(String raw) {
 /// These are properties and methods inherited from the base Notifier classes
 /// that would cause getter/setter type conflicts if shadowed.
 const riverpodReservedNames = {
-  'state', // AsyncValue<T> state property
+  // Notifier / AsyncNotifier instance members
+  'state', // AsyncValue<T> / T state property
   'ref', // Ref object
   'future', // Future<T> getter on AsyncNotifier
   'build', // lifecycle method
-  'update', // state update helper
+  'update', // state update helper on AsyncNotifier
   'updateShouldNotify', // notification control
+  'stateOrNull', // Notifier property (null if uninitialized)
+  'listenSelf', // self-listen method
+  'runBuild', // internal build trigger
+  // Generated provider constructor super parameters
+  'name', // provider debug name (super.name)
+  'from', // family instance reference (super.from)
+  'dependencies', // provider dependencies (super.dependencies)
+  'allTransitiveDependencies', // transitive deps
+  'debugGetCreateSourceHash', // hot-reload hash
 };
 
 /// Returns a safe parameter name for use in Riverpod provider build() methods.

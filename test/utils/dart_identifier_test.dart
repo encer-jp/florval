@@ -32,6 +32,7 @@ void main() {
 
   group('safeProviderParamName', () {
     test('renames Riverpod reserved names', () {
+      // Notifier/AsyncNotifier instance members
       expect(safeProviderParamName('state'), 'stateParam');
       expect(safeProviderParamName('ref'), 'refParam');
       expect(safeProviderParamName('future'), 'futureParam');
@@ -39,6 +40,11 @@ void main() {
       expect(safeProviderParamName('update'), 'updateParam');
       expect(safeProviderParamName('updateShouldNotify'),
           'updateShouldNotifyParam');
+      expect(safeProviderParamName('listenSelf'), 'listenSelfParam');
+      // Generated provider constructor super parameters
+      expect(safeProviderParamName('name'), 'nameParam');
+      expect(safeProviderParamName('from'), 'fromParam');
+      expect(safeProviderParamName('dependencies'), 'dependenciesParam');
     });
 
     test('does not rename non-reserved names', () {
