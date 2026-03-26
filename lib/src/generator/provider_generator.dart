@@ -318,7 +318,7 @@ class ProviderGenerator {
       if (p.isRequired) {
         params.add('required ${p.type.dartType} ${p.dartName},');
       } else {
-        params.add('${p.type.dartType}? ${p.dartName},');
+        params.add('${p.type.asNullable().dartType} ${p.dartName},');
       }
     }
 
@@ -436,7 +436,7 @@ class ProviderGenerator {
       if (p.isRequired) {
         params.add('required ${p.type.dartType} ${p.dartName},');
       } else {
-        params.add('${p.type.dartType}? ${p.dartName},');
+        params.add('${p.type.asNullable().dartType} ${p.dartName},');
       }
     }
 
@@ -473,14 +473,14 @@ class ProviderGenerator {
           if (field.isRequired) {
             params.add('required ${field.type.dartType} ${field.name},');
           } else {
-            params.add('${field.type.dartType}? ${field.name},');
+            params.add('${field.type.asNullable().dartType} ${field.name},');
           }
         }
       } else {
         if (body.isRequired) {
           params.add('required ${body.type.dartType} body,');
         } else {
-          params.add('${body.type.dartType}? body,');
+          params.add('${body.type.asNullable().dartType} body,');
         }
       }
     }
