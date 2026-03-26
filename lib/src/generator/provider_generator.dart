@@ -54,7 +54,7 @@ class ProviderGenerator {
         _writeGetProvider(buffer, tag, endpoint);
       } else {
         _writeMutationDefinition(buffer, endpoint);
-        if (autoInvalidate && getEndpoints.isNotEmpty) {
+        if (autoInvalidate) {
           _writeMutationHelper(buffer, tag, endpoint,
               getEndpoints: getEndpoints);
         }
@@ -112,9 +112,9 @@ class ProviderGenerator {
     final responseImports = <String>{};
     final modelImports = <String>{};
 
-    // Mutation helpers (which reference request body types) are only generated
-    // when autoInvalidate is enabled AND the tag group has GET endpoints.
-    final generatesMutationHelpers = autoInvalidate && hasGetEndpoints;
+    // Mutation helpers (which reference request body types) are generated
+    // when autoInvalidate is enabled.
+    final generatesMutationHelpers = autoInvalidate;
 
     for (final endpoint in endpoints) {
       responseImports.add(ReCase(endpoint.operationId).snakeCase);
@@ -383,7 +383,11 @@ class ProviderGenerator {
     final helperParams = _buildMutationParams(endpoint);
 
     buffer.writeln();
-    buffer.writeln('/// Executes ${ReCase(endpoint.operationId).camelCase} mutation and invalidates related GET providers.');
+    if (getEndpoints.isNotEmpty) {
+      buffer.writeln('/// Executes ${ReCase(endpoint.operationId).camelCase} mutation and invalidates related GET providers.');
+    } else {
+      buffer.writeln('/// Executes ${ReCase(endpoint.operationId).camelCase} mutation.');
+    }
     if (helperParams.isNotEmpty) {
       buffer.writeln('Future<$responseType> $helperName(');
       buffer.writeln('  MutationTarget ref, {');

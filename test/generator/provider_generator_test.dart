@@ -284,6 +284,31 @@ void main() {
           contains("import '../models/create_user_request.dart';"));
     });
 
+    test('mutation generates helper without invalidation when autoInvalidate is true but no GET endpoints', () {
+      final autoInvalidateGenerator = ProviderGenerator(autoInvalidate: true);
+      final code = autoInvalidateGenerator.generate(
+          'tickets', [makePostEndpoint()]);
+
+      // Helper function should exist even without GET endpoints
+      expect(code, contains('Future<CreateUserResponse> createUser('));
+      expect(code, contains('MutationTarget ref'));
+      expect(code, contains('createUserMutation.run(ref, (tsx) async {'));
+      expect(code, contains('tsx.get(ticketsApiClientProvider)'));
+      // No invalidation calls since there are no GET endpoints
+      expect(code, isNot(contains('ref.container.invalidate(')));
+      // Doc comment should not mention invalidation
+      expect(code, contains('/// Executes createUser mutation.'));
+    });
+
+    test('imports request body types when autoInvalidate is true even without GET endpoints', () {
+      final autoInvalidateGenerator = ProviderGenerator(autoInvalidate: true);
+      final code = autoInvalidateGenerator.generate(
+          'tickets', [makePostEndpoint()]);
+
+      expect(code,
+          contains("import '../models/create_user_request.dart';"));
+    });
+
     test('generates multiple endpoints in one file', () {
       final code = generator.generate(
           'users', [makeGetEndpoint(), makePostEndpoint()]);
