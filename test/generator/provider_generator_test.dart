@@ -366,6 +366,33 @@ void main() {
       expect(code, contains('client.createUser(body: body)'));
     });
 
+    test('mutation helper includes query params', () {
+      final autoInvalidateGenerator = ProviderGenerator(autoInvalidate: true);
+      final deleteEndpoint = FlorvalEndpoint(
+        path: '/v1/request',
+        method: 'DELETE',
+        operationId: 'deleteRequest',
+        parameters: [
+          FlorvalParam(
+            name: 'requestId',
+            dartName: 'requestId',
+            location: ParamLocation.query,
+            type: FlorvalType(name: 'String', dartType: 'String'),
+            isRequired: true,
+          ),
+        ],
+        responses: {
+          200: FlorvalResponse(statusCode: 200),
+        },
+        tags: ['request'],
+      );
+      final code = autoInvalidateGenerator.generate(
+          'request', [makeGetEndpoint(), deleteEndpoint]);
+
+      expect(code, contains('required String requestId,'));
+      expect(code, contains('requestId: requestId'));
+    });
+
     test('generates multipart mutation as Mutation constant', () {
       final endpoint = FlorvalEndpoint(
         path: '/pets/{petId}/photo',
