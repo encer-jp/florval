@@ -175,5 +175,70 @@ components:
       final createdAt = pet.fields.firstWhere((f) => f.name == 'createdAt');
       expect(createdAt.jsonKey, 'createdAt');
     });
+
+    test('handles non-ASCII (Japanese) field names', () {
+      final japaneseSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Record:
+      type: object
+      properties:
+        レコード番号:
+          type: string
+        名前:
+          type: string
+''');
+      final japaneseAnalyzer = SchemaAnalyzer(RefResolver(japaneseSpec));
+      final schema = japaneseAnalyzer.analyze(
+        'Record',
+        japaneseSpec.components!.schemas!['Record']!,
+      );
+
+      expect(schema.fields.length, 2);
+      // Fields should have fallback names
+      expect(schema.fields[0].name, 'field0');
+      expect(schema.fields[0].jsonKey, 'レコード番号');
+      expect(schema.fields[1].name, 'field1');
+      expect(schema.fields[1].jsonKey, '名前');
+    });
+
+    test('handles mixed ASCII and non-ASCII field names with collision', () {
+      final mixedSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    MixedRecord:
+      type: object
+      properties:
+        bmi:
+          type: number
+        BMI値:
+          type: number
+        name:
+          type: string
+''');
+      final mixedAnalyzer = SchemaAnalyzer(RefResolver(mixedSpec));
+      final schema = mixedAnalyzer.analyze(
+        'MixedRecord',
+        mixedSpec.components!.schemas!['MixedRecord']!,
+      );
+
+      expect(schema.fields.length, 3);
+      expect(schema.fields[0].name, 'bmi');
+      expect(schema.fields[0].jsonKey, 'bmi');
+      // 'BMI値' strips to 'bmi' which collides → 'bmi1'
+      expect(schema.fields[1].name, 'bmi1');
+      expect(schema.fields[1].jsonKey, 'BMI値');
+      expect(schema.fields[2].name, 'name');
+    });
   });
 }
