@@ -198,7 +198,10 @@ class ModelGenerator {
 
     // Part directives
     buffer.writeln("part '$fileName.freezed.dart';");
-    buffer.writeln("part '$fileName.g.dart';");
+    // Only emit .g.dart when using generated fromJson (no discriminator)
+    if (schema.discriminator == null) {
+      buffer.writeln("part '$fileName.g.dart';");
+    }
     buffer.writeln();
 
     // Sealed class definition
