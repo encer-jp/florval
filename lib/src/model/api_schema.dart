@@ -23,6 +23,12 @@ class FlorvalSchema {
   /// Description from the OpenAPI spec.
   final String? description;
 
+  /// Enum values for string/integer enum schemas.
+  final List<String>? enumValues;
+
+  /// Whether this schema represents a Dart enum.
+  bool get isEnum => enumValues != null && enumValues!.isNotEmpty;
+
   const FlorvalSchema({
     required this.name,
     required this.fields,
@@ -31,6 +37,7 @@ class FlorvalSchema {
     this.anyOf,
     this.allOf,
     this.description,
+    this.enumValues,
   });
 
   @override
