@@ -147,11 +147,15 @@ class ClientGenerator {
       buffer.writeln(',');
       buffer.writeln('        queryParameters: {');
       for (final p in endpoint.queryParameters) {
+        // Enum types need .name to serialize as the string value
+        final valueExpr = p.type.isEnum
+            ? '${p.dartName}${p.isRequired ? '' : '?'}.name'
+            : p.dartName;
         if (p.isRequired) {
-          buffer.writeln("          '${p.name}': ${p.dartName},");
+          buffer.writeln("          '${p.name}': $valueExpr,");
         } else {
           buffer.writeln(
-              "          if (${p.dartName} != null) '${p.name}': ${p.dartName},");
+              "          if (${p.dartName} != null) '${p.name}': $valueExpr,");
         }
       }
       buffer.write('        }');
@@ -302,6 +306,10 @@ class ClientGenerator {
     // From request body (skip multipart — no model to import)
     if (endpoint.requestBody != null && !endpoint.requestBody!.isMultipart) {
       _addTypeImport(imports, endpoint.requestBody!.type);
+    }
+    // From path and query parameters (e.g. enum types)
+    for (final p in endpoint.parameters) {
+      _addTypeImport(imports, p.type);
     }
   }
 

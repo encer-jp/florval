@@ -215,6 +215,60 @@ void main() {
       expect(code, contains("String toString() => 'ApiException: \$response';"));
     });
 
+    test('generates Dart enum for enum schema', () {
+      final schema = FlorvalSchema(
+        name: 'GenderEnum',
+        fields: [],
+        enumValues: ['male', 'female'],
+      );
+
+      final code = generator.generate(schema);
+
+      expect(code, contains("import 'package:json_annotation/json_annotation.dart';"));
+      expect(code, contains('enum GenderEnum {'));
+      expect(code, contains("@JsonValue('male')"));
+      expect(code, contains('male,'));
+      expect(code, contains("@JsonValue('female')"));
+      expect(code, contains('female;'));
+      // Should NOT contain freezed artifacts
+      expect(code, isNot(contains('@freezed')));
+      expect(code, isNot(contains('part ')));
+      expect(code, isNot(contains('abstract class')));
+    });
+
+    test('generates enum with snake_case values as camelCase Dart names', () {
+      final schema = FlorvalSchema(
+        name: 'ErrorCode',
+        fields: [],
+        enumValues: ['reg_ticket_sold_out', 'usr_not_found'],
+      );
+
+      final code = generator.generate(schema);
+
+      expect(code, contains("@JsonValue('reg_ticket_sold_out')"));
+      expect(code, contains('regTicketSoldOut,'));
+      expect(code, contains("@JsonValue('usr_not_found')"));
+      expect(code, contains('usrNotFound;'));
+    });
+
+    test('generates enum with many values (Prefecture)', () {
+      final schema = FlorvalSchema(
+        name: 'Prefecture',
+        fields: [],
+        enumValues: ['hokkaido', 'tokyo', 'osaka'],
+      );
+
+      final code = generator.generate(schema);
+
+      expect(code, contains('enum Prefecture {'));
+      expect(code, contains("@JsonValue('hokkaido')"));
+      expect(code, contains('hokkaido,'));
+      expect(code, contains("@JsonValue('tokyo')"));
+      expect(code, contains('tokyo,'));
+      expect(code, contains("@JsonValue('osaka')"));
+      expect(code, contains('osaka;'));
+    });
+
     test('generates valid freezed 3.x syntax', () {
       final schema = FlorvalSchema(
         name: 'Category',

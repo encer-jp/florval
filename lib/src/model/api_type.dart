@@ -18,6 +18,9 @@ class FlorvalType {
   /// Original $ref path (e.g. '#/components/schemas/User').
   final String? ref;
 
+  /// Whether this type is a Dart enum (generated from an OpenAPI enum schema).
+  final bool isEnum;
+
   /// Whether this is a primitive Dart type (String, int, double, bool, DateTime).
   bool get isPrimitive =>
       !isList &&
@@ -35,6 +38,7 @@ class FlorvalType {
     this.isList = false,
     this.itemType,
     this.ref,
+    this.isEnum = false,
   });
 
   /// Creates a nullable version of this type.
@@ -45,6 +49,7 @@ class FlorvalType {
         isList: isList,
         itemType: itemType,
         ref: ref,
+        isEnum: isEnum,
       );
 
   @override
