@@ -88,10 +88,11 @@ void main() {
       expect(code, contains("part 'users_providers.g.dart';"));
     });
 
-    test('does not generate part directive when only mutation endpoints exist', () {
+    test('generates part directive even when only mutation endpoints exist', () {
       final code = generator.generate('users', [makePostEndpoint()]);
 
-      expect(code, isNot(contains("part '")));
+      // Part directive is always needed for client provider (@riverpod)
+      expect(code, contains("part 'users_providers.g.dart';"));
     });
 
     test('generates riverpod_annotation import for GET endpoints', () {
