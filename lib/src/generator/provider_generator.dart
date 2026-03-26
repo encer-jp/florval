@@ -34,12 +34,9 @@ class ProviderGenerator {
     _writeImports(buffer, tag, endpoints);
     buffer.writeln();
 
-    // Part directive (for riverpod_generator on GET notifiers)
-    final hasGetEndpoints = endpoints.any((e) => e.method == 'GET');
-    if (hasGetEndpoints) {
-      buffer.writeln("part '${ReCase(tag).snakeCase}_providers.g.dart';");
-      buffer.writeln();
-    }
+    // Part directive (for riverpod_generator — always needed for client provider)
+    buffer.writeln("part '${ReCase(tag).snakeCase}_providers.g.dart';");
+    buffer.writeln();
 
     // Client provider
     _writeClientProvider(buffer, tag);
@@ -88,10 +85,9 @@ class ProviderGenerator {
       buffer.writeln(
           "import 'package:riverpod/experimental/mutation.dart';");
     }
-    if (hasGetEndpoints) {
-      buffer.writeln(
-          "import 'package:riverpod_annotation/riverpod_annotation.dart';");
-    }
+    // Always import riverpod_annotation (needed for client provider @riverpod + Ref)
+    buffer.writeln(
+        "import 'package:riverpod_annotation/riverpod_annotation.dart';");
 
     // Custom provider imports
     if (templateConfig != null) {
