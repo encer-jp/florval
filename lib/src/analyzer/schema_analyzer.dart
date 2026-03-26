@@ -1,5 +1,4 @@
 import 'package:openapi_spec_plus/v31.dart' as v31;
-import 'package:recase/recase.dart';
 
 import '../model/api_schema.dart';
 import '../model/api_type.dart';
