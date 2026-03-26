@@ -1,3 +1,25 @@
+## 0.1.1
+
+### Bug Fixes
+- Fix mutation helpers missing query parameters
+- Fix List request body calling `toJson()` which doesn't exist on `List`
+- Fix empty-property schema causing `build_runner` error
+- Fix double `??` in generated nullable optional parameters
+- Fix null-aware operator on enum query params inside null-check guard
+- Fix Schema enum property name: `$enum` → `enumValues`
+
+### Improvements
+- Expand Riverpod reserved name handling with generated super params
+- Rename Riverpod reserved param names in generated providers
+- Handle non-ASCII characters in field names and enum values
+- Generate mutation helper functions even when no GET endpoints exist in tag
+- Remove unnecessary `dart:async` import from generated providers
+- Skip unused request body imports in mutation-only providers
+- Always generate `part` directive and `riverpod_annotation` import in providers
+
+### Other
+- Remove deprecated pagination examples and related schemas from openapi.yaml
+
 ## 0.1.0
 
 - Initial release
