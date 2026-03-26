@@ -180,7 +180,11 @@ class ClientGenerator {
       } else {
         buffer.writeln(',');
         buffer.write('        data: body');
-        if (!body.type.isPrimitive) {
+        if (body.type.isList &&
+            body.type.itemType != null &&
+            !body.type.itemType!.isPrimitive) {
+          buffer.write('.map((e) => e.toJson()).toList()');
+        } else if (!body.type.isPrimitive) {
           buffer.write('.toJson()');
         }
       }

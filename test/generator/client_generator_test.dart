@@ -149,6 +149,37 @@ void main() {
       expect(code, contains('data: body.toJson()'));
     });
 
+    test('generates list body serialization with map instead of toJson', () {
+      final endpoint = FlorvalEndpoint(
+        path: '/v1/user-images/orders',
+        method: 'PUT',
+        operationId: 'updateImageOrders',
+        parameters: [],
+        requestBody: FlorvalRequestBody(
+          type: FlorvalType(
+            name: 'List<UserImageOrderDto>',
+            dartType: 'List<UserImageOrderDto>',
+            isList: true,
+            itemType: FlorvalType(
+              name: 'UserImageOrderDto',
+              dartType: 'UserImageOrderDto',
+              ref: '#/components/schemas/UserImageOrderDto',
+            ),
+          ),
+          isRequired: true,
+        ),
+        responses: {
+          200: FlorvalResponse(statusCode: 200),
+        },
+        tags: ['user-images'],
+      );
+
+      final code = generator.generate('user-images', [endpoint]);
+
+      expect(code, contains('body.map((e) => e.toJson()).toList()'));
+      expect(code, isNot(contains('body.toJson()')));
+    });
+
     test('generates imports for models and responses', () {
       final code = generator.generate('users', [makeGetEndpoint()]);
 
