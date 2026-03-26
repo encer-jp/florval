@@ -718,5 +718,46 @@ void main() {
         expect(code, isNot(contains("import 'retry.dart';")));
       });
     });
+
+    test('does not produce double ?? for nullable optional query params', () {
+      final endpoint = FlorvalEndpoint(
+        path: '/items',
+        method: 'GET',
+        operationId: 'listItems',
+        parameters: [
+          FlorvalParam(
+            name: 'filter',
+            dartName: 'filter',
+            location: ParamLocation.query,
+            type: FlorvalType(
+                name: 'String', dartType: 'String?', isNullable: true),
+            isRequired: false,
+          ),
+          FlorvalParam(
+            name: 'limit',
+            dartName: 'limit',
+            location: ParamLocation.query,
+            type: FlorvalType(name: 'int', dartType: 'int'),
+            isRequired: false,
+          ),
+        ],
+        responses: {
+          200: FlorvalResponse(
+            statusCode: 200,
+            type: FlorvalType(name: 'String', dartType: 'String'),
+          ),
+        },
+        tags: ['items'],
+      );
+
+      final code = generator.generate('items', [endpoint]);
+
+      // 'String?' (already nullable) should NOT become 'String??'
+      expect(code, isNot(contains('??')));
+      // Should contain 'String? filter' (single ?)
+      expect(code, contains('String? filter'));
+      // Non-nullable optional should get single '?'
+      expect(code, contains('int? limit'));
+    });
   });
 }
