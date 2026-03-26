@@ -20,6 +20,11 @@ class SchemaAnalyzer {
   FlorvalSchema analyze(String name, v31.Schema schema) {
     final resolved = resolver.resolveSchema(schema);
 
+    // Handle enum schemas (type: string/integer with enum values)
+    if (_isEnumSchema(resolved)) {
+      return _analyzeEnum(name, resolved);
+    }
+
     // Handle allOf — merge fields from all sub-schemas
     if (resolved.allOf != null && resolved.allOf!.isNotEmpty) {
       return _analyzeAllOf(name, resolved);
@@ -42,6 +47,27 @@ class SchemaAnalyzer {
       name: name,
       fields: fields,
       description: resolved.description,
+    );
+  }
+
+  /// Checks if a schema is an enum (has enum values and no properties).
+  bool _isEnumSchema(v31.Schema schema) {
+    final enumValues = schema.enumValues;
+    return enumValues != null && enumValues.isNotEmpty;
+  }
+
+  /// Analyzes an enum schema into a FlorvalSchema with enumValues.
+  FlorvalSchema _analyzeEnum(String name, v31.Schema schema) {
+    final values = schema.enumValues!
+        .where((v) => v != null)
+        .map((v) => v.toString())
+        .toList();
+
+    return FlorvalSchema(
+      name: name,
+      fields: [],
+      enumValues: values,
+      description: schema.description,
     );
   }
 
@@ -185,11 +211,35 @@ class SchemaAnalyzer {
     // Handle $ref
     if (schema.ref != null) {
       final name = resolver.schemaName(schema)!;
+      final resolved = resolver.resolveSchema(schema);
+      final isEnumType = _isEnumSchema(resolved);
       return FlorvalType(
         name: name,
         dartType: name,
         ref: schema.ref,
+        isEnum: isEnumType,
       );
+    }
+
+    // Handle allOf with a single $ref (common pattern for enum references)
+    if (schema.allOf != null && schema.allOf!.isNotEmpty) {
+      final refSchema = schema.allOf!.firstWhere(
+        (s) => s.ref != null,
+        orElse: () => schema.allOf!.first,
+      );
+      if (refSchema.ref != null) {
+        final name = resolver.schemaName(refSchema)!;
+        final isNullable = _isNullable(schema);
+        final resolved = resolver.resolveSchema(refSchema);
+        final isEnumType = _isEnumSchema(resolved);
+        return FlorvalType(
+          name: name,
+          dartType: isNullable ? '$name?' : name,
+          isNullable: isNullable,
+          ref: refSchema.ref,
+          isEnum: isEnumType,
+        );
+      }
     }
 
     final type = _extractType(schema);
