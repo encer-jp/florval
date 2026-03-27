@@ -232,7 +232,8 @@ class SchemaAnalyzer {
       );
     }
 
-    // Handle allOf with a single $ref (common pattern for enum references)
+    // Handle allOf with a single $ref (common pattern for nullable $ref)
+    // e.g. allOf: [$ref User, {nullable: true}]
     if (schema.allOf != null && schema.allOf!.isNotEmpty) {
       final refSchema = schema.allOf!.firstWhere(
         (s) => s.ref != null,
@@ -240,7 +241,9 @@ class SchemaAnalyzer {
       );
       if (refSchema.ref != null) {
         final name = resolver.schemaName(refSchema)!;
-        final isNullable = _isNullable(schema);
+        // Check nullable on wrapper AND on allOf sub-items
+        final isNullable = _isNullable(schema) ||
+            schema.allOf!.any((s) => _isNullable(s));
         final resolved = resolver.resolveSchema(refSchema);
         final isEnumType = _isEnumSchema(resolved);
         return FlorvalType(

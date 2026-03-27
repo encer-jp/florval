@@ -12,7 +12,7 @@ export const TaskSchema = z
     status: TaskStatusSchema,
     priority: TaskPrioritySchema,
     assignee_id: z.string().uuid().nullable(),
-    assignee: UserSchema.nullable().optional(),
+    assignee: UserSchema.nullable(),
     tags: z.array(z.string()),
     due_date: z.string().datetime().nullable(),
     created_at: z.string().datetime(),
@@ -24,11 +24,11 @@ export const CreateTaskRequestSchema = z
   .object({
     title: z.string().min(1),
     description: z.string().nullable().optional(),
-    status: TaskStatusSchema.nullable().default("todo"),
-    priority: TaskPrioritySchema.nullable().default("medium"),
+    status: TaskStatusSchema.default("todo"),
+    priority: TaskPrioritySchema.default("medium"),
     assignee_id: z.string().uuid().nullable().optional(),
     due_date: z.string().datetime().nullable().optional(),
-    tags: z.array(z.string()).nullable().default([]),
+    tags: z.array(z.string()).default([]),
   })
   .openapi("CreateTaskRequest");
 
