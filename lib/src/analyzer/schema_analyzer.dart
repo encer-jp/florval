@@ -5,10 +5,12 @@ import '../model/api_schema.dart';
 import '../model/api_type.dart';
 import '../parser/ref_resolver.dart';
 import '../utils/dart_identifier.dart';
+import '../utils/logger.dart';
 
 /// Converts OpenAPI schemas to florval intermediate representations.
 class SchemaAnalyzer {
   final RefResolver resolver;
+  final FlorvalLogger? logger;
 
   /// Inline union schemas discovered during schema analysis.
   /// These need to be generated as separate model files.
@@ -18,7 +20,7 @@ class SchemaAnalyzer {
   /// These need to be generated as separate model files.
   final List<FlorvalSchema> inlineObjectSchemas = [];
 
-  SchemaAnalyzer(this.resolver);
+  SchemaAnalyzer(this.resolver, {this.logger});
 
   /// Converts all component schemas to FlorvalSchemas.
   List<FlorvalSchema> analyzeAll(Map<String, v31.Schema> schemas) {
@@ -393,9 +395,14 @@ class SchemaAnalyzer {
   }
 
   FlorvalType _arrayType(v31.Schema schema, bool isNullable) {
-    final itemType = schema.items != null
-        ? schemaToType(schema.items!)
-        : const FlorvalType(name: 'dynamic', dartType: 'dynamic');
+    final FlorvalType itemType;
+    if (schema.items != null) {
+      itemType = schemaToType(schema.items!);
+    } else {
+      logger?.warn('Array schema missing "items" — using List<dynamic>. '
+          'This is likely an error in the OpenAPI spec.');
+      itemType = const FlorvalType(name: 'dynamic', dartType: 'dynamic');
+    }
 
     final dartType = 'List<${itemType.dartType}>';
     return FlorvalType(
