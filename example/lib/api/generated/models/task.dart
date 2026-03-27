@@ -15,7 +15,7 @@ abstract class Task with _$Task {
     required String priority,
     @JsonKey(name: 'assignee_id')
     required String? assigneeId,
-    required User assignee,
+    required User? assignee,
     required List<String> tags,
     @JsonKey(name: 'due_date')
     required DateTime? dueDate,

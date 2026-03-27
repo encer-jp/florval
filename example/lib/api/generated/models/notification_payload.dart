@@ -1,13 +1,10 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-
 import 'task_assigned_payload.dart';
 import 'comment_added_payload.dart';
 import 'project_invited_payload.dart';
 
-part 'notification_payload.freezed.dart';
+sealed class NotificationPayload {
+  const NotificationPayload();
 
-@freezed
-sealed class NotificationPayload with _$NotificationPayload {
   const factory NotificationPayload.taskAssignedPayload(TaskAssignedPayload data) = NotificationPayloadTaskAssignedPayload;
   const factory NotificationPayload.commentAddedPayload(CommentAddedPayload data) = NotificationPayloadCommentAddedPayload;
   const factory NotificationPayload.projectInvitedPayload(ProjectInvitedPayload data) = NotificationPayloadProjectInvitedPayload;
@@ -31,3 +28,19 @@ sealed class NotificationPayload with _$NotificationPayload {
     NotificationPayloadProjectInvitedPayload(:final data) => data.toJson(),
   };
 }
+
+class NotificationPayloadTaskAssignedPayload extends NotificationPayload {
+  final TaskAssignedPayload data;
+  const NotificationPayloadTaskAssignedPayload(this.data);
+}
+
+class NotificationPayloadCommentAddedPayload extends NotificationPayload {
+  final CommentAddedPayload data;
+  const NotificationPayloadCommentAddedPayload(this.data);
+}
+
+class NotificationPayloadProjectInvitedPayload extends NotificationPayload {
+  final ProjectInvitedPayload data;
+  const NotificationPayloadProjectInvitedPayload(this.data);
+}
+
