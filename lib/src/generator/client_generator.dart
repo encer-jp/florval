@@ -41,11 +41,29 @@ class ClientGenerator {
       _collectModelImports(endpoint, modelImports);
     }
 
+    // Detect response type names that collide with model class names.
+    // Map of operationId (snake) → alias prefix for the response import.
+    final collidingResponses = <String, String>{};
+    for (final endpoint in endpoints) {
+      final responseClassName =
+          '${ReCase(endpoint.operationId).pascalCase}Response';
+      final responseSnake = ReCase(responseClassName).snakeCase;
+      if (modelImports.contains(responseSnake)) {
+        collidingResponses[ReCase(endpoint.operationId).snakeCase] =
+            '_${ReCase(endpoint.operationId).camelCase}Resp';
+      }
+    }
+
     for (final import_ in modelImports) {
       buffer.writeln("import '../models/$import_.dart';");
     }
     for (final import_ in responseImports) {
-      buffer.writeln("import '../responses/${import_}_response.dart';");
+      if (collidingResponses.containsKey(import_)) {
+        buffer.writeln(
+            "import '../responses/${import_}_response.dart' as ${collidingResponses[import_]};");
+      } else {
+        buffer.writeln("import '../responses/${import_}_response.dart';");
+      }
     }
     buffer.writeln();
 
@@ -57,7 +75,7 @@ class ClientGenerator {
 
     for (final endpoint in endpoints) {
       buffer.writeln();
-      _writeMethod(buffer, endpoint);
+      _writeMethod(buffer, endpoint, collidingResponses);
     }
 
     buffer.writeln('}');
@@ -65,9 +83,14 @@ class ClientGenerator {
     return buffer.toString();
   }
 
-  void _writeMethod(StringBuffer buffer, FlorvalEndpoint endpoint) {
-    final responseType =
+  void _writeMethod(StringBuffer buffer, FlorvalEndpoint endpoint,
+      Map<String, String> collidingResponses) {
+    final baseResponseType =
         '${ReCase(endpoint.operationId).pascalCase}Response';
+    final operationSnake = ReCase(endpoint.operationId).snakeCase;
+    final alias = collidingResponses[operationSnake];
+    final responseType =
+        alias != null ? '$alias.$baseResponseType' : baseResponseType;
     final methodName = ReCase(endpoint.operationId).camelCase;
 
     // Method signature
