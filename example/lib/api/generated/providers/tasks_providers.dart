@@ -5,7 +5,7 @@ import 'retry.dart';
 import '../clients/tasks_api_client.dart';
 import '../models/create_task_request.dart';
 import '../models/update_task_request.dart';
-import '../api_responses.dart' as _r;
+import '../api_responses.dart' as r;
 
 part 'tasks_providers.g.dart';
 
@@ -17,7 +17,7 @@ TasksApiClient tasksApiClient(Ref ref) {
 @Riverpod(retry: retry)
 class ListTasks extends _$ListTasks {
   @override
-  FutureOr<_r.ListTasksResponse> build({
+  FutureOr<r.ListTasksResponse> build({
     String? status,
     String? priority,
     String? assigneeId,
@@ -29,10 +29,10 @@ class ListTasks extends _$ListTasks {
 }
 
 /// Mutation for createTask (POST /tasks)
-final createTaskMutation = Mutation<_r.CreateTaskResponse>();
+final createTaskMutation = Mutation<r.CreateTaskResponse>();
 
 /// Executes createTask mutation and invalidates related GET providers.
-Future<_r.CreateTaskResponse> createTask(
+Future<r.CreateTaskResponse> createTask(
   MutationTarget ref, {
   required CreateTaskRequest body,
 }) async {
@@ -48,7 +48,7 @@ Future<_r.CreateTaskResponse> createTask(
 @Riverpod(retry: retry)
 class GetTask extends _$GetTask {
   @override
-  FutureOr<_r.GetTaskResponse> build({
+  FutureOr<r.GetTaskResponse> build({
     required String id,
   }) async {
     final client = ref.watch(tasksApiClientProvider);
@@ -57,10 +57,10 @@ class GetTask extends _$GetTask {
 }
 
 /// Mutation for updateTask (PUT /tasks/{id})
-final updateTaskMutation = Mutation<_r.UpdateTaskResponse>();
+final updateTaskMutation = Mutation<r.UpdateTaskResponse>();
 
 /// Executes updateTask mutation and invalidates related GET providers.
-Future<_r.UpdateTaskResponse> updateTask(
+Future<r.UpdateTaskResponse> updateTask(
   MutationTarget ref, {
   required String id,
   required UpdateTaskRequest body,
@@ -75,10 +75,10 @@ Future<_r.UpdateTaskResponse> updateTask(
 }
 
 /// Mutation for deleteTask (DELETE /tasks/{id})
-final deleteTaskMutation = Mutation<_r.DeleteTaskResponse>();
+final deleteTaskMutation = Mutation<r.DeleteTaskResponse>();
 
 /// Executes deleteTask mutation and invalidates related GET providers.
-Future<_r.DeleteTaskResponse> deleteTask(
+Future<r.DeleteTaskResponse> deleteTask(
   MutationTarget ref, {
   required String id,
 }) async {

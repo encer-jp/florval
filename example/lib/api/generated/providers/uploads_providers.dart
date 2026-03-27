@@ -3,7 +3,7 @@ import 'package:riverpod/experimental/mutation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../clients/uploads_api_client.dart';
-import '../api_responses.dart' as _r;
+import '../api_responses.dart' as r;
 
 part 'uploads_providers.g.dart';
 
@@ -13,10 +13,10 @@ UploadsApiClient uploadsApiClient(Ref ref) {
 }
 
 /// Mutation for uploadFile (POST /uploads)
-final uploadFileMutation = Mutation<_r.UploadFileResponse>();
+final uploadFileMutation = Mutation<r.UploadFileResponse>();
 
 /// Executes uploadFile mutation.
-Future<_r.UploadFileResponse> uploadFile(
+Future<r.UploadFileResponse> uploadFile(
   MutationTarget ref, {
   required MultipartFile file,
   String? description,

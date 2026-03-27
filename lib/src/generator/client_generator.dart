@@ -40,8 +40,8 @@ class ClientGenerator {
       buffer.writeln("import '../models/$import_.dart';");
     }
 
-    // Import responses via barrel with _r prefix to avoid collision with models
-    buffer.writeln("import '../api_responses.dart' as _r;");
+    // Import responses via barrel with r prefix to avoid collision with models
+    buffer.writeln("import '../api_responses.dart' as r;");
     buffer.writeln();
 
     // Class
@@ -62,7 +62,7 @@ class ClientGenerator {
 
   void _writeMethod(StringBuffer buffer, FlorvalEndpoint endpoint) {
     final responseType =
-        '_r.${ReCase(endpoint.operationId).pascalCase}Response';
+        'r.${ReCase(endpoint.operationId).pascalCase}Response';
     final methodName = ReCase(endpoint.operationId).camelCase;
 
     // Method signature

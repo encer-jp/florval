@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'api/generated/api.dart';
-import 'api/generated/api_responses.dart' as _r;
+import 'api/generated/api_responses.dart' as r;
 
 void main() {
   final dio = Dio(
@@ -84,18 +84,18 @@ class _DemoHomePageState extends ConsumerState<DemoHomePage> {
         body: LoginRequest(email: 'demo@example.com', password: 'password'),
       );
       switch (loginResp) {
-        case _r.LoginResponseSuccess(:final data):
+        case r.LoginResponseSuccess(:final data):
           final token = data.token;
           _log('SUCCESS: Logged in as ${data.user.name}');
           _log('  Token: ${token.substring(0, 20)}...');
           // Set auth header on the shared Dio instance
           widget.dio.options.headers['Authorization'] = 'Bearer $token';
-        case _r.LoginResponseUnauthorized(:final data):
+        case r.LoginResponseUnauthorized(:final data):
           _log('UNAUTHORIZED: ${data.message}');
           _log('Cannot continue without token');
           setState(() => _isRunning = false);
           return;
-        case _r.LoginResponseUnknown(:final statusCode, :final body):
+        case r.LoginResponseUnknown(:final statusCode, :final body):
           _log('UNKNOWN: status=$statusCode body=$body');
           setState(() => _isRunning = false);
           return;
@@ -112,17 +112,17 @@ class _DemoHomePageState extends ConsumerState<DemoHomePage> {
     try {
       final tasksResp = await tasksClient.listTasks();
       switch (tasksResp) {
-        case _r.ListTasksResponseSuccess(:final data):
+        case r.ListTasksResponseSuccess(:final data):
           _log('SUCCESS: Found ${data.length} tasks');
           if (data.isNotEmpty) {
             final first = data.first;
             _log('  First: "${first.title}" [${first.status}/${first.priority}]');
           }
-        case _r.ListTasksResponseUnauthorized(:final data):
+        case r.ListTasksResponseUnauthorized(:final data):
           _log('UNAUTHORIZED: ${data.message}');
-        case _r.ListTasksResponseServerError(:final data):
+        case r.ListTasksResponseServerError(:final data):
           _log('SERVER ERROR: ${data.message}');
-        case _r.ListTasksResponseUnknown(:final statusCode, :final body):
+        case r.ListTasksResponseUnknown(:final statusCode, :final body):
           _log('UNKNOWN: status=$statusCode body=$body');
       }
     } catch (e) {
@@ -142,14 +142,14 @@ class _DemoHomePageState extends ConsumerState<DemoHomePage> {
         ),
       );
       switch (createResp) {
-        case _r.CreateTaskResponseCreated(:final data):
+        case r.CreateTaskResponseCreated(:final data):
           createdTaskId = data.id;
           _log('SUCCESS: Created task "${data.title}" (id: ${data.id})');
-        case _r.CreateTaskResponseUnauthorized(:final data):
+        case r.CreateTaskResponseUnauthorized(:final data):
           _log('UNAUTHORIZED: ${data.message}');
-        case _r.CreateTaskResponseUnprocessableEntity(:final data):
+        case r.CreateTaskResponseUnprocessableEntity(:final data):
           _log('VALIDATION ERROR: ${data.message}');
-        case _r.CreateTaskResponseUnknown(:final statusCode, :final body):
+        case r.CreateTaskResponseUnknown(:final statusCode, :final body):
           _log('UNKNOWN: status=$statusCode body=$body');
       }
     } catch (e) {
@@ -164,13 +164,13 @@ class _DemoHomePageState extends ConsumerState<DemoHomePage> {
         id: '00000000-0000-0000-0000-000000000000',
       );
       switch (notFoundResp) {
-        case _r.GetTaskResponseSuccess(:final data):
+        case r.GetTaskResponseSuccess(:final data):
           _log('SUCCESS (unexpected): ${data.title}');
-        case _r.GetTaskResponseUnauthorized():
+        case r.GetTaskResponseUnauthorized():
           _log('UNAUTHORIZED');
-        case _r.GetTaskResponseNotFound(:final data):
+        case r.GetTaskResponseNotFound(:final data):
           _log('NOT FOUND (expected): ${data.message}');
-        case _r.GetTaskResponseUnknown(:final statusCode, :final body):
+        case r.GetTaskResponseUnknown(:final statusCode, :final body):
           _log('UNKNOWN: status=$statusCode body=$body');
       }
     } catch (e) {
@@ -183,9 +183,9 @@ class _DemoHomePageState extends ConsumerState<DemoHomePage> {
     try {
       final errorResp = await tasksClient.listTasks(triggerError: 'true');
       switch (errorResp) {
-        case _r.ListTasksResponseServerError(:final data):
+        case r.ListTasksResponseServerError(:final data):
           _log('SERVER ERROR (expected): ${data.message} [${data.code}]');
-        case _r.ListTasksResponseSuccess(:final data):
+        case r.ListTasksResponseSuccess(:final data):
           _log('SUCCESS (unexpected): ${data.length} tasks');
         default:
           _log('OTHER: $errorResp');
@@ -200,14 +200,14 @@ class _DemoHomePageState extends ConsumerState<DemoHomePage> {
     try {
       final usersResp = await usersClient.listUsers(page: 1, limit: 5);
       switch (usersResp) {
-        case _r.ListUsersResponseSuccess(:final data):
+        case r.ListUsersResponseSuccess(:final data):
           _log('SUCCESS: ${data.data.length} users (total: ${data.total}, pages: ${data.totalPages})');
           for (final user in data.data) {
             _log('  - ${user.name} (${user.role})');
           }
-        case _r.ListUsersResponseUnauthorized(:final data):
+        case r.ListUsersResponseUnauthorized(:final data):
           _log('UNAUTHORIZED: ${data.message}');
-        case _r.ListUsersResponseUnknown(:final statusCode, :final body):
+        case r.ListUsersResponseUnknown(:final statusCode, :final body):
           _log('UNKNOWN: status=$statusCode body=$body');
       }
     } catch (e) {
@@ -220,14 +220,14 @@ class _DemoHomePageState extends ConsumerState<DemoHomePage> {
     try {
       final projectsResp = await projectsClient.listProjects();
       switch (projectsResp) {
-        case _r.ListProjectsResponseSuccess(:final data):
+        case r.ListProjectsResponseSuccess(:final data):
           _log('SUCCESS: ${data.length} projects');
           for (final project in data) {
             _log('  - ${project.name} (owner: ${project.owner.name}, members: ${project.members.length})');
           }
-        case _r.ListProjectsResponseUnauthorized(:final data):
+        case r.ListProjectsResponseUnauthorized(:final data):
           _log('UNAUTHORIZED: ${data.message}');
-        case _r.ListProjectsResponseUnknown(:final statusCode, :final body):
+        case r.ListProjectsResponseUnknown(:final statusCode, :final body):
           _log('UNKNOWN: status=$statusCode body=$body');
       }
     } catch (e) {
@@ -240,14 +240,14 @@ class _DemoHomePageState extends ConsumerState<DemoHomePage> {
     try {
       final notifResp = await notificationsClient.listNotifications();
       switch (notifResp) {
-        case _r.ListNotificationsResponseSuccess(:final data):
+        case r.ListNotificationsResponseSuccess(:final data):
           _log('SUCCESS: ${data.length} notifications');
           for (final n in data.take(3)) {
             _log('  - [${n.type}] read=${n.isRead}');
           }
-        case _r.ListNotificationsResponseUnauthorized(:final data):
+        case r.ListNotificationsResponseUnauthorized(:final data):
           _log('UNAUTHORIZED: ${data.message}');
-        case _r.ListNotificationsResponseUnknown(:final statusCode, :final body):
+        case r.ListNotificationsResponseUnknown(:final statusCode, :final body):
           _log('UNKNOWN: status=$statusCode body=$body');
       }
     } catch (e) {
@@ -261,13 +261,13 @@ class _DemoHomePageState extends ConsumerState<DemoHomePage> {
       try {
         final deleteResp = await tasksClient.deleteTask(id: createdTaskId);
         switch (deleteResp) {
-          case _r.DeleteTaskResponseNoContent():
+          case r.DeleteTaskResponseNoContent():
             _log('SUCCESS: Deleted task $createdTaskId');
-          case _r.DeleteTaskResponseUnauthorized(:final data):
+          case r.DeleteTaskResponseUnauthorized(:final data):
             _log('UNAUTHORIZED: ${data.message}');
-          case _r.DeleteTaskResponseNotFound(:final data):
+          case r.DeleteTaskResponseNotFound(:final data):
             _log('NOT FOUND: ${data.message}');
-          case _r.DeleteTaskResponseUnknown(:final statusCode, :final body):
+          case r.DeleteTaskResponseUnknown(:final statusCode, :final body):
             _log('UNKNOWN: status=$statusCode body=$body');
         }
       } catch (e) {

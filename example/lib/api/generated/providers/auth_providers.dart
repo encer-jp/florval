@@ -3,7 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../clients/auth_api_client.dart';
 import '../models/login_request.dart';
-import '../api_responses.dart' as _r;
+import '../api_responses.dart' as r;
 
 part 'auth_providers.g.dart';
 
@@ -13,10 +13,10 @@ AuthApiClient authApiClient(Ref ref) {
 }
 
 /// Mutation for login (POST /auth/login)
-final loginMutation = Mutation<_r.LoginResponse>();
+final loginMutation = Mutation<r.LoginResponse>();
 
 /// Executes login mutation.
-Future<_r.LoginResponse> login(
+Future<r.LoginResponse> login(
   MutationTarget ref, {
   required LoginRequest body,
 }) async {
