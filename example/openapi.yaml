@@ -124,7 +124,6 @@ components:
         - status
         - priority
         - assignee_id
-        - assignee
         - tags
         - due_date
         - created_at
@@ -177,10 +176,12 @@ components:
           nullable: true
         status:
           type: string
+          nullable: true
           enum: *a1
           default: todo
         priority:
           type: string
+          nullable: true
           enum: *a2
           default: medium
         assignee_id:
@@ -193,6 +194,7 @@ components:
           format: date-time
         tags:
           type: array
+          nullable: true
           items:
             type: string
           default: []
