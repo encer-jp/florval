@@ -114,7 +114,42 @@ abstract class User with _$User {
 ```
 ※ Freezed 3.xでは単純なデータクラスは`abstract class`を使用。`sealed`はUnion型のみ。
 
-### 2. ステータスコード別Union型 - plain Dart sealed class
+### 2. discriminator付きUnion型 - Freezed 3.x sealed class (unionKey)
+```dart
+@Freezed(unionKey: 'type')
+sealed class NotificationPayload with _$NotificationPayload {
+  @FreezedUnionValue('task_assigned')
+  const factory NotificationPayload.taskAssigned({
+    @JsonKey(name: 'task_id') required String taskId,
+    @JsonKey(name: 'task_title') required String taskTitle,
+    @JsonKey(name: 'assigned_by') required String assignedBy,
+  }) = NotificationPayloadTaskAssigned;
+
+  @FreezedUnionValue('comment_added')
+  const factory NotificationPayload.commentAdded({
+    @JsonKey(name: 'comment_text') required String commentText,
+  }) = NotificationPayloadCommentAdded;
+
+  factory NotificationPayload.fromJson(Map<String, dynamic> json) =>
+      _$NotificationPayloadFromJson(json);
+}
+```
+※ discriminator付きoneOf/anyOfはfreezedの`unionKey`+`@FreezedUnionValue`で生成。
+※ variant のフィールドはfactory constructorにインライン展開（`data`ラッパー不要）。
+※ discriminatorプロパティ自体はフィールドから除外（freezedが自動処理）。
+※ fromJson/toJsonはfreezed+json_serializableが自動生成。
+※ 利用側ではDart 3のswitch式でパターンマッチング：
+```dart
+final payload = NotificationPayload.fromJson(json);
+switch (payload) {
+  case NotificationPayloadTaskAssigned(:final taskId, :final taskTitle):
+    // task_assigned処理
+  case NotificationPayloadCommentAdded(:final commentText):
+    // comment_added処理
+}
+```
+
+### 3. ステータスコード別Union型 - plain Dart sealed class
 ```dart
 sealed class GetUserResponse {
   const GetUserResponse();

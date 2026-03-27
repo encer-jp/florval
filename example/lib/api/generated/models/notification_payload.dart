@@ -1,46 +1,41 @@
-import 'task_assigned_payload.dart';
-import 'comment_added_payload.dart';
-import 'project_invited_payload.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-sealed class NotificationPayload {
-  const NotificationPayload();
+part 'notification_payload.freezed.dart';
+part 'notification_payload.g.dart';
 
-  const factory NotificationPayload.taskAssignedPayload(TaskAssignedPayload data) = NotificationPayloadTaskAssignedPayload;
-  const factory NotificationPayload.commentAddedPayload(CommentAddedPayload data) = NotificationPayloadCommentAddedPayload;
-  const factory NotificationPayload.projectInvitedPayload(ProjectInvitedPayload data) = NotificationPayloadProjectInvitedPayload;
+@Freezed(unionKey: 'type')
+sealed class NotificationPayload with _$NotificationPayload {
+  @FreezedUnionValue('task_assigned')
+  const factory NotificationPayload.taskAssigned({
+    @JsonKey(name: 'task_id')
+    required String taskId,
+    @JsonKey(name: 'task_title')
+    required String taskTitle,
+    @JsonKey(name: 'assigned_by')
+    required String assignedBy,
+  }) = NotificationPayloadTaskAssigned;
 
-  factory NotificationPayload.fromJson(Map<String, dynamic> json) {
-    switch (json['type']) {
-      case 'task_assigned':
-        return NotificationPayload.taskAssignedPayload(TaskAssignedPayload.fromJson(json));
-      case 'comment_added':
-        return NotificationPayload.commentAddedPayload(CommentAddedPayload.fromJson(json));
-      case 'project_invited':
-        return NotificationPayload.projectInvitedPayload(ProjectInvitedPayload.fromJson(json));
-      default:
-        throw UnimplementedError('Unknown type: ${json["type"]}');
-    }
-  }
+  @FreezedUnionValue('comment_added')
+  const factory NotificationPayload.commentAdded({
+    @JsonKey(name: 'task_id')
+    required String taskId,
+    @JsonKey(name: 'task_title')
+    required String taskTitle,
+    @JsonKey(name: 'comment_text')
+    required String commentText,
+    @JsonKey(name: 'commented_by')
+    required String commentedBy,
+  }) = NotificationPayloadCommentAdded;
 
-  Map<String, dynamic> toJson() => switch (this) {
-    NotificationPayloadTaskAssignedPayload(:final data) => data.toJson(),
-    NotificationPayloadCommentAddedPayload(:final data) => data.toJson(),
-    NotificationPayloadProjectInvitedPayload(:final data) => data.toJson(),
-  };
+  @FreezedUnionValue('project_invited')
+  const factory NotificationPayload.projectInvited({
+    @JsonKey(name: 'project_id')
+    required String projectId,
+    @JsonKey(name: 'project_name')
+    required String projectName,
+    @JsonKey(name: 'invited_by')
+    required String invitedBy,
+  }) = NotificationPayloadProjectInvited;
+
+  factory NotificationPayload.fromJson(Map<String, dynamic> json) => _$NotificationPayloadFromJson(json);
 }
-
-class NotificationPayloadTaskAssignedPayload extends NotificationPayload {
-  final TaskAssignedPayload data;
-  const NotificationPayloadTaskAssignedPayload(this.data);
-}
-
-class NotificationPayloadCommentAddedPayload extends NotificationPayload {
-  final CommentAddedPayload data;
-  const NotificationPayloadCommentAddedPayload(this.data);
-}
-
-class NotificationPayloadProjectInvitedPayload extends NotificationPayload {
-  final ProjectInvitedPayload data;
-  const NotificationPayloadProjectInvitedPayload(this.data);
-}
-
