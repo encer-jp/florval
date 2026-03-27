@@ -184,13 +184,39 @@ void main() {
       expect(code, contains('const factory Shape.square(Square data) = ShapeSquare;'));
     });
 
-    test('generates discriminator-based fromJson', () {
+    test('generates freezed sealed class for discriminator union', () {
       final schema = FlorvalSchema(
         name: 'Animal',
         fields: [],
         oneOf: [
-          FlorvalSchema(name: 'Dog', fields: []),
-          FlorvalSchema(name: 'Cat', fields: []),
+          FlorvalSchema(name: 'Dog', fields: [
+            FlorvalField(
+              name: 'type',
+              jsonKey: 'type',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: true,
+            ),
+            FlorvalField(
+              name: 'breed',
+              jsonKey: 'breed',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: true,
+            ),
+          ]),
+          FlorvalSchema(name: 'Cat', fields: [
+            FlorvalField(
+              name: 'type',
+              jsonKey: 'type',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: true,
+            ),
+            FlorvalField(
+              name: 'indoor',
+              jsonKey: 'indoor',
+              type: FlorvalType(name: 'bool', dartType: 'bool'),
+              isRequired: true,
+            ),
+          ]),
         ],
         discriminator: FlorvalDiscriminator(
           propertyName: 'type',
@@ -200,12 +226,32 @@ void main() {
 
       final code = generator.generate(schema);
 
-      expect(code, contains("switch (json['type'])"));
-      expect(code, contains("case 'dog':"));
-      expect(code, contains('Animal.dog(Dog.fromJson(json))'));
-      expect(code, contains("case 'cat':"));
-      expect(code, contains('Animal.cat(Cat.fromJson(json))'));
-      expect(code, contains("throw UnimplementedError('Unknown type:"));
+      // freezed annotations
+      expect(code, contains("@Freezed(unionKey: 'type')"));
+      expect(code, contains('sealed class Animal with _\$Animal'));
+      expect(code, contains("part 'animal.freezed.dart';"));
+      expect(code, contains("part 'animal.g.dart';"));
+
+      // Variant factories with @FreezedUnionValue
+      expect(code, contains("@FreezedUnionValue('dog')"));
+      expect(code, contains("@FreezedUnionValue('cat')"));
+      expect(code, contains('const factory Animal.dog('));
+      expect(code, contains('const factory Animal.cat('));
+      expect(code, contains(') = AnimalDog;'));
+      expect(code, contains(') = AnimalCat;'));
+
+      // Variant fields are inlined (discriminator field excluded)
+      expect(code, contains('required String breed,'));
+      expect(code, contains('required bool indoor,'));
+      // Discriminator property itself should NOT appear as a field
+      expect(code, isNot(contains('required String type,')));
+
+      // Generated fromJson (delegated to freezed)
+      expect(code, contains('_\$AnimalFromJson(json)'));
+
+      // No manual toJson/subclasses (freezed generates them)
+      expect(code, isNot(contains('class AnimalDog extends Animal')));
+      expect(code, isNot(contains('Map<String, dynamic> toJson()')));
     });
 
     test('generates PaginatedData class', () {
@@ -365,6 +411,41 @@ void main() {
           lessThan(code.indexOf('const factory')));
       expect(
           code.indexOf('const factory'), lessThan(code.indexOf('fromJson')));
+    });
+
+    test('variantSchemaNames collects variant names from discriminator unions', () {
+      final schemas = [
+        FlorvalSchema(
+          name: 'Payload',
+          fields: [],
+          oneOf: [
+            FlorvalSchema(name: 'TypeA', fields: []),
+            FlorvalSchema(name: 'TypeB', fields: []),
+          ],
+          discriminator: FlorvalDiscriminator(
+            propertyName: 'kind',
+            mapping: {'a': 'TypeA', 'b': 'TypeB'},
+          ),
+        ),
+        FlorvalSchema(name: 'User', fields: []),
+        FlorvalSchema(
+          name: 'Shape',
+          fields: [],
+          oneOf: [
+            FlorvalSchema(name: 'Circle', fields: []),
+          ],
+          // No discriminator → not a freezed union
+        ),
+      ];
+
+      final names = ModelGenerator.variantSchemaNames(schemas);
+
+      expect(names, contains('TypeA'));
+      expect(names, contains('TypeB'));
+      // Non-discriminator union variants should NOT be included
+      expect(names, isNot(contains('Circle')));
+      // Regular schemas should NOT be included
+      expect(names, isNot(contains('User')));
     });
   });
 }
