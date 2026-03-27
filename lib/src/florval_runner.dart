@@ -63,6 +63,17 @@ class FlorvalRunner {
           'Found ${inlineUnionSchemas.length} inline union schemas');
     }
 
+    // Collect inline object schemas discovered during analysis
+    final allInlineObjects = <String, FlorvalSchema>{};
+    for (final s in schemaAnalyzer.inlineObjectSchemas) {
+      allInlineObjects[s.name] = s;
+    }
+    final inlineObjectSchemas = allInlineObjects.values.toList();
+    if (inlineObjectSchemas.isNotEmpty) {
+      logger.debug(
+          'Found ${inlineObjectSchemas.length} inline object schemas');
+    }
+
     logger.info(
         'Found ${schemas.length} schemas and ${endpoints.length} endpoints');
 
@@ -100,6 +111,14 @@ class FlorvalRunner {
       writer.writeModel(schema.name, code);
       modelNames.add(schema.name);
       logger.debug('Generated inline union model: ${schema.name}');
+    }
+
+    // Inline object schemas (properties-bearing objects nested inside other schemas)
+    for (final schema in inlineObjectSchemas) {
+      final code = modelGenerator.generate(schema);
+      writer.writeModel(schema.name, code);
+      modelNames.add(schema.name);
+      logger.debug('Generated inline object model: ${schema.name}');
     }
 
     // Pagination utility models (generated only when pagination is configured)

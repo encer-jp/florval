@@ -587,6 +587,110 @@ components:
       expect(analyzer.inlineUnionSchemas.first.name, 'PetAnimal');
     });
 
+    test('inline object with properties generates typed class', () {
+      final inlineSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Task:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+        metadata:
+          type: object
+          properties:
+            key:
+              type: string
+            value:
+              type: string
+''');
+      final inlineAnalyzer = SchemaAnalyzer(RefResolver(inlineSpec));
+      final task = inlineAnalyzer.analyze(
+        'Task',
+        inlineSpec.components!.schemas!['Task']!,
+      );
+
+      final metadata = task.fields.firstWhere((f) => f.name == 'metadata');
+      expect(metadata.type.dartType, 'TaskMetadata?');
+      expect(metadata.type.ref, isNotNull);
+
+      // Should have registered one inline object schema
+      expect(inlineAnalyzer.inlineObjectSchemas, hasLength(1));
+      final inlineSchema = inlineAnalyzer.inlineObjectSchemas.first;
+      expect(inlineSchema.name, 'TaskMetadata');
+      expect(inlineSchema.fields, hasLength(2));
+      expect(inlineSchema.fields.map((f) => f.name).toSet(), {'key', 'value'});
+    });
+
+    test('object without properties stays as Map<String, dynamic>', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        extra:
+          type: object
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final task = analyzer.analyze(
+        'Task',
+        spec.components!.schemas!['Task']!,
+      );
+
+      final extra = task.fields.firstWhere((f) => f.name == 'extra');
+      expect(extra.type.dartType, 'Map<String, dynamic>?');
+      expect(analyzer.inlineObjectSchemas, isEmpty);
+    });
+
+    test('nested inline objects are recursively named', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        config:
+          type: object
+          properties:
+            display:
+              type: object
+              properties:
+                color:
+                  type: string
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final task = analyzer.analyze(
+        'Task',
+        spec.components!.schemas!['Task']!,
+      );
+
+      final config = task.fields.firstWhere((f) => f.name == 'config');
+      expect(config.type.dartType, 'TaskConfig?');
+
+      // Should have 2 inline object schemas: TaskConfig and TaskConfigDisplay
+      expect(analyzer.inlineObjectSchemas, hasLength(2));
+      final names = analyzer.inlineObjectSchemas.map((s) => s.name).toSet();
+      expect(names, {'TaskConfig', 'TaskConfigDisplay'});
+    });
+
     test('multiple inline union fields in same schema have unique names', () {
       final spec = SpecReader().parse('''
 openapi: "3.1.0"
