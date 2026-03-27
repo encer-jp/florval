@@ -21,10 +21,10 @@ class ListTasks extends _$ListTasks {
     String? status,
     String? priority,
     String? assigneeId,
-    String? triggerError,
+    int? simulateStatus,
   }) async {
     final client = ref.watch(tasksApiClientProvider);
-    return client.listTasks(status: status, priority: priority, assigneeId: assigneeId, triggerError: triggerError);
+    return client.listTasks(status: status, priority: priority, assigneeId: assigneeId, simulateStatus: simulateStatus);
   }
 }
 

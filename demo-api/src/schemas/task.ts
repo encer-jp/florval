@@ -12,7 +12,7 @@ export const TaskSchema = z
     status: TaskStatusSchema,
     priority: TaskPrioritySchema,
     assignee_id: z.string().uuid().nullable(),
-    assignee: UserSchema.nullable(),
+    assignee: z.union([UserSchema, z.null()]),
     tags: z.array(z.string()),
     due_date: z.string().datetime().nullable(),
     created_at: z.string().datetime(),

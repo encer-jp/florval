@@ -1,17 +1,13 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { UploadResultSchema } from "../schemas/upload.js";
-import { UnauthorizedErrorSchema } from "../schemas/error.js";
-import { authMiddleware } from "../middleware/auth.js";
 
 const app = new OpenAPIHono();
-app.use("/uploads", authMiddleware);
 
 const uploadRoute = createRoute({
   method: "post",
   path: "/uploads",
   tags: ["uploads"],
   operationId: "uploadFile",
-  security: [{ Bearer: [] }],
   request: {
     body: {
       content: {
@@ -37,10 +33,6 @@ const uploadRoute = createRoute({
         },
       },
       description: "No file provided",
-    },
-    401: {
-      content: { "application/json": { schema: UnauthorizedErrorSchema } },
-      description: "Unauthorized",
     },
   },
 });

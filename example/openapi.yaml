@@ -3,14 +3,7 @@ info:
   title: florval Demo API
   version: 1.0.0
   description: Demo API server for florval - showcases all florval code generation features
-security:
-  - Bearer: []
 components:
-  securitySchemes:
-    Bearer:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
   schemas:
     User:
       type: object
@@ -24,8 +17,9 @@ components:
           type: string
           format: email
         avatar_url:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           format: uri
         role:
           type: string
@@ -43,34 +37,6 @@ components:
         - avatar_url
         - role
         - created_at
-    LoginResponse:
-      type: object
-      properties:
-        token:
-          type: string
-        user:
-          $ref: "#/components/schemas/User"
-      required:
-        - token
-        - user
-    UnauthorizedError:
-      type: object
-      properties:
-        message:
-          type: string
-      required:
-        - message
-    LoginRequest:
-      type: object
-      properties:
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-      required:
-        - email
-        - password
     Task:
       type: object
       properties:
@@ -80,8 +46,9 @@ components:
         title:
           type: string
         description:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         status:
           type: string
           enum: &a1
@@ -96,20 +63,23 @@ components:
             - high
             - urgent
         assignee_id:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           format: uuid
         assignee:
-          allOf:
+          anyOf:
             - $ref: "#/components/schemas/User"
-            - nullable: true
+            - type: "null"
+            - type: "null"
         tags:
           type: array
           items:
             type: string
         due_date:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           format: date-time
         created_at:
           type: string
@@ -173,27 +143,33 @@ components:
           type: string
           minLength: 1
         description:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         status:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           enum: *a1
         priority:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           enum: *a2
         assignee_id:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           format: uuid
         due_date:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           format: date-time
         tags:
-          type: array
-          nullable: true
+          type:
+            - array
+            - "null"
           items:
             type: string
       required:
@@ -205,8 +181,9 @@ components:
           type: string
           minLength: 1
         description:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         status:
           type: string
           enum: *a1
@@ -214,12 +191,14 @@ components:
           type: string
           enum: *a2
         assignee_id:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           format: uuid
         due_date:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           format: date-time
         tags:
           type: array
@@ -230,27 +209,23 @@ components:
         - title
         - status
         - priority
-    PaginatedUsers:
+    CursorPaginatedUsers:
       type: object
       properties:
-        data:
+        items:
           type: array
           items:
             $ref: "#/components/schemas/User"
-        page:
-          type: integer
-        limit:
-          type: integer
-        total:
-          type: integer
-        total_pages:
-          type: integer
+        nextCursor:
+          type:
+            - string
+            - "null"
+        hasMore:
+          type: boolean
       required:
-        - data
-        - page
-        - limit
-        - total
-        - total_pages
+        - items
+        - nextCursor
+        - hasMore
     Project:
       type: object
       properties:
@@ -260,8 +235,9 @@ components:
         name:
           type: string
         description:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         owner:
           $ref: "#/components/schemas/User"
         members:
@@ -292,8 +268,9 @@ components:
           type: string
           minLength: 1
         description:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         member_ids:
           type: array
           items:
@@ -432,37 +409,11 @@ components:
         - message
   parameters: {}
 paths:
-  /auth/login:
-    post:
-      tags:
-        - auth
-      operationId: login
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/LoginRequest"
-      responses:
-        "200":
-          description: Login successful
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/LoginResponse"
-        "401":
-          description: Invalid credentials
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UnauthorizedError"
   /tasks:
     get:
       tags:
         - tasks
       operationId: listTasks
-      security:
-        - Bearer: []
       parameters:
         - schema:
             type: string
@@ -483,9 +434,11 @@ paths:
           name: assignee_id
           in: query
         - schema:
-            type: string
+            type:
+              - integer
+              - "null"
           required: false
-          name: trigger_error
+          name: simulate_status
           in: query
       responses:
         "200":
@@ -496,12 +449,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Task"
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UnauthorizedError"
         "500":
           description: Server error
           content:
@@ -512,8 +459,6 @@ paths:
       tags:
         - tasks
       operationId: createTask
-      security:
-        - Bearer: []
       requestBody:
         required: true
         content:
@@ -527,12 +472,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Task"
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UnauthorizedError"
         "422":
           description: Validation error
           content:
@@ -544,8 +483,6 @@ paths:
       tags:
         - tasks
       operationId: getTask
-      security:
-        - Bearer: []
       parameters:
         - schema:
             type: string
@@ -560,12 +497,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Task"
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UnauthorizedError"
         "404":
           description: Task not found
           content:
@@ -576,8 +507,6 @@ paths:
       tags:
         - tasks
       operationId: updateTask
-      security:
-        - Bearer: []
       parameters:
         - schema:
             type: string
@@ -598,12 +527,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Task"
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UnauthorizedError"
         "404":
           description: Task not found
           content:
@@ -620,8 +543,6 @@ paths:
       tags:
         - tasks
       operationId: deleteTask
-      security:
-        - Bearer: []
       parameters:
         - schema:
             type: string
@@ -632,12 +553,6 @@ paths:
       responses:
         "204":
           description: Task deleted
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UnauthorizedError"
         "404":
           description: Task not found
           content:
@@ -649,21 +564,12 @@ paths:
       tags:
         - users
       operationId: listUsers
-      security:
-        - Bearer: []
       parameters:
         - schema:
             type: integer
             minimum: 1
-            default: 1
-          required: false
-          name: page
-          in: query
-        - schema:
-            type: integer
-            minimum: 1
             maximum: 100
-            default: 20
+            default: 5
           required: false
           name: limit
           in: query
@@ -672,26 +578,23 @@ paths:
           required: false
           name: search
           in: query
+        - schema:
+            type: string
+          required: false
+          name: after
+          in: query
       responses:
         "200":
-          description: Paginated user list
+          description: Cursor-paginated user list
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PaginatedUsers"
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UnauthorizedError"
+                $ref: "#/components/schemas/CursorPaginatedUsers"
   /users/{id}:
     get:
       tags:
         - users
       operationId: getUser
-      security:
-        - Bearer: []
       parameters:
         - schema:
             type: string
@@ -706,12 +609,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UnauthorizedError"
         "404":
           description: User not found
           content:
@@ -723,8 +620,6 @@ paths:
       tags:
         - projects
       operationId: listProjects
-      security:
-        - Bearer: []
       responses:
         "200":
           description: Project list
@@ -734,18 +629,10 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Project"
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UnauthorizedError"
     post:
       tags:
         - projects
       operationId: createProject
-      security:
-        - Bearer: []
       requestBody:
         required: true
         content:
@@ -759,12 +646,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Project"
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UnauthorizedError"
         "422":
           description: Validation error
           content:
@@ -776,8 +657,6 @@ paths:
       tags:
         - projects
       operationId: getProject
-      security:
-        - Bearer: []
       parameters:
         - schema:
             type: string
@@ -792,12 +671,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Project"
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UnauthorizedError"
         "404":
           description: Project not found
           content:
@@ -809,8 +682,6 @@ paths:
       tags:
         - notifications
       operationId: listNotifications
-      security:
-        - Bearer: []
       responses:
         "200":
           description: Notification list
@@ -820,19 +691,11 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Notification"
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UnauthorizedError"
   /uploads:
     post:
       tags:
         - uploads
       operationId: uploadFile
-      security:
-        - Bearer: []
       requestBody:
         required: true
         content:
@@ -860,9 +723,4 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BadRequestError"
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UnauthorizedError"
+webhooks: {}

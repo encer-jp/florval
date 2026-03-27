@@ -1,16 +1,12 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { ProjectSchema, CreateProjectRequestSchema } from "../schemas/project.js";
 import {
-  UnauthorizedErrorSchema,
   NotFoundErrorSchema,
   ValidationErrorSchema,
 } from "../schemas/error.js";
-import { authMiddleware } from "../middleware/auth.js";
 import { projects, users } from "../store/memory.js";
 
 const app = new OpenAPIHono();
-app.use("/projects/*", authMiddleware);
-app.use("/projects", authMiddleware);
 
 // GET /projects
 const listProjectsRoute = createRoute({
@@ -18,15 +14,10 @@ const listProjectsRoute = createRoute({
   path: "/projects",
   tags: ["projects"],
   operationId: "listProjects",
-  security: [{ Bearer: [] }],
   responses: {
     200: {
       content: { "application/json": { schema: z.array(ProjectSchema) } },
       description: "Project list",
-    },
-    401: {
-      content: { "application/json": { schema: UnauthorizedErrorSchema } },
-      description: "Unauthorized",
     },
   },
 });
@@ -41,7 +32,6 @@ const getProjectRoute = createRoute({
   path: "/projects/{id}",
   tags: ["projects"],
   operationId: "getProject",
-  security: [{ Bearer: [] }],
   request: {
     params: z.object({ id: z.string().uuid() }),
   },
@@ -49,10 +39,6 @@ const getProjectRoute = createRoute({
     200: {
       content: { "application/json": { schema: ProjectSchema } },
       description: "Project detail with owner and members",
-    },
-    401: {
-      content: { "application/json": { schema: UnauthorizedErrorSchema } },
-      description: "Unauthorized",
     },
     404: {
       content: { "application/json": { schema: NotFoundErrorSchema } },
@@ -74,7 +60,6 @@ const createProjectRoute = createRoute({
   path: "/projects",
   tags: ["projects"],
   operationId: "createProject",
-  security: [{ Bearer: [] }],
   request: {
     body: {
       content: { "application/json": { schema: CreateProjectRequestSchema } },
@@ -85,10 +70,6 @@ const createProjectRoute = createRoute({
     201: {
       content: { "application/json": { schema: ProjectSchema } },
       description: "Project created",
-    },
-    401: {
-      content: { "application/json": { schema: UnauthorizedErrorSchema } },
-      description: "Unauthorized",
     },
     422: {
       content: { "application/json": { schema: ValidationErrorSchema } },

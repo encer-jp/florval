@@ -7,18 +7,14 @@ import {
   UpdateTaskRequestSchema,
 } from "../schemas/task.js";
 import {
-  UnauthorizedErrorSchema,
   NotFoundErrorSchema,
   ValidationErrorSchema,
   ServerErrorSchema,
 } from "../schemas/error.js";
-import { authMiddleware } from "../middleware/auth.js";
 import { tasks } from "../store/memory.js";
 import { users } from "../store/memory.js";
 
 const app = new OpenAPIHono();
-app.use("/tasks/*", authMiddleware);
-app.use("/tasks", authMiddleware);
 
 // GET /tasks
 const listTasksRoute = createRoute({
@@ -26,23 +22,18 @@ const listTasksRoute = createRoute({
   path: "/tasks",
   tags: ["tasks"],
   operationId: "listTasks",
-  security: [{ Bearer: [] }],
   request: {
     query: z.object({
       status: TaskStatusSchema.optional(),
       priority: TaskPrioritySchema.optional(),
       assignee_id: z.string().uuid().optional(),
-      trigger_error: z.string().optional(),
+      simulate_status: z.coerce.number().int().optional(),
     }),
   },
   responses: {
     200: {
       content: { "application/json": { schema: z.array(TaskSchema) } },
       description: "Task list",
-    },
-    401: {
-      content: { "application/json": { schema: UnauthorizedErrorSchema } },
-      description: "Unauthorized",
     },
     500: {
       content: { "application/json": { schema: ServerErrorSchema } },
@@ -52,10 +43,10 @@ const listTasksRoute = createRoute({
 });
 
 app.openapi(listTasksRoute, (c) => {
-  const { status, priority, assignee_id, trigger_error } =
+  const { status, priority, assignee_id, simulate_status } =
     c.req.valid("query");
 
-  if (trigger_error === "true") {
+  if (simulate_status === 500) {
     return c.json(
       { message: "Internal server error", code: "INTERNAL_ERROR" },
       500
@@ -77,7 +68,6 @@ const getTaskRoute = createRoute({
   path: "/tasks/{id}",
   tags: ["tasks"],
   operationId: "getTask",
-  security: [{ Bearer: [] }],
   request: {
     params: z.object({ id: z.string().uuid() }),
   },
@@ -85,10 +75,6 @@ const getTaskRoute = createRoute({
     200: {
       content: { "application/json": { schema: TaskSchema } },
       description: "Task detail",
-    },
-    401: {
-      content: { "application/json": { schema: UnauthorizedErrorSchema } },
-      description: "Unauthorized",
     },
     404: {
       content: { "application/json": { schema: NotFoundErrorSchema } },
@@ -110,7 +96,6 @@ const createTaskRoute = createRoute({
   path: "/tasks",
   tags: ["tasks"],
   operationId: "createTask",
-  security: [{ Bearer: [] }],
   request: {
     body: {
       content: { "application/json": { schema: CreateTaskRequestSchema } },
@@ -121,10 +106,6 @@ const createTaskRoute = createRoute({
     201: {
       content: { "application/json": { schema: TaskSchema } },
       description: "Task created",
-    },
-    401: {
-      content: { "application/json": { schema: UnauthorizedErrorSchema } },
-      description: "Unauthorized",
     },
     422: {
       content: { "application/json": { schema: ValidationErrorSchema } },
@@ -164,7 +145,6 @@ const updateTaskRoute = createRoute({
   path: "/tasks/{id}",
   tags: ["tasks"],
   operationId: "updateTask",
-  security: [{ Bearer: [] }],
   request: {
     params: z.object({ id: z.string().uuid() }),
     body: {
@@ -176,10 +156,6 @@ const updateTaskRoute = createRoute({
     200: {
       content: { "application/json": { schema: TaskSchema } },
       description: "Task updated",
-    },
-    401: {
-      content: { "application/json": { schema: UnauthorizedErrorSchema } },
-      description: "Unauthorized",
     },
     404: {
       content: { "application/json": { schema: NotFoundErrorSchema } },
@@ -225,17 +201,12 @@ const deleteTaskRoute = createRoute({
   path: "/tasks/{id}",
   tags: ["tasks"],
   operationId: "deleteTask",
-  security: [{ Bearer: [] }],
   request: {
     params: z.object({ id: z.string().uuid() }),
   },
   responses: {
     204: {
       description: "Task deleted",
-    },
-    401: {
-      content: { "application/json": { schema: UnauthorizedErrorSchema } },
-      description: "Unauthorized",
     },
     404: {
       content: { "application/json": { schema: NotFoundErrorSchema } },

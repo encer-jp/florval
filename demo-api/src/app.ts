@@ -1,7 +1,6 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
 import { cors } from "hono/cors";
-import authRoutes from "./routes/auth.js";
 import taskRoutes from "./routes/tasks.js";
 import userRoutes from "./routes/users.js";
 import projectRoutes from "./routes/projects.js";
@@ -14,7 +13,6 @@ const app = new OpenAPIHono();
 app.use("/*", cors());
 
 // Register routes
-app.route("/", authRoutes);
 app.route("/", taskRoutes);
 app.route("/", userRoutes);
 app.route("/", projectRoutes);
@@ -22,7 +20,7 @@ app.route("/", notificationRoutes);
 app.route("/", uploadRoutes);
 
 // OpenAPI doc
-app.doc("/doc", {
+app.doc31("/doc", {
   openapi: "3.1.0",
   info: {
     title: "florval Demo API",
@@ -30,14 +28,6 @@ app.doc("/doc", {
     description:
       "Demo API server for florval - showcases all florval code generation features",
   },
-  security: [{ Bearer: [] }],
-});
-
-// Register security scheme
-app.openAPIRegistry.registerComponent("securitySchemes", "Bearer", {
-  type: "http",
-  scheme: "bearer",
-  bearerFormat: "JWT",
 });
 
 // Swagger UI

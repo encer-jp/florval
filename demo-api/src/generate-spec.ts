@@ -7,15 +7,14 @@ import app from "./app.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const outputPath = resolve(__dirname, "..", "openapi.yaml");
 
-const doc = app.getOpenAPIDocument({
-  openapi: "3.1.0",
-  info: {
-    title: "florval Demo API",
-    version: "1.0.0",
-    description:
-      "Demo API server for florval - showcases all florval code generation features",
-  },
-  security: [{ Bearer: [] }],
+const doc = app.getOpenAPI31Document({
+	openapi: "3.1.0",
+	info: {
+		title: "florval Demo API",
+		version: "1.0.0",
+		description:
+			"Demo API server for florval - showcases all florval code generation features",
+	},
 });
 
 const yamlContent = stringify(doc, { lineWidth: 120 });
