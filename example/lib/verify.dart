@@ -77,12 +77,15 @@ void main() async {
       print('UNEXPECTED: $errorResp');
   }
 
-  // 6. Pagination
-  print('\n=== 6. GET /users?page=1&limit=3 ===');
-  final usersResp = await usersClient.listUsers(page: 1, limit: 3);
+  // 6. Cursor-based Pagination
+  print('\n=== 6. GET /users?limit=3 (cursor-based) ===');
+  final usersResp = await usersClient.listUsers(limit: 3);
   switch (usersResp) {
     case r.ListUsersResponseSuccess(:final data):
-      print('OK: ${data.data.length}/${data.total} users (page ${data.page}/${data.totalPages})');
+      print('OK: ${data.items.length} users (hasMore: ${data.hasMore}, nextCursor: ${data.nextCursor})');
+      for (final user in data.items) {
+        print('  - ${user.name} (${user.role})');
+      }
     default:
       print('FAIL: $usersResp');
   }

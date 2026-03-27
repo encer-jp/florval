@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-import '../models/paginated_users.dart';
+import '../models/cursor_paginated_users.dart';
 import '../models/unauthorized_error.dart';
 import '../models/user.dart';
 import '../models/not_found_error.dart';
@@ -12,21 +12,21 @@ class UsersApiClient {
   UsersApiClient(this._dio);
 
   Future<r.ListUsersResponse> listUsers({
-    int? page,
     int? limit,
     String? search,
+    String? after,
   }) async {
     try {
       final response = await _dio.get('/users',
         queryParameters: {
-          if (page != null) 'page': page,
           if (limit != null) 'limit': limit,
           if (search != null) 'search': search,
+          if (after != null) 'after': after,
         },
       );
       switch (response.statusCode) {
         case 200:
-          return r.ListUsersResponse.success(PaginatedUsers.fromJson(response.data as Map<String, dynamic>));
+          return r.ListUsersResponse.success(CursorPaginatedUsers.fromJson(response.data as Map<String, dynamic>));
         case 401:
           return r.ListUsersResponse.unauthorized(UnauthorizedError.fromJson(response.data as Map<String, dynamic>));
         default:

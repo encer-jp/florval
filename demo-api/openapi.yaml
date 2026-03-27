@@ -230,27 +230,22 @@ components:
         - title
         - status
         - priority
-    PaginatedUsers:
+    CursorPaginatedUsers:
       type: object
       properties:
-        data:
+        items:
           type: array
           items:
             $ref: "#/components/schemas/User"
-        page:
-          type: integer
-        limit:
-          type: integer
-        total:
-          type: integer
-        total_pages:
-          type: integer
+        nextCursor:
+          type: string
+          nullable: true
+        hasMore:
+          type: boolean
       required:
-        - data
-        - page
-        - limit
-        - total
-        - total_pages
+        - items
+        - nextCursor
+        - hasMore
     Project:
       type: object
       properties:
@@ -655,15 +650,8 @@ paths:
         - schema:
             type: integer
             minimum: 1
-            default: 1
-          required: false
-          name: page
-          in: query
-        - schema:
-            type: integer
-            minimum: 1
             maximum: 100
-            default: 20
+            default: 5
           required: false
           name: limit
           in: query
@@ -672,13 +660,18 @@ paths:
           required: false
           name: search
           in: query
+        - schema:
+            type: string
+          required: false
+          name: after
+          in: query
       responses:
         "200":
-          description: Paginated user list
+          description: Cursor-paginated user list
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PaginatedUsers"
+                $ref: "#/components/schemas/CursorPaginatedUsers"
         "401":
           description: Unauthorized
           content:

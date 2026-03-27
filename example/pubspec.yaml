@@ -1,5 +1,5 @@
 name: florval_example
-description: Florval verification project using Swagger Petstore v3 API.
+description: Florval showcase app demonstrating mutations, error handling, and pagination.
 publish_to: none
 version: 1.0.0
 

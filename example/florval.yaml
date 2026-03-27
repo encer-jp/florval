@@ -21,15 +21,10 @@ florval:
       delay: 1000
 
     # Cursor-based pagination endpoints
-    # pagination:
-    #   defaults:
-    #     cursor_param: after
-    #     next_cursor_field: nextCursor
-    #     items_field: items
-    #   endpoints:
-    #     - listUsers
-    #     - listPosts
-    #     - operation_id: listComments
-    #       cursor_param: cursor
-    #       next_cursor_field: next
-    #       items_field: data
+    pagination:
+      defaults:
+        cursor_param: after
+        next_cursor_field: nextCursor
+        items_field: items
+      endpoints:
+        - listUsers
