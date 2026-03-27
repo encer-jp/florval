@@ -4,6 +4,7 @@ import 'analyzer/endpoint_analyzer.dart';
 import 'analyzer/response_analyzer.dart';
 import 'analyzer/schema_analyzer.dart';
 import 'config/florval_config.dart';
+import 'model/api_endpoint.dart';
 import 'model/api_schema.dart';
 import 'generator/client_generator.dart';
 import 'generator/file_writer.dart';
@@ -156,7 +157,7 @@ class FlorvalRunner {
     }
 
     // Clients (grouped by tag)
-    final endpointsByTag = <String, List<dynamic>>{};
+    final endpointsByTag = <String, List<FlorvalEndpoint>>{};
     for (final endpoint in endpoints) {
       final tag = endpoint.primaryTag;
       endpointsByTag.putIfAbsent(tag, () => []).add(endpoint);
@@ -164,7 +165,7 @@ class FlorvalRunner {
 
     final clientNames = <String>[];
     for (final entry in endpointsByTag.entries) {
-      final code = clientGenerator.generate(entry.key, entry.value.cast());
+      final code = clientGenerator.generate(entry.key, entry.value);
       writer.writeClient(entry.key, code);
       clientNames.add(entry.key);
       logger.debug('Generated client: ${entry.key}');
@@ -191,7 +192,7 @@ class FlorvalRunner {
 
       for (final entry in endpointsByTag.entries) {
         final code =
-            providerGenerator.generate(entry.key, entry.value.cast());
+            providerGenerator.generate(entry.key, entry.value);
         writer.writeProvider(entry.key, code);
         providerNames.add(entry.key);
         logger.debug('Generated provider: ${entry.key}');

@@ -153,9 +153,24 @@ class SchemaAnalyzer {
 
   /// Handles oneOf — creates variant schemas for sealed class generation.
   FlorvalSchema _analyzeOneOf(String name, v31.Schema schema) {
+    return _analyzeComposite(name, schema, schema.oneOf!, isOneOf: true);
+  }
+
+  /// Handles anyOf — treat the same as oneOf for Dart code generation.
+  FlorvalSchema _analyzeAnyOf(String name, v31.Schema schema) {
+    return _analyzeComposite(name, schema, schema.anyOf!, isOneOf: false);
+  }
+
+  /// Common implementation for oneOf/anyOf analysis.
+  FlorvalSchema _analyzeComposite(
+    String name,
+    v31.Schema schema,
+    List<v31.Schema> subSchemas, {
+    required bool isOneOf,
+  }) {
     final variants = <FlorvalSchema>[];
 
-    for (final subSchema in schema.oneOf!) {
+    for (final subSchema in subSchemas) {
       final resolved = resolver.resolveSchema(subSchema);
       final subName = resolver.schemaName(subSchema);
       if (subName != null) {
@@ -187,47 +202,8 @@ class SchemaAnalyzer {
     return FlorvalSchema(
       name: name,
       fields: [],
-      oneOf: variants,
-      discriminator: discriminator,
-      description: schema.description,
-    );
-  }
-
-  /// Handles anyOf — treat the same as oneOf for Dart code generation.
-  FlorvalSchema _analyzeAnyOf(String name, v31.Schema schema) {
-    final variants = <FlorvalSchema>[];
-
-    for (final subSchema in schema.anyOf!) {
-      final resolved = resolver.resolveSchema(subSchema);
-      final subName = resolver.schemaName(subSchema);
-      if (subName != null) {
-        variants.add(FlorvalSchema(
-          name: subName,
-          fields: _extractFields(resolved, schemaName: subName),
-          description: resolved.description,
-        ));
-      } else {
-        final variantName = '${name}Variant${variants.length}';
-        variants.add(FlorvalSchema(
-          name: variantName,
-          fields: _extractFields(resolved, schemaName: variantName),
-          description: resolved.description,
-        ));
-      }
-    }
-
-    FlorvalDiscriminator? discriminator;
-    if (schema.discriminator != null) {
-      discriminator = FlorvalDiscriminator(
-        propertyName: schema.discriminator!.propertyName,
-        mapping: schema.discriminator!.mapping?.cast<String, String>(),
-      );
-    }
-
-    return FlorvalSchema(
-      name: name,
-      fields: [],
-      anyOf: variants,
+      oneOf: isOneOf ? variants : null,
+      anyOf: isOneOf ? null : variants,
       discriminator: discriminator,
       description: schema.description,
     );
