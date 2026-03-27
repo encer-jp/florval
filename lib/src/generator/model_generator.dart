@@ -307,19 +307,34 @@ class ModelGenerator {
 
     buffer.writeln();
 
-    // For non-discriminator unions, provide a simple fromJson that tries each variant
+    // fromJson: try each variant in order, return the first that succeeds
     buffer.writeln(
-        "  // TODO: Implement fromJson for non-discriminator union type '${schema.name}'");
+        '  factory ${schema.name}.fromJson(Map<String, dynamic> json) {');
+    for (final variant in variants) {
+      final factoryName = ReCase(variant.name).camelCase;
+      buffer.writeln('    try {');
+      buffer.writeln(
+          '      return ${schema.name}.$factoryName(${variant.name}.fromJson(json));');
+      buffer.writeln('    } catch (_) {}');
+    }
+    buffer.writeln('    throw FormatException(');
+    buffer.writeln(
+        "      'Could not deserialize ${schema.name} from JSON: none of the variants matched.',");
+    buffer.writeln('    );');
+    buffer.writeln('  }');
 
     buffer.writeln('}');
     buffer.writeln();
 
-    // Subclasses
+    // Subclasses with toJson
     for (final variant in variants) {
       final subclassName = '${schema.name}${variant.name}';
       buffer.writeln('class $subclassName extends ${schema.name} {');
       buffer.writeln('  final ${variant.name} data;');
       buffer.writeln('  const $subclassName(this.data);');
+      buffer.writeln();
+      buffer.writeln(
+          '  Map<String, dynamic> toJson() => data.toJson();');
       buffer.writeln('}');
       buffer.writeln();
     }

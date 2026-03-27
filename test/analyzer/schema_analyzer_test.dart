@@ -423,5 +423,467 @@ components:
       expect(assignee.type.dartType, isNot('User?'));
       expect(assignee.type.dartType, isNot('Group?'));
     });
+
+    test('3-element anyOf (2 \$ref + null) generates inline union type', () {
+      final unionSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        name:
+          type: string
+    Group:
+      type: object
+      properties:
+        groupName:
+          type: string
+    Task:
+      type: object
+      properties:
+        owner:
+          anyOf:
+            - \$ref: '#/components/schemas/User'
+            - \$ref: '#/components/schemas/Group'
+            - type: "null"
+''');
+      final unionAnalyzer = SchemaAnalyzer(RefResolver(unionSpec));
+      final task = unionAnalyzer.analyze(
+        'Task',
+        unionSpec.components!.schemas!['Task']!,
+      );
+
+      final owner = task.fields.firstWhere((f) => f.name == 'owner');
+      expect(owner.type.dartType, 'TaskOwner?');
+      expect(owner.type.isNullable, isTrue);
+      expect(owner.type.ref, isNotNull);
+
+      // Should have registered one inline union schema
+      expect(unionAnalyzer.inlineUnionSchemas, hasLength(1));
+      final unionSchema = unionAnalyzer.inlineUnionSchemas.first;
+      expect(unionSchema.name, 'TaskOwner');
+      // Should have 2 variants (User and Group), null element excluded
+      expect(unionSchema.anyOf, isNotNull);
+      expect(unionSchema.anyOf, hasLength(2));
+      expect(unionSchema.anyOf!.map((v) => v.name).toSet(),
+          {'User', 'Group'});
+    });
+
+    test('2-element oneOf (2 \$ref, no null) generates inline union type', () {
+      final unionSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        name:
+          type: string
+    Group:
+      type: object
+      properties:
+        groupName:
+          type: string
+    Task:
+      type: object
+      properties:
+        target:
+          oneOf:
+            - \$ref: '#/components/schemas/User'
+            - \$ref: '#/components/schemas/Group'
+''');
+      final unionAnalyzer = SchemaAnalyzer(RefResolver(unionSpec));
+      final task = unionAnalyzer.analyze(
+        'Task',
+        unionSpec.components!.schemas!['Task']!,
+      );
+
+      final target = task.fields.firstWhere((f) => f.name == 'target');
+      expect(target.type.dartType, 'TaskTarget?');
+      // Not required, so nullable due to _extractFields logic
+      expect(target.type.isNullable, isTrue);
+      expect(target.type.ref, isNotNull);
+
+      expect(unionAnalyzer.inlineUnionSchemas, hasLength(1));
+      final unionSchema = unionAnalyzer.inlineUnionSchemas.first;
+      expect(unionSchema.name, 'TaskTarget');
+      expect(unionSchema.oneOf, isNotNull);
+      expect(unionSchema.oneOf, hasLength(2));
+    });
+
+    test('anyOf with primitive + null does not create inline union', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Task:
+      type: object
+      required:
+        - label
+      properties:
+        label:
+          anyOf:
+            - type: string
+            - type: "null"
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final task = analyzer.analyze(
+        'Task',
+        spec.components!.schemas!['Task']!,
+      );
+
+      final label = task.fields.firstWhere((f) => f.name == 'label');
+      // anyOf with 1 non-null element that is NOT a $ref falls through
+      // to _extractType — no inline union should be registered
+      expect(analyzer.inlineUnionSchemas, isEmpty);
+      // Should not be a union type name
+      expect(label.type.dartType, isNot('TaskLabel'));
+    });
+
+    test('inline union naming uses contextName from parent schema + field', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Dog:
+      type: object
+      properties:
+        breed:
+          type: string
+    Cat:
+      type: object
+      properties:
+        color:
+          type: string
+    Pet:
+      type: object
+      properties:
+        animal:
+          oneOf:
+            - \$ref: '#/components/schemas/Dog'
+            - \$ref: '#/components/schemas/Cat'
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      analyzer.analyze('Pet', spec.components!.schemas!['Pet']!);
+
+      expect(analyzer.inlineUnionSchemas, hasLength(1));
+      expect(analyzer.inlineUnionSchemas.first.name, 'PetAnimal');
+    });
+
+    test('inline object with properties generates typed class', () {
+      final inlineSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Task:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+        metadata:
+          type: object
+          properties:
+            key:
+              type: string
+            value:
+              type: string
+''');
+      final inlineAnalyzer = SchemaAnalyzer(RefResolver(inlineSpec));
+      final task = inlineAnalyzer.analyze(
+        'Task',
+        inlineSpec.components!.schemas!['Task']!,
+      );
+
+      final metadata = task.fields.firstWhere((f) => f.name == 'metadata');
+      expect(metadata.type.dartType, 'TaskMetadata?');
+      expect(metadata.type.ref, isNotNull);
+
+      // Should have registered one inline object schema
+      expect(inlineAnalyzer.inlineObjectSchemas, hasLength(1));
+      final inlineSchema = inlineAnalyzer.inlineObjectSchemas.first;
+      expect(inlineSchema.name, 'TaskMetadata');
+      expect(inlineSchema.fields, hasLength(2));
+      expect(inlineSchema.fields.map((f) => f.name).toSet(), {'key', 'value'});
+    });
+
+    test('object without properties stays as Map<String, dynamic>', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        extra:
+          type: object
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final task = analyzer.analyze(
+        'Task',
+        spec.components!.schemas!['Task']!,
+      );
+
+      final extra = task.fields.firstWhere((f) => f.name == 'extra');
+      expect(extra.type.dartType, 'Map<String, dynamic>?');
+      expect(analyzer.inlineObjectSchemas, isEmpty);
+    });
+
+    test('nested inline objects are recursively named', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        config:
+          type: object
+          properties:
+            display:
+              type: object
+              properties:
+                color:
+                  type: string
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final task = analyzer.analyze(
+        'Task',
+        spec.components!.schemas!['Task']!,
+      );
+
+      final config = task.fields.firstWhere((f) => f.name == 'config');
+      expect(config.type.dartType, 'TaskConfig?');
+
+      // Should have 2 inline object schemas: TaskConfig and TaskConfigDisplay
+      expect(analyzer.inlineObjectSchemas, hasLength(2));
+      final names = analyzer.inlineObjectSchemas.map((s) => s.name).toSet();
+      expect(names, {'TaskConfig', 'TaskConfigDisplay'});
+    });
+
+    test('additionalProperties with type string generates Map<String, String>', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Config:
+      type: object
+      properties:
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final config = analyzer.analyze(
+        'Config',
+        spec.components!.schemas!['Config']!,
+      );
+
+      final headers = config.fields.firstWhere((f) => f.name == 'headers');
+      expect(headers.type.dartType, 'Map<String, String>?');
+    });
+
+    test('additionalProperties with type integer generates Map<String, int>', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Scores:
+      type: object
+      additionalProperties:
+        type: integer
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final type = analyzer.schemaToType(
+        spec.components!.schemas!['Scores']!,
+      );
+
+      expect(type.dartType, 'Map<String, int>');
+    });
+
+    test('additionalProperties with \$ref generates Map<String, RefType>', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        name:
+          type: string
+    UserMap:
+      type: object
+      additionalProperties:
+        \$ref: '#/components/schemas/User'
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final type = analyzer.schemaToType(
+        spec.components!.schemas!['UserMap']!,
+      );
+
+      expect(type.dartType, 'Map<String, User>');
+    });
+
+    test('additionalProperties true generates Map<String, dynamic>', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Metadata:
+      type: object
+      additionalProperties: true
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final type = analyzer.schemaToType(
+        spec.components!.schemas!['Metadata']!,
+      );
+
+      expect(type.dartType, 'Map<String, dynamic>');
+    });
+
+    test('additionalProperties with properties present prioritizes properties', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Mixed:
+      type: object
+      properties:
+        name:
+          type: string
+      additionalProperties:
+        type: string
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final schema = analyzer.analyze(
+        'Mixed',
+        spec.components!.schemas!['Mixed']!,
+      );
+
+      // Properties take precedence; additionalProperties is ignored
+      expect(schema.fields, hasLength(1));
+      expect(schema.fields.first.name, 'name');
+    });
+
+    test('type unspecified with no composition returns dynamic', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Anything:
+      description: "No type specified"
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final type = analyzer.schemaToType(
+        spec.components!.schemas!['Anything']!,
+      );
+
+      expect(type.dartType, 'dynamic');
+    });
+
+    test('type object without properties still generates Map<String, dynamic>', () {
+      final objSchema = v31.Schema.object();
+      final type = analyzer.schemaToType(objSchema);
+      expect(type.dartType, 'Map<String, dynamic>');
+    });
+
+    test('multiple inline union fields in same schema have unique names', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        name:
+          type: string
+    Group:
+      type: object
+      properties:
+        groupName:
+          type: string
+    Bot:
+      type: object
+      properties:
+        botId:
+          type: string
+    Task:
+      type: object
+      properties:
+        owner:
+          anyOf:
+            - \$ref: '#/components/schemas/User'
+            - \$ref: '#/components/schemas/Group'
+        reviewer:
+          oneOf:
+            - \$ref: '#/components/schemas/User'
+            - \$ref: '#/components/schemas/Bot'
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      analyzer.analyze('Task', spec.components!.schemas!['Task']!);
+
+      expect(analyzer.inlineUnionSchemas, hasLength(2));
+      final names = analyzer.inlineUnionSchemas.map((s) => s.name).toSet();
+      expect(names, {'TaskOwner', 'TaskReviewer'});
+    });
   });
 }
