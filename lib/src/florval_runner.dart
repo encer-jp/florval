@@ -48,11 +48,19 @@ class FlorvalRunner {
         : <FlorvalSchema>[];
     final endpoints = endpointAnalyzer.analyzeAll(spec.paths);
 
-    // Collect inline union schemas discovered during response analysis
-    final inlineUnionSchemas = responseAnalyzer.inlineUnionSchemas;
+    // Collect inline union schemas discovered during analysis
+    // Merge from both response analyzer and schema analyzer, deduplicating by name
+    final allInlineUnions = <String, FlorvalSchema>{};
+    for (final s in responseAnalyzer.inlineUnionSchemas) {
+      allInlineUnions[s.name] = s;
+    }
+    for (final s in schemaAnalyzer.inlineUnionSchemas) {
+      allInlineUnions[s.name] = s;
+    }
+    final inlineUnionSchemas = allInlineUnions.values.toList();
     if (inlineUnionSchemas.isNotEmpty) {
       logger.debug(
-          'Found ${inlineUnionSchemas.length} inline union schemas from responses');
+          'Found ${inlineUnionSchemas.length} inline union schemas');
     }
 
     logger.info(
