@@ -691,6 +691,157 @@ components:
       expect(names, {'TaskConfig', 'TaskConfigDisplay'});
     });
 
+    test('additionalProperties with type string generates Map<String, String>', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Config:
+      type: object
+      properties:
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final config = analyzer.analyze(
+        'Config',
+        spec.components!.schemas!['Config']!,
+      );
+
+      final headers = config.fields.firstWhere((f) => f.name == 'headers');
+      expect(headers.type.dartType, 'Map<String, String>?');
+    });
+
+    test('additionalProperties with type integer generates Map<String, int>', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Scores:
+      type: object
+      additionalProperties:
+        type: integer
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final type = analyzer.schemaToType(
+        spec.components!.schemas!['Scores']!,
+      );
+
+      expect(type.dartType, 'Map<String, int>');
+    });
+
+    test('additionalProperties with \$ref generates Map<String, RefType>', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        name:
+          type: string
+    UserMap:
+      type: object
+      additionalProperties:
+        \$ref: '#/components/schemas/User'
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final type = analyzer.schemaToType(
+        spec.components!.schemas!['UserMap']!,
+      );
+
+      expect(type.dartType, 'Map<String, User>');
+    });
+
+    test('additionalProperties true generates Map<String, dynamic>', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Metadata:
+      type: object
+      additionalProperties: true
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final type = analyzer.schemaToType(
+        spec.components!.schemas!['Metadata']!,
+      );
+
+      expect(type.dartType, 'Map<String, dynamic>');
+    });
+
+    test('additionalProperties with properties present prioritizes properties', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Mixed:
+      type: object
+      properties:
+        name:
+          type: string
+      additionalProperties:
+        type: string
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final schema = analyzer.analyze(
+        'Mixed',
+        spec.components!.schemas!['Mixed']!,
+      );
+
+      // Properties take precedence; additionalProperties is ignored
+      expect(schema.fields, hasLength(1));
+      expect(schema.fields.first.name, 'name');
+    });
+
+    test('type unspecified with no composition returns dynamic', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Anything:
+      description: "No type specified"
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final type = analyzer.schemaToType(
+        spec.components!.schemas!['Anything']!,
+      );
+
+      expect(type.dartType, 'dynamic');
+    });
+
+    test('type object without properties still generates Map<String, dynamic>', () {
+      final objSchema = v31.Schema.object();
+      final type = analyzer.schemaToType(objSchema);
+      expect(type.dartType, 'Map<String, dynamic>');
+    });
+
     test('multiple inline union fields in same schema have unique names', () {
       final spec = SpecReader().parse('''
 openapi: "3.1.0"

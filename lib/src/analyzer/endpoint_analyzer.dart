@@ -246,15 +246,17 @@ class EndpointAnalyzer {
 
   /// Extracts the primary type string from a schema, handling OpenAPI 3.1
   /// array-style types like `["string", "null"]`.
+  ///
+  /// Returns `'dynamic'` when type is unspecified (OpenAPI 3.1: "any type").
   String _extractType(v31.Schema schema) {
     final type = schema.type;
-    if (type == null) return 'object';
+    if (type == null) return 'dynamic';
     if (type is String) return type;
     if (type is List) {
       final types = type.cast<String>();
-      return types.firstWhere((t) => t != 'null', orElse: () => 'object');
+      return types.firstWhere((t) => t != 'null', orElse: () => 'dynamic');
     }
-    return 'object';
+    return 'dynamic';
   }
 
   ParamLocation _toParamLocation(oapi_enums.ParameterLocation? location) {
