@@ -240,5 +240,188 @@ components:
       expect(schema.fields[1].jsonKey, 'BMI値');
       expect(schema.fields[2].name, 'name');
     });
+
+    test('resolves anyOf nullable \$ref to nullable type', () {
+      final anyOfSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        name:
+          type: string
+    Task:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+        assignee:
+          anyOf:
+            - \$ref: '#/components/schemas/User'
+            - type: "null"
+''');
+      final anyOfAnalyzer = SchemaAnalyzer(RefResolver(anyOfSpec));
+      final task = anyOfAnalyzer.analyze(
+        'Task',
+        anyOfSpec.components!.schemas!['Task']!,
+      );
+
+      final assignee = task.fields.firstWhere((f) => f.name == 'assignee');
+      expect(assignee.type.dartType, 'User?');
+      expect(assignee.type.isNullable, isTrue);
+      expect(assignee.type.ref, isNotNull);
+      expect(assignee.type.ref, contains('User'));
+    });
+
+    test('resolves oneOf nullable \$ref to nullable type', () {
+      final oneOfSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        name:
+          type: string
+    Task:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+        assignee:
+          oneOf:
+            - \$ref: '#/components/schemas/User'
+            - type: "null"
+''');
+      final oneOfAnalyzer = SchemaAnalyzer(RefResolver(oneOfSpec));
+      final task = oneOfAnalyzer.analyze(
+        'Task',
+        oneOfSpec.components!.schemas!['Task']!,
+      );
+
+      final assignee = task.fields.firstWhere((f) => f.name == 'assignee');
+      expect(assignee.type.dartType, 'User?');
+      expect(assignee.type.isNullable, isTrue);
+      expect(assignee.type.ref, isNotNull);
+    });
+
+    test('anyOf nullable \$ref is not primitive', () {
+      final anyOfSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        name:
+          type: string
+    Task:
+      type: object
+      properties:
+        assignee:
+          anyOf:
+            - \$ref: '#/components/schemas/User'
+            - type: "null"
+''');
+      final anyOfAnalyzer = SchemaAnalyzer(RefResolver(anyOfSpec));
+      final task = anyOfAnalyzer.analyze(
+        'Task',
+        anyOfSpec.components!.schemas!['Task']!,
+      );
+
+      final assignee = task.fields.firstWhere((f) => f.name == 'assignee');
+      expect(assignee.type.isPrimitive, isFalse);
+    });
+
+    test('anyOf nullable \$ref preserves isEnum for enum references', () {
+      final enumSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Status:
+      type: string
+      enum:
+        - active
+        - inactive
+    Task:
+      type: object
+      properties:
+        status:
+          anyOf:
+            - \$ref: '#/components/schemas/Status'
+            - type: "null"
+''');
+      final enumAnalyzer = SchemaAnalyzer(RefResolver(enumSpec));
+      final task = enumAnalyzer.analyze(
+        'Task',
+        enumSpec.components!.schemas!['Task']!,
+      );
+
+      final status = task.fields.firstWhere((f) => f.name == 'status');
+      expect(status.type.dartType, 'Status?');
+      expect(status.type.isNullable, isTrue);
+      expect(status.type.isEnum, isTrue);
+    });
+
+    test('anyOf with 3+ elements does not use nullable \$ref shortcut', () {
+      final unionSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        name:
+          type: string
+    Group:
+      type: object
+      properties:
+        groupName:
+          type: string
+    Task:
+      type: object
+      properties:
+        assignee:
+          anyOf:
+            - \$ref: '#/components/schemas/User'
+            - \$ref: '#/components/schemas/Group'
+            - type: "null"
+''');
+      final unionAnalyzer = SchemaAnalyzer(RefResolver(unionSpec));
+      final task = unionAnalyzer.analyze(
+        'Task',
+        unionSpec.components!.schemas!['Task']!,
+      );
+
+      final assignee = task.fields.firstWhere((f) => f.name == 'assignee');
+      // Should NOT be 'User?' — this is a true union, not a nullable $ref
+      expect(assignee.type.dartType, isNot('User?'));
+      expect(assignee.type.dartType, isNot('Group?'));
+    });
   });
 }
