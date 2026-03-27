@@ -5,18 +5,20 @@ import '../model/api_response.dart';
 import '../model/api_schema.dart';
 import '../model/api_type.dart';
 import '../parser/ref_resolver.dart';
+import '../utils/logger.dart';
 import 'schema_analyzer.dart';
 
 /// Extracts status-code-specific response information from OpenAPI operations.
 class ResponseAnalyzer {
   final RefResolver resolver;
   final SchemaAnalyzer schemaAnalyzer;
+  final FlorvalLogger? logger;
 
   /// Inline union schemas discovered during response analysis.
   /// These need to be generated as separate model files.
   final List<FlorvalSchema> inlineUnionSchemas = [];
 
-  ResponseAnalyzer(this.resolver, this.schemaAnalyzer);
+  ResponseAnalyzer(this.resolver, this.schemaAnalyzer, {this.logger});
 
   /// Analyzes all responses for an operation.
   /// [operationId] is used to generate names for inline oneOf/anyOf union types.
@@ -56,7 +58,16 @@ class ResponseAnalyzer {
     if (response.content == null) return null;
 
     final jsonContent = response.content!['application/json'];
-    if (jsonContent == null) return null;
+    if (jsonContent == null) {
+      final unsupported = response.content!.keys.toList();
+      if (unsupported.isNotEmpty) {
+        logger?.warn(
+          'Response for ${operationId ?? "unknown"} (${statusCode ?? "?"}) '
+          'has unsupported content type(s): ${unsupported.join(", ")}. '
+          'Only application/json is supported — skipping response body.');
+      }
+      return null;
+    }
 
     final schema = jsonContent.schema;
     if (schema == null) return null;

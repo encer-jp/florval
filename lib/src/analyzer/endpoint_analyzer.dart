@@ -9,6 +9,7 @@ import '../model/api_response.dart';
 import '../model/api_schema.dart';
 import '../model/api_type.dart';
 import '../parser/ref_resolver.dart';
+import '../utils/logger.dart';
 import 'response_analyzer.dart';
 import 'schema_analyzer.dart';
 
@@ -17,12 +18,14 @@ class EndpointAnalyzer {
   final RefResolver resolver;
   final SchemaAnalyzer schemaAnalyzer;
   final ResponseAnalyzer responseAnalyzer;
+  final FlorvalLogger? logger;
   final List<PaginationConfig> _paginationConfigs;
 
   EndpointAnalyzer(
     this.resolver,
     this.schemaAnalyzer,
     this.responseAnalyzer, {
+    this.logger,
     List<PaginationConfig> paginationConfigs = const [],
   }) : _paginationConfigs = paginationConfigs;
 
@@ -173,6 +176,13 @@ class EndpointAnalyzer {
       );
     }
 
+    final types = requestBody.content.keys.toList();
+    if (types.isNotEmpty) {
+      logger?.warn(
+        'Request body has unsupported content type(s): ${types.join(", ")}. '
+        'Only application/json and multipart/form-data are supported — skipping request body.');
+    }
+
     return null;
   }
 
@@ -311,9 +321,15 @@ class EndpointAnalyzer {
     if (itemsType != 'array') return null;
 
     // Extract item element type
-    final itemType = resolvedItems.items != null
-        ? schemaAnalyzer.schemaToType(resolvedItems.items!)
-        : const FlorvalType(name: 'dynamic', dartType: 'dynamic');
+    final FlorvalType itemType;
+    if (resolvedItems.items != null) {
+      itemType = schemaAnalyzer.schemaToType(resolvedItems.items!);
+    } else {
+      logger?.warn(
+        'Pagination items field "${config.itemsField}" in $operationId '
+        'is missing "items" — using List<dynamic>.');
+      itemType = const FlorvalType(name: 'dynamic', dartType: 'dynamic');
+    }
 
     // Validate next_cursor_field exists
     final cursorSchema = properties[config.nextCursorField];

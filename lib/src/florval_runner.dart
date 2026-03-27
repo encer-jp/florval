@@ -34,12 +34,13 @@ class FlorvalRunner {
     final resolver = RefResolver(spec);
 
     // 3. Analyze
-    final schemaAnalyzer = SchemaAnalyzer(resolver);
-    final responseAnalyzer = ResponseAnalyzer(resolver, schemaAnalyzer);
+    final schemaAnalyzer = SchemaAnalyzer(resolver, logger: logger);
+    final responseAnalyzer = ResponseAnalyzer(resolver, schemaAnalyzer, logger: logger);
     final endpointAnalyzer = EndpointAnalyzer(
       resolver,
       schemaAnalyzer,
       responseAnalyzer,
+      logger: logger,
       paginationConfigs: config.riverpod.pagination,
     );
 
