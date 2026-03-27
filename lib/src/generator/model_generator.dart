@@ -284,18 +284,10 @@ class ModelGenerator {
   }
 
   void _writeField(StringBuffer buffer, FlorvalField field) {
-    final hasNameKey = field.name != field.jsonKey;
-    final hasIncludeIfNull = !field.isRequired;
-
-    if (hasNameKey || hasIncludeIfNull) {
-      final parts = <String>[];
-      if (hasNameKey) {
-        parts.add("name: '${field.jsonKey}'");
-      }
-      if (hasIncludeIfNull) {
-        parts.add('includeIfNull: false');
-      }
-      buffer.writeln('    @JsonKey(${parts.join(', ')})');
+    // Add JsonKey if the Dart name differs from the JSON key
+    final needsJsonKey = field.name != field.jsonKey;
+    if (needsJsonKey) {
+      buffer.writeln("    @JsonKey(name: '${field.jsonKey}')");
     }
 
     final prefix = field.isRequired ? 'required ' : '';

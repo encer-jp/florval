@@ -177,12 +177,12 @@ components:
           nullable: true
         status:
           type: string
+          nullable: true
           enum: *a1
-          default: todo
         priority:
           type: string
+          nullable: true
           enum: *a2
-          default: medium
         assignee_id:
           type: string
           nullable: true
@@ -193,9 +193,9 @@ components:
           format: date-time
         tags:
           type: array
+          nullable: true
           items:
             type: string
-          default: []
       required:
         - title
     UpdateTaskRequest:

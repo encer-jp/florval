@@ -24,11 +24,11 @@ export const CreateTaskRequestSchema = z
   .object({
     title: z.string().min(1),
     description: z.string().nullable().optional(),
-    status: TaskStatusSchema.default("todo"),
-    priority: TaskPrioritySchema.default("medium"),
+    status: TaskStatusSchema.nullable().optional(),
+    priority: TaskPrioritySchema.nullable().optional(),
     assignee_id: z.string().uuid().nullable().optional(),
     due_date: z.string().datetime().nullable().optional(),
-    tags: z.array(z.string()).default([]),
+    tags: z.array(z.string()).nullable().optional(),
   })
   .openapi("CreateTaskRequest");
 
