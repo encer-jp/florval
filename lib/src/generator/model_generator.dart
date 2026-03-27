@@ -4,7 +4,10 @@ import '../config/template_config.dart';
 import '../model/api_schema.dart';
 import '../utils/dart_identifier.dart';
 
-/// Generates freezed 3.x model classes from FlorvalSchemas.
+/// Generates Dart model classes from FlorvalSchemas.
+///
+/// - Regular data classes → freezed 3.x (abstract class)
+/// - Union types (oneOf/anyOf) → plain Dart sealed class (no freezed)
 class ModelGenerator {
   final TemplateConfig? templateConfig;
 

@@ -114,10 +114,11 @@ abstract class User with _$User {
 ```
 ※ Freezed 3.xでは単純なデータクラスは`abstract class`を使用。`sealed`はUnion型のみ。
 
-### 2. ステータスコード別Union型 - Freezed 3.x sealed class
+### 2. ステータスコード別Union型 - plain Dart sealed class
 ```dart
-@freezed
-sealed class GetUserResponse with _$GetUserResponse {
+sealed class GetUserResponse {
+  const GetUserResponse();
+
   const factory GetUserResponse.success(User data) = GetUserResponseSuccess;
   const factory GetUserResponse.badRequest(ValidationError error) = GetUserResponseBadRequest;
   const factory GetUserResponse.unauthorized(UnauthorizedError error) = GetUserResponseUnauthorized;
@@ -125,8 +126,15 @@ sealed class GetUserResponse with _$GetUserResponse {
   const factory GetUserResponse.serverError(ServerError error) = GetUserResponseServerError;
   const factory GetUserResponse.unknown(int statusCode, dynamic body) = GetUserResponseUnknown;
 }
+
+class GetUserResponseSuccess extends GetUserResponse {
+  final User data;
+  const GetUserResponseSuccess(this.data);
+}
+// ... 他のサブクラスも同様
 ```
-※ when/mapは廃止済み。利用側ではDart 3のswitch式でパターンマッチングする：
+※ freezedは使用しない（copyWith/equality不要、build_runner不要）。
+※ 利用側ではDart 3のswitch式でパターンマッチングする：
 ```dart
 final response = await client.getUser(id: 1);
 switch (response) {
@@ -137,7 +145,6 @@ switch (response) {
   case GetUserResponseUnknown(:final statusCode, :final body):
     // 未知のエラー
 }
-```
 ```
 
 ### 3. dioクライアント
