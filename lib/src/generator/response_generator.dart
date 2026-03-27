@@ -3,6 +3,7 @@ import 'package:recase/recase.dart';
 import '../config/template_config.dart';
 import '../model/api_endpoint.dart';
 import '../model/api_response.dart';
+import '../model/api_type.dart';
 
 /// Generates freezed 3.x sealed classes for status-code-based response Union types.
 class ResponseGenerator {
@@ -13,7 +14,7 @@ class ResponseGenerator {
   /// Generates a response Union type for an endpoint.
   String generate(FlorvalEndpoint endpoint) {
     final className =
-        '${ReCase(endpoint.operationId).pascalCase}ApiResponse';
+        '${ReCase(endpoint.operationId).pascalCase}Response';
     final fileName = ReCase(endpoint.operationId).snakeCase;
     final buffer = StringBuffer();
 
@@ -28,15 +29,15 @@ class ResponseGenerator {
         "import 'package:freezed_annotation/freezed_annotation.dart';");
     buffer.writeln();
 
-    // Import model types used in responses
+    // Import model types with _m prefix to avoid collision with response class name
     final imports = _collectImports(endpoint);
     for (final import_ in imports) {
-      buffer.writeln("import '../models/$import_.dart';");
+      buffer.writeln("import '../models/$import_.dart' as _m;");
     }
     if (imports.isNotEmpty) buffer.writeln();
 
     // Part directive
-    buffer.writeln("part '${fileName}_api_response.freezed.dart';");
+    buffer.writeln("part '${fileName}_response.freezed.dart';");
     buffer.writeln();
 
     // Sealed class
@@ -70,12 +71,26 @@ class ResponseGenerator {
     final subclassName = '$className${ReCase(factoryName).pascalCase}';
 
     if (response.hasBody) {
+      final dartType = _prefixModelType(response.type!);
       buffer.writeln(
-          '  const factory $className.$factoryName(${response.type!.dartType} data) = $subclassName;');
+          '  const factory $className.$factoryName($dartType data) = $subclassName;');
     } else {
       buffer.writeln(
           '  const factory $className.$factoryName() = $subclassName;');
     }
+  }
+
+  /// Prefixes model types with `_m.` for imports that use the `as _m` alias.
+  /// Primitives and Map types are not prefixed.
+  String _prefixModelType(FlorvalType type) {
+    if (type.isList && type.itemType != null) {
+      final inner = _prefixModelType(type.itemType!);
+      return 'List<$inner>';
+    }
+    if (type.ref != null) {
+      return '_m.${type.dartType}';
+    }
+    return type.dartType;
   }
 
   /// Maps HTTP status codes to factory names.
