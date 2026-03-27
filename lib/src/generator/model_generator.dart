@@ -221,6 +221,8 @@ class ModelGenerator {
     // fromJson with discriminator support
     if (schema.discriminator != null) {
       _writeDiscriminatorFromJson(buffer, schema);
+      buffer.writeln();
+      _writeDiscriminatorToJson(buffer, schema);
     } else {
       buffer.writeln(
           '  factory ${schema.name}.fromJson(Map<String, dynamic> json) => _\$${schema.name}FromJson(json);');
@@ -260,6 +262,18 @@ class ModelGenerator {
         "        throw UnimplementedError('Unknown ${disc.propertyName}: \${json[\"${disc.propertyName}\"]}');");
     buffer.writeln('    }');
     buffer.writeln('  }');
+  }
+
+  /// Writes a toJson method that delegates to each variant's data.toJson().
+  void _writeDiscriminatorToJson(StringBuffer buffer, FlorvalSchema schema) {
+    final variants = schema.oneOf ?? schema.anyOf ?? [];
+    buffer.writeln('  Map<String, dynamic> toJson() => switch (this) {');
+    for (final variant in variants) {
+      final subclassName = '${schema.name}${variant.name}';
+      buffer.writeln(
+          '    $subclassName(:final data) => data.toJson(),');
+    }
+    buffer.writeln('  };');
   }
 
   bool _isUnionType(FlorvalSchema schema) {
