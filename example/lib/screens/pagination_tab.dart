@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/generated/api.dart';
-import '../api/generated/api_responses.dart' as r;
 
 class PaginationTab extends ConsumerStatefulWidget {
   const PaginationTab({super.key});
@@ -135,23 +134,6 @@ class _PaginationTabState extends ConsumerState<PaginationTab> {
           },
         );
       case AsyncError(:final error):
-        if (error is ApiException) {
-          final resp = error.response;
-          if (resp is r.ListUsersResponseUnauthorized) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.lock, size: 48, color: Colors.orange),
-                  const SizedBox(height: 8),
-                  Text('Unauthorized: ${resp.data.message}'),
-                  const SizedBox(height: 8),
-                  const Text('Login via the Mutation tab first.'),
-                ],
-              ),
-            );
-          }
-        }
         return Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,

@@ -1,12 +1,10 @@
 import '../models/task.dart' as m;
-import '../models/unauthorized_error.dart' as m;
 import '../models/not_found_error.dart' as m;
 
 sealed class GetTaskResponse {
   const GetTaskResponse();
 
   const factory GetTaskResponse.success(m.Task data) = GetTaskResponseSuccess;
-  const factory GetTaskResponse.unauthorized(m.UnauthorizedError data) = GetTaskResponseUnauthorized;
   const factory GetTaskResponse.notFound(m.NotFoundError data) = GetTaskResponseNotFound;
   const factory GetTaskResponse.unknown(int statusCode, dynamic body) = GetTaskResponseUnknown;
 }
@@ -14,11 +12,6 @@ sealed class GetTaskResponse {
 class GetTaskResponseSuccess extends GetTaskResponse {
   final m.Task data;
   const GetTaskResponseSuccess(this.data);
-}
-
-class GetTaskResponseUnauthorized extends GetTaskResponse {
-  final m.UnauthorizedError data;
-  const GetTaskResponseUnauthorized(this.data);
 }
 
 class GetTaskResponseNotFound extends GetTaskResponse {

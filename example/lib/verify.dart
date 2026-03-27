@@ -11,28 +11,13 @@ void main() async {
     ),
   );
 
-  final authClient = AuthApiClient(dio);
   final tasksClient = TasksApiClient(dio);
   final usersClient = UsersApiClient(dio);
   final projectsClient = ProjectsApiClient(dio);
   final notificationsClient = NotificationsApiClient(dio);
 
-  // 1. Login
-  print('=== 1. POST /auth/login ===');
-  final loginResp = await authClient.login(
-    body: LoginRequest(email: 'demo@example.com', password: 'password'),
-  );
-  switch (loginResp) {
-    case r.LoginResponseSuccess(:final data):
-      print('OK: ${data.user.name} (token: ${data.token.substring(0, 20)}...)');
-      dio.options.headers['Authorization'] = 'Bearer ${data.token}';
-    default:
-      print('FAIL: $loginResp');
-      return;
-  }
-
-  // 2. List Tasks
-  print('\n=== 2. GET /tasks ===');
+  // 1. List Tasks
+  print('=== 1. GET /tasks ===');
   final tasksResp = await tasksClient.listTasks();
   switch (tasksResp) {
     case r.ListTasksResponseSuccess(:final data):
@@ -41,8 +26,8 @@ void main() async {
       print('FAIL: $tasksResp');
   }
 
-  // 3. Create Task
-  print('\n=== 3. POST /tasks ===');
+  // 2. Create Task
+  print('\n=== 2. POST /tasks ===');
   String? taskId;
   final createResp = await tasksClient.createTask(
     body: CreateTaskRequest(title: 'Test task', tags: ['test']),
@@ -55,8 +40,8 @@ void main() async {
       print('FAIL: $createResp');
   }
 
-  // 4. 404
-  print('\n=== 4. GET /tasks/{id} (404) ===');
+  // 3. 404
+  print('\n=== 3. GET /tasks/{id} (404) ===');
   final notFoundResp = await tasksClient.getTask(
     id: '00000000-0000-0000-0000-000000000000',
   );
@@ -67,9 +52,9 @@ void main() async {
       print('UNEXPECTED: $notFoundResp');
   }
 
-  // 5. 500
-  print('\n=== 5. GET /tasks?trigger_error=true ===');
-  final errorResp = await tasksClient.listTasks(triggerError: 'true');
+  // 4. 500
+  print('\n=== 4. GET /tasks?simulate_status=500 ===');
+  final errorResp = await tasksClient.listTasks(simulateStatus: 500);
   switch (errorResp) {
     case r.ListTasksResponseServerError(:final data):
       print('OK (expected): ${data.message} [${data.code}]');
@@ -77,12 +62,13 @@ void main() async {
       print('UNEXPECTED: $errorResp');
   }
 
-  // 6. Cursor-based Pagination
-  print('\n=== 6. GET /users?limit=3 (cursor-based) ===');
+  // 5. Cursor-based Pagination
+  print('\n=== 5. GET /users?limit=3 (cursor-based) ===');
   final usersResp = await usersClient.listUsers(limit: 3);
   switch (usersResp) {
     case r.ListUsersResponseSuccess(:final data):
-      print('OK: ${data.items.length} users (hasMore: ${data.hasMore}, nextCursor: ${data.nextCursor})');
+      print(
+          'OK: ${data.items.length} users (hasMore: ${data.hasMore}, nextCursor: ${data.nextCursor})');
       for (final user in data.items) {
         print('  - ${user.name} (${user.role})');
       }
@@ -90,21 +76,22 @@ void main() async {
       print('FAIL: $usersResp');
   }
 
-  // 7. Projects (nested)
-  print('\n=== 7. GET /projects ===');
+  // 6. Projects (nested)
+  print('\n=== 6. GET /projects ===');
   final projResp = await projectsClient.listProjects();
   switch (projResp) {
     case r.ListProjectsResponseSuccess(:final data):
       for (final p in data) {
-        print('  ${p.name} (owner: ${p.owner.name}, members: ${p.members.length})');
+        print(
+            '  ${p.name} (owner: ${p.owner.name}, members: ${p.members.length})');
       }
       print('OK: ${data.length} projects');
     default:
       print('FAIL: $projResp');
   }
 
-  // 8. Notifications (oneOf + discriminator)
-  print('\n=== 8. GET /notifications ===');
+  // 7. Notifications (oneOf + discriminator)
+  print('\n=== 7. GET /notifications ===');
   final notifResp = await notificationsClient.listNotifications();
   switch (notifResp) {
     case r.ListNotificationsResponseSuccess(:final data):
@@ -114,9 +101,9 @@ void main() async {
       print('FAIL: $notifResp');
   }
 
-  // 9. Delete
+  // 8. Delete
   if (taskId != null) {
-    print('\n=== 9. DELETE /tasks/$taskId ===');
+    print('\n=== 8. DELETE /tasks/$taskId ===');
     final delResp = await tasksClient.deleteTask(id: taskId);
     switch (delResp) {
       case r.DeleteTaskResponseNoContent():

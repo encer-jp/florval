@@ -1,11 +1,11 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../models/api_exception.dart';
+import '../models/paginated_data.dart';
 import 'retry.dart';
 import '../clients/users_api_client.dart';
-import '../models/cursor_paginated_users.dart';
-import '../models/paginated_data.dart';
-import '../models/api_exception.dart';
 import '../models/user.dart';
+import '../models/cursor_paginated_users.dart';
 import '../api_responses.dart' as r;
 
 part 'users_providers.g.dart';
@@ -82,3 +82,4 @@ class GetUser extends _$GetUser {
     return client.getUser(id: id);
   }
 }
+
