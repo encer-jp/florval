@@ -14,6 +14,10 @@ class SchemaAnalyzer {
   /// These need to be generated as separate model files.
   final List<FlorvalSchema> inlineUnionSchemas = [];
 
+  /// Inline object schemas discovered during schema analysis.
+  /// These need to be generated as separate model files.
+  final List<FlorvalSchema> inlineObjectSchemas = [];
+
   SchemaAnalyzer(this.resolver);
 
   /// Converts all component schemas to FlorvalSchemas.
@@ -339,7 +343,7 @@ class SchemaAnalyzer {
       case 'array':
         return _arrayType(schema, isNullable);
       case 'object':
-        return _objectType(schema, isNullable);
+        return _objectType(schema, isNullable, contextName: contextName);
       default:
         return FlorvalType(
           name: 'dynamic',
@@ -403,7 +407,8 @@ class SchemaAnalyzer {
     );
   }
 
-  FlorvalType _objectType(v31.Schema schema, bool isNullable) {
+  FlorvalType _objectType(v31.Schema schema, bool isNullable,
+      {String? contextName}) {
     // Object with no properties → Map<String, dynamic>
     if (schema.properties == null || schema.properties!.isEmpty) {
       const dartType = 'Map<String, dynamic>';
@@ -413,8 +418,20 @@ class SchemaAnalyzer {
         isNullable: isNullable,
       );
     }
-    // Object with properties should have been handled as a named schema
-    // If we get here, it's an inline object — treat as Map
+
+    // Object with properties + contextName → generate inline object class
+    if (contextName != null) {
+      final inlineSchema = analyze(contextName, schema);
+      inlineObjectSchemas.add(inlineSchema);
+      return FlorvalType(
+        name: contextName,
+        dartType: isNullable ? '$contextName?' : contextName,
+        isNullable: isNullable,
+        ref: '#/components/schemas/$contextName',
+      );
+    }
+
+    // No contextName → safe fallback to Map
     const dartType = 'Map<String, dynamic>';
     return FlorvalType(
       name: dartType,

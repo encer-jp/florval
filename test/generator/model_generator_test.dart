@@ -447,5 +447,54 @@ void main() {
       // Regular schemas should NOT be included
       expect(names, isNot(contains('User')));
     });
+
+    test('generates fromJson for non-discriminator union type', () {
+      final schema = FlorvalSchema(
+        name: 'TaskOwner',
+        fields: [],
+        anyOf: [
+          FlorvalSchema(name: 'User', fields: []),
+          FlorvalSchema(name: 'Group', fields: []),
+        ],
+      );
+
+      final code = generator.generate(schema);
+
+      // Should NOT contain TODO comment
+      expect(code, isNot(contains('// TODO')));
+      // Should contain fromJson factory
+      expect(code,
+          contains('factory TaskOwner.fromJson(Map<String, dynamic> json)'));
+      // Should try each variant
+      expect(code, contains('return TaskOwner.user(User.fromJson(json));'));
+      expect(code, contains('return TaskOwner.group(Group.fromJson(json));'));
+      // Should throw FormatException on no match
+      expect(code, contains('throw FormatException('));
+      expect(code, contains('none of the variants matched'));
+    });
+
+    test('generates toJson for non-discriminator union subclasses', () {
+      final schema = FlorvalSchema(
+        name: 'TaskOwner',
+        fields: [],
+        anyOf: [
+          FlorvalSchema(name: 'User', fields: []),
+          FlorvalSchema(name: 'Group', fields: []),
+        ],
+      );
+
+      final code = generator.generate(schema);
+
+      expect(code, contains('Map<String, dynamic> toJson() => data.toJson();'));
+      // Both subclasses should have toJson
+      expect(
+          code,
+          contains(
+              'class TaskOwnerUser extends TaskOwner'));
+      expect(
+          code,
+          contains(
+              'class TaskOwnerGroup extends TaskOwner'));
+    });
   });
 }
