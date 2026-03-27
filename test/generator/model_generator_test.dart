@@ -154,11 +154,16 @@ void main() {
 
       final code = generator.generate(schema);
 
-      expect(code, contains('sealed class Animal with _\$Animal'));
+      expect(code, contains('sealed class Animal'));
+      expect(code, isNot(contains('with _\$Animal')));
+      expect(code, isNot(contains('@freezed')));
       expect(code, contains('const factory Animal.dog(Dog data) = AnimalDog;'));
       expect(code, contains('const factory Animal.cat(Cat data) = AnimalCat;'));
       expect(code, contains("import 'dog.dart';"));
       expect(code, contains("import 'cat.dart';"));
+      // Subclasses
+      expect(code, contains('class AnimalDog extends Animal'));
+      expect(code, contains('class AnimalCat extends Animal'));
     });
 
     test('generates sealed class for anyOf union type', () {
@@ -173,7 +178,8 @@ void main() {
 
       final code = generator.generate(schema);
 
-      expect(code, contains('sealed class Shape with _\$Shape'));
+      expect(code, contains('sealed class Shape'));
+      expect(code, isNot(contains('with _\$Shape')));
       expect(code, contains('const factory Shape.circle(Circle data) = ShapeCircle;'));
       expect(code, contains('const factory Shape.square(Square data) = ShapeSquare;'));
     });

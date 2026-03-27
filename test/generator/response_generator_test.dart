@@ -8,7 +8,7 @@ void main() {
   group('ResponseGenerator', () {
     final generator = ResponseGenerator();
 
-    test('generates sealed class with status code variants', () {
+    test('generates plain sealed class with status code variants', () {
       final endpoint = FlorvalEndpoint(
         path: '/users/{id}',
         method: 'GET',
@@ -33,7 +33,11 @@ void main() {
       final code = generator.generate(endpoint);
 
       expect(code, contains('sealed class GetUserResponse'));
-      expect(code, contains('with _\$GetUserResponse'));
+      // No freezed
+      expect(code, isNot(contains('@freezed')));
+      expect(code, isNot(contains('with _\$')));
+      expect(code, isNot(contains("part '")));
+      // Factory constructors
       expect(code, contains(
           'const factory GetUserResponse.success(_m.User data) = GetUserResponseSuccess;'));
       expect(code, contains(
@@ -42,31 +46,31 @@ void main() {
           'const factory GetUserResponse.serverError(_m.Error data) = GetUserResponseServerError;'));
       expect(code, contains(
           'const factory GetUserResponse.unknown(int statusCode, dynamic body) = GetUserResponseUnknown;'));
+      // Subclasses
+      expect(code, contains('class GetUserResponseSuccess extends GetUserResponse'));
+      expect(code, contains('class GetUserResponseNotFound extends GetUserResponse'));
+      expect(code, contains('class GetUserResponseUnknown extends GetUserResponse'));
     });
 
-    test('generates correct part directive', () {
+    test('generates subclass with data field', () {
       final endpoint = FlorvalEndpoint(
-        path: '/pets',
+        path: '/users/{id}',
         method: 'GET',
-        operationId: 'listPets',
+        operationId: 'getUser',
         parameters: [],
         responses: {
           200: FlorvalResponse(
             statusCode: 200,
-            type: FlorvalType(
-              name: 'List<Pet>',
-              dartType: 'List<Pet>',
-              isList: true,
-              itemType: FlorvalType(name: 'Pet', dartType: 'Pet',
-                  ref: '#/components/schemas/Pet'),
-            ),
+            type: FlorvalType(name: 'User', dartType: 'User',
+                ref: '#/components/schemas/User'),
           ),
         },
-        tags: ['pets'],
+        tags: ['users'],
       );
 
       final code = generator.generate(endpoint);
-      expect(code, contains("part 'list_pets_response.freezed.dart';"));
+      expect(code, contains('final _m.User data;'));
+      expect(code, contains('const GetUserResponseSuccess(this.data);'));
     });
 
     test('imports model types with _m prefix', () {
@@ -130,6 +134,7 @@ void main() {
       final code = generator.generate(endpoint);
       expect(code, contains(
           'const factory DeletePetResponse.noContent() = DeletePetResponseNoContent;'));
+      expect(code, contains('const DeletePetResponseNoContent();'));
     });
 
     test('generates list type with _m prefix on items', () {

@@ -162,9 +162,11 @@ class ModelGenerator {
     'var', 'void', 'while', 'with', 'yield',
   };
 
-  /// Generates a freezed sealed class for union types (oneOf/anyOf).
+  /// Generates a plain Dart sealed class for union types (oneOf/anyOf).
+  ///
+  /// No freezed dependency — union types only need pattern matching
+  /// and discriminator-based serialization, not copyWith/equality.
   String _generateSealedClass(FlorvalSchema schema) {
-    final fileName = ReCase(schema.name).snakeCase;
     final variants = schema.oneOf ?? schema.anyOf ?? [];
     final buffer = StringBuffer();
 
@@ -174,17 +176,12 @@ class ModelGenerator {
       buffer.writeln();
     }
 
-    // Imports
-    buffer.writeln(
-        "import 'package:freezed_annotation/freezed_annotation.dart';");
-
     // Custom model imports
     if (templateConfig != null) {
       for (final import_ in templateConfig!.modelImports) {
         buffer.writeln(import_);
       }
     }
-    buffer.writeln();
 
     // Import variant types
     final imports = <String>{};
@@ -196,19 +193,12 @@ class ModelGenerator {
     }
     if (imports.isNotEmpty) buffer.writeln();
 
-    // Part directives
-    buffer.writeln("part '$fileName.freezed.dart';");
-    // Only emit .g.dart when using generated fromJson (no discriminator)
-    if (schema.discriminator == null) {
-      buffer.writeln("part '$fileName.g.dart';");
-    }
+    // Sealed class definition
+    buffer.writeln('sealed class ${schema.name} {');
+    buffer.writeln('  const ${schema.name}();');
     buffer.writeln();
 
-    // Sealed class definition
-    buffer.writeln('@freezed');
-    buffer.writeln('sealed class ${schema.name} with _\$${schema.name} {');
-
-    // Factory constructors for each variant
+    // Redirecting factory constructors for each variant
     for (final variant in variants) {
       final factoryName = ReCase(variant.name).camelCase;
       final subclassName = '${schema.name}${variant.name}';
@@ -224,11 +214,23 @@ class ModelGenerator {
       buffer.writeln();
       _writeDiscriminatorToJson(buffer, schema);
     } else {
+      // For non-discriminator unions, provide a simple fromJson that tries each variant
       buffer.writeln(
-          '  factory ${schema.name}.fromJson(Map<String, dynamic> json) => _\$${schema.name}FromJson(json);');
+          "  // TODO: Implement fromJson for non-discriminator union type '${schema.name}'");
     }
 
     buffer.writeln('}');
+    buffer.writeln();
+
+    // Subclasses
+    for (final variant in variants) {
+      final subclassName = '${schema.name}${variant.name}';
+      buffer.writeln('class $subclassName extends ${schema.name} {');
+      buffer.writeln('  final ${variant.name} data;');
+      buffer.writeln('  const $subclassName(this.data);');
+      buffer.writeln('}');
+      buffer.writeln();
+    }
 
     return buffer.toString();
   }

@@ -5,7 +5,10 @@ import '../model/api_endpoint.dart';
 import '../model/api_response.dart';
 import '../model/api_type.dart';
 
-/// Generates freezed 3.x sealed classes for status-code-based response Union types.
+/// Generates plain Dart sealed classes for status-code-based response Union types.
+///
+/// No freezed dependency — response types only need pattern matching,
+/// not copyWith/equality/serialization.
 class ResponseGenerator {
   final TemplateConfig? templateConfig;
 
@@ -15,7 +18,6 @@ class ResponseGenerator {
   String generate(FlorvalEndpoint endpoint) {
     final className =
         '${ReCase(endpoint.operationId).pascalCase}Response';
-    final fileName = ReCase(endpoint.operationId).snakeCase;
     final buffer = StringBuffer();
 
     // Custom header
@@ -24,11 +26,6 @@ class ResponseGenerator {
       buffer.writeln();
     }
 
-    // Imports
-    buffer.writeln(
-        "import 'package:freezed_annotation/freezed_annotation.dart';");
-    buffer.writeln();
-
     // Import model types with _m prefix to avoid collision with response class name
     final imports = _collectImports(endpoint);
     for (final import_ in imports) {
@@ -36,13 +33,10 @@ class ResponseGenerator {
     }
     if (imports.isNotEmpty) buffer.writeln();
 
-    // Part directive
-    buffer.writeln("part '${fileName}_response.freezed.dart';");
+    // Sealed class with redirecting factory constructors
+    buffer.writeln('sealed class $className {');
+    buffer.writeln('  const $className();');
     buffer.writeln();
-
-    // Sealed class
-    buffer.writeln('@freezed');
-    buffer.writeln('sealed class $className with _\$$className {');
 
     // Factory for each status code
     final sortedResponses = endpoint.responses.entries.toList()
@@ -56,6 +50,19 @@ class ResponseGenerator {
     buffer.writeln(
         '  const factory $className.unknown(int statusCode, dynamic body) = ${className}Unknown;');
 
+    buffer.writeln('}');
+    buffer.writeln();
+
+    // Subclasses
+    for (final entry in sortedResponses) {
+      _writeSubclass(buffer, className, entry.key, entry.value);
+    }
+
+    // Unknown subclass
+    buffer.writeln('class ${className}Unknown extends $className {');
+    buffer.writeln('  final int statusCode;');
+    buffer.writeln('  final dynamic body;');
+    buffer.writeln('  const ${className}Unknown(this.statusCode, this.body);');
     buffer.writeln('}');
 
     return buffer.toString();
@@ -78,6 +85,27 @@ class ResponseGenerator {
       buffer.writeln(
           '  const factory $className.$factoryName() = $subclassName;');
     }
+  }
+
+  void _writeSubclass(
+    StringBuffer buffer,
+    String className,
+    int statusCode,
+    FlorvalResponse response,
+  ) {
+    final factoryName = _statusCodeToFactoryName(statusCode);
+    final subclassName = '$className${ReCase(factoryName).pascalCase}';
+
+    buffer.writeln('class $subclassName extends $className {');
+    if (response.hasBody) {
+      final dartType = _prefixModelType(response.type!);
+      buffer.writeln('  final $dartType data;');
+      buffer.writeln('  const $subclassName(this.data);');
+    } else {
+      buffer.writeln('  const $subclassName();');
+    }
+    buffer.writeln('}');
+    buffer.writeln();
   }
 
   /// Prefixes model types with `_m.` for imports that use the `as _m` alias.
