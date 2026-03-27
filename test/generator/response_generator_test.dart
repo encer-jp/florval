@@ -8,7 +8,7 @@ void main() {
   group('ResponseGenerator', () {
     final generator = ResponseGenerator();
 
-    test('generates plain sealed class with status code variants', () {
+    test('generates freezed sealed class with status code variants', () {
       final endpoint = FlorvalEndpoint(
         path: '/users/{id}',
         method: 'GET',
@@ -32,11 +32,12 @@ void main() {
 
       final code = generator.generate(endpoint);
 
-      expect(code, contains('sealed class GetUserResponse'));
-      // No freezed
-      expect(code, isNot(contains('@freezed')));
-      expect(code, isNot(contains('with _\$')));
-      expect(code, isNot(contains("part '")));
+      expect(code, contains('@freezed'));
+      expect(code, contains('sealed class GetUserResponse with _\$GetUserResponse'));
+      expect(code, contains("import 'package:freezed_annotation/freezed_annotation.dart';"));
+      expect(code, contains("part 'get_user_response.freezed.dart';"));
+      // No .g.dart (no JSON serialization needed for response types)
+      expect(code, isNot(contains('.g.dart')));
       // Factory constructors
       expect(code, contains(
           'const factory GetUserResponse.success(_m.User data) = GetUserResponseSuccess;'));
@@ -46,13 +47,9 @@ void main() {
           'const factory GetUserResponse.serverError(_m.Error data) = GetUserResponseServerError;'));
       expect(code, contains(
           'const factory GetUserResponse.unknown(int statusCode, dynamic body) = GetUserResponseUnknown;'));
-      // Subclasses
-      expect(code, contains('class GetUserResponseSuccess extends GetUserResponse'));
-      expect(code, contains('class GetUserResponseNotFound extends GetUserResponse'));
-      expect(code, contains('class GetUserResponseUnknown extends GetUserResponse'));
     });
 
-    test('generates subclass with data field', () {
+    test('generates factory with data parameter for body responses', () {
       final endpoint = FlorvalEndpoint(
         path: '/users/{id}',
         method: 'GET',
@@ -69,8 +66,8 @@ void main() {
       );
 
       final code = generator.generate(endpoint);
-      expect(code, contains('final _m.User data;'));
-      expect(code, contains('const GetUserResponseSuccess(this.data);'));
+      expect(code, contains(
+          'const factory GetUserResponse.success(_m.User data) = GetUserResponseSuccess;'));
     });
 
     test('imports model types with _m prefix', () {
@@ -134,7 +131,6 @@ void main() {
       final code = generator.generate(endpoint);
       expect(code, contains(
           'const factory DeletePetResponse.noContent() = DeletePetResponseNoContent;'));
-      expect(code, contains('const DeletePetResponseNoContent();'));
     });
 
     test('generates list type with _m prefix on items', () {

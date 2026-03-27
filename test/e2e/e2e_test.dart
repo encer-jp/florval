@@ -132,7 +132,7 @@ void main() {
       expect(petCode, contains('factory Pet.fromJson'));
     });
 
-    test('generated responses contain sealed class syntax', () {
+    test('generated responses contain freezed sealed class syntax', () {
       final config = _makeConfig(outputDir.path);
 
       FlorvalRunner().run(config);
@@ -141,7 +141,9 @@ void main() {
           File(p.join(outputDir.path, 'responses', 'get_pet_response.dart'))
               .readAsStringSync();
 
-      expect(responseCode, contains('sealed class GetPetResponse'));
+      expect(responseCode, contains('@freezed'));
+      expect(responseCode, contains('sealed class GetPetResponse with _\$GetPetResponse'));
+      expect(responseCode, contains("part 'get_pet_response.freezed.dart';"));
       expect(responseCode,
           contains('const factory GetPetResponse.success(_m.Pet data)'));
       expect(responseCode,

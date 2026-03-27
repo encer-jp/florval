@@ -251,7 +251,7 @@ openapi_spec_plusのSchemaから freezed クラスを生成。
 **Freezed 3.x生成ルール：**
 - 単純データクラス → `@freezed abstract class X with _$X`
 - discriminator付きUnion型（oneOf/anyOf） → `@Freezed(unionKey: '...') sealed class X with _$X`（variant のフィールドをインライン展開、`@FreezedUnionValue`で判別値指定）
-- ステータスコード別レスポンスUnion型 → plain Dart sealed class（freezed不使用、status code分岐のためJSON discriminator不要）
+- ステータスコード別レスポンスUnion型 → `@freezed sealed class X with _$X`（JSON serialization不要のため`.g.dart`は生成しない）
 - 非discriminator Union型 → plain Dart sealed class（freezed不使用）
 - `when/map`は生成しない（Dart 3 switch式を使用）
 - Mixed Modeは使用しない（factory constructorで統一し、生成の一貫性を保つ）

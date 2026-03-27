@@ -149,11 +149,14 @@ switch (payload) {
 }
 ```
 
-### 3. ステータスコード別Union型 - plain Dart sealed class
+### 3. ステータスコード別Union型 - freezed sealed class
 ```dart
-sealed class GetUserResponse {
-  const GetUserResponse();
+import 'package:freezed_annotation/freezed_annotation.dart';
 
+part 'get_user_response.freezed.dart';
+
+@freezed
+sealed class GetUserResponse with _$GetUserResponse {
   const factory GetUserResponse.success(User data) = GetUserResponseSuccess;
   const factory GetUserResponse.badRequest(ValidationError error) = GetUserResponseBadRequest;
   const factory GetUserResponse.unauthorized(UnauthorizedError error) = GetUserResponseUnauthorized;
@@ -161,14 +164,8 @@ sealed class GetUserResponse {
   const factory GetUserResponse.serverError(ServerError error) = GetUserResponseServerError;
   const factory GetUserResponse.unknown(int statusCode, dynamic body) = GetUserResponseUnknown;
 }
-
-class GetUserResponseSuccess extends GetUserResponse {
-  final User data;
-  const GetUserResponseSuccess(this.data);
-}
-// ... 他のサブクラスも同様
 ```
-※ freezedは使用しない（copyWith/equality不要、build_runner不要）。
+※ freezedを使用（copyWith/equality/toStringが自動生成される）。JSON serializationは不要のため`.g.dart`は生成しない。
 ※ 利用側ではDart 3のswitch式でパターンマッチングする：
 ```dart
 final response = await client.getUser(id: 1);
