@@ -4,6 +4,7 @@ import 'analyzer/endpoint_analyzer.dart';
 import 'analyzer/response_analyzer.dart';
 import 'analyzer/schema_analyzer.dart';
 import 'config/florval_config.dart';
+import 'model/api_schema.dart';
 import 'generator/client_generator.dart';
 import 'generator/file_writer.dart';
 import 'generator/model_generator.dart';
@@ -44,7 +45,7 @@ class FlorvalRunner {
 
     final schemas = spec.components?.schemas != null
         ? schemaAnalyzer.analyzeAll(spec.components!.schemas!)
-        : [];
+        : <FlorvalSchema>[];
     final endpoints = endpointAnalyzer.analyzeAll(spec.paths);
 
     // Collect inline union schemas discovered during response analysis
@@ -67,9 +68,18 @@ class FlorvalRunner {
     final writer = FileWriter(config.outputDirectory);
     writer.ensureDirectories();
 
+    // Identify variant schemas that are inlined into discriminator unions
+    // (these should not be generated as standalone model files)
+    final variantNames = ModelGenerator.variantSchemaNames(schemas);
+    if (variantNames.isNotEmpty) {
+      logger.debug(
+          'Skipping ${variantNames.length} variant schemas inlined into unions: $variantNames');
+    }
+
     // Models
     final modelNames = <String>[];
     for (final schema in schemas) {
+      if (variantNames.contains(schema.name)) continue;
       final code = modelGenerator.generate(schema);
       writer.writeModel(schema.name, code);
       modelNames.add(schema.name);

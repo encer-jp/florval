@@ -128,7 +128,7 @@ void main() {
       final code = generator.generate('users', [makeGetEndpoint()]);
 
       expect(code,
-          contains("import '../responses/get_user_response.dart';"));
+          contains("import '../api_responses.dart' as _r;"));
     });
 
     test('generates client provider', () {
@@ -142,7 +142,7 @@ void main() {
       final code = generator.generate('users', [makeGetEndpoint()]);
 
       expect(code, contains('class GetUser extends _\$GetUser'));
-      expect(code, contains('FutureOr<GetUserResponse> build('));
+      expect(code, contains('FutureOr<_r.GetUserResponse> build('));
       expect(code, contains('required int id,'));
       expect(code, contains('ref.watch(usersApiClientProvider)'));
       expect(code, contains('client.getUser(id: id)'));
@@ -152,7 +152,7 @@ void main() {
       final code = generator.generate('users', [makeListEndpoint()]);
 
       expect(code, contains('class ListUsers extends _\$ListUsers'));
-      expect(code, contains('FutureOr<ListUsersResponse> build() async'));
+      expect(code, contains('FutureOr<_r.ListUsersResponse> build() async'));
       expect(code, contains('client.listUsers()'));
     });
 
@@ -193,7 +193,7 @@ void main() {
     test('generates POST endpoint as Mutation constant', () {
       final code = generator.generate('users', [makePostEndpoint()]);
 
-      expect(code, contains('final createUserMutation = Mutation<CreateUserResponse>();'));
+      expect(code, contains('final createUserMutation = Mutation<_r.CreateUserResponse>();'));
       expect(code, isNot(contains('class CreateUser extends _\$CreateUser')));
       expect(code, isNot(contains('build() => null')));
       expect(code, isNot(contains('@mutation')));
@@ -234,7 +234,7 @@ void main() {
 
       final code = generator.generate('users', [endpoint]);
 
-      expect(code, contains('final updateUserMutation = Mutation<UpdateUserResponse>();'));
+      expect(code, contains('final updateUserMutation = Mutation<_r.UpdateUserResponse>();'));
       expect(code, isNot(contains('class UpdateUser extends _\$UpdateUser')));
       expect(code, isNot(contains('build() => null')));
     });
@@ -261,7 +261,7 @@ void main() {
 
       final code = generator.generate('users', [endpoint]);
 
-      expect(code, contains('final deleteUserMutation = Mutation<DeleteUserResponse>();'));
+      expect(code, contains('final deleteUserMutation = Mutation<_r.DeleteUserResponse>();'));
       expect(code, isNot(contains('class DeleteUser extends _\$DeleteUser')));
       expect(code, isNot(contains('build() => null')));
     });
@@ -290,7 +290,7 @@ void main() {
           'tickets', [makePostEndpoint()]);
 
       // Helper function should exist even without GET endpoints
-      expect(code, contains('Future<CreateUserResponse> createUser('));
+      expect(code, contains('Future<_r.CreateUserResponse> createUser('));
       expect(code, contains('MutationTarget ref'));
       expect(code, contains('createUserMutation.run(ref, (tsx) async {'));
       expect(code, contains('tsx.get(ticketsApiClientProvider)'));
@@ -314,14 +314,14 @@ void main() {
           'users', [makeGetEndpoint(), makePostEndpoint()]);
 
       expect(code, contains('class GetUser extends _\$GetUser'));
-      expect(code, contains('final createUserMutation = Mutation<CreateUserResponse>();'));
+      expect(code, contains('final createUserMutation = Mutation<_r.CreateUserResponse>();'));
     });
 
     test('mutation does not generate helper by default', () {
       final code = generator.generate(
           'users', [makeGetEndpoint(), makePostEndpoint()]);
 
-      expect(code, isNot(contains('Future<CreateUserResponse> createUser(')));
+      expect(code, isNot(contains('Future<_r.CreateUserResponse> createUser(')));
       expect(code, isNot(contains('MutationTarget')));
       expect(code, isNot(contains('ref.container.invalidate(')));
     });
@@ -332,7 +332,7 @@ void main() {
           'users', [makeGetEndpoint(), makePostEndpoint()]);
 
       // Helper function should exist
-      expect(code, contains('Future<CreateUserResponse> createUser('));
+      expect(code, contains('Future<_r.CreateUserResponse> createUser('));
       expect(code, contains('MutationTarget ref'));
       expect(code, contains('createUserMutation.run(ref, (tsx) async {'));
       expect(code, contains('tsx.get(usersApiClientProvider)'));
@@ -353,7 +353,7 @@ void main() {
       final code = generator.generate(
           'users', [makeGetEndpoint(), makePostEndpoint()]);
 
-      expect(code, isNot(contains('Future<CreateUserResponse> createUser(')));
+      expect(code, isNot(contains('Future<_r.CreateUserResponse> createUser(')));
       expect(code, isNot(contains('MutationTarget')));
     });
 
@@ -440,7 +440,7 @@ void main() {
 
       final code = generator.generate('pets', [endpoint]);
 
-      expect(code, contains('final uploadPetPhotoMutation = Mutation<UploadPetPhotoResponse>();'));
+      expect(code, contains('final uploadPetPhotoMutation = Mutation<_r.UploadPetPhotoResponse>();'));
       expect(code, isNot(contains('class UploadPetPhoto extends')));
     });
 
@@ -574,7 +574,7 @@ void main() {
         final code = generator.generate('pets', [makePaginatedEndpoint()]);
 
         expect(code, contains('switch (response)'));
-        expect(code, contains('case ListPetsPaginatedResponseSuccess(:final data):'));
+        expect(code, contains('case _r.ListPetsPaginatedResponseSuccess(:final data):'));
         expect(code, contains('_allItems.addAll(data.items)'));
         expect(code, contains('_nextCursor = data.nextCursor'));
         expect(code, contains('lastPage: data,'));
@@ -631,7 +631,7 @@ void main() {
         final code = generator.generate('users', [makeGetEndpoint()]);
 
         expect(code, contains('class GetUser extends _\$GetUser'));
-        expect(code, contains('FutureOr<GetUserResponse> build('));
+        expect(code, contains('FutureOr<_r.GetUserResponse> build('));
         expect(code, isNot(contains('fetchMore')));
         expect(code, isNot(contains('PaginatedData')));
       });
@@ -710,10 +710,10 @@ void main() {
         final code = retryGenerator.generate(
             'users', [makeGetEndpoint(), makePostEndpoint()]);
 
-        expect(code, contains('final createUserMutation = Mutation<CreateUserResponse>();'));
+        expect(code, contains('final createUserMutation = Mutation<_r.CreateUserResponse>();'));
         // Mutation line should not have retry annotation
         final mutationLine = code.split('\n')
-            .where((l) => l.contains('Mutation<CreateUserResponse>'))
+            .where((l) => l.contains('Mutation<_r.CreateUserResponse>'))
             .first;
         expect(mutationLine, isNot(contains('retry')));
       });

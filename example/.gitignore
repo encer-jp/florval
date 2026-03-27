@@ -28,4 +28,4 @@ pubspec.lock
 # Generated files
 *.freezed.dart
 *.g.dart
-lib/api/generated/
+

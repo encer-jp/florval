@@ -109,16 +109,11 @@ class ProviderGenerator {
     buffer.writeln(
         "import '../clients/${ReCase(tag).snakeCase}_api_client.dart';");
 
-    // Import response types
-    final responseImports = <String>{};
+    // Import model types
     final modelImports = <String>{};
-
-    // Mutation helpers (which reference request body types) are generated
-    // when autoInvalidate is enabled.
     final generatesMutationHelpers = autoInvalidate;
 
     for (final endpoint in endpoints) {
-      responseImports.add(ReCase(endpoint.operationId).snakeCase);
       _collectModelImports(endpoint, modelImports,
           includeMutationBody: generatesMutationHelpers);
     }
@@ -126,9 +121,8 @@ class ProviderGenerator {
     for (final import_ in modelImports) {
       buffer.writeln("import '../models/$import_.dart';");
     }
-    for (final import_ in responseImports) {
-      buffer.writeln("import '../responses/${import_}_response.dart';");
-    }
+    // Import responses via barrel with _r prefix to avoid collision with models
+    buffer.writeln("import '../api_responses.dart' as _r;");
   }
 
   /// Generates the retry utility file content.
@@ -160,7 +154,7 @@ class ProviderGenerator {
   void _writeGetProvider(
       StringBuffer buffer, String tag, FlorvalEndpoint endpoint) {
     final className = ReCase(endpoint.operationId).pascalCase;
-    final responseType = '${className}Response';
+    final responseType = '_r.${className}Response';
     final clientProvider = '${ReCase(tag).camelCase}ApiClientProvider';
     final methodName = ReCase(endpoint.operationId).camelCase;
 
@@ -199,7 +193,7 @@ class ProviderGenerator {
   void _writePaginatedProvider(
       StringBuffer buffer, String tag, FlorvalEndpoint endpoint) {
     final className = ReCase(endpoint.operationId).pascalCase;
-    final responseType = '${className}Response';
+    final responseType = '_r.${className}Response';
     final clientProvider = '${ReCase(tag).camelCase}ApiClientProvider';
     final methodName = ReCase(endpoint.operationId).camelCase;
     final pagination = endpoint.pagination!;
@@ -370,7 +364,7 @@ class ProviderGenerator {
   void _writeMutationDefinition(
       StringBuffer buffer, FlorvalEndpoint endpoint) {
     final className = ReCase(endpoint.operationId).pascalCase;
-    final responseType = '${className}Response';
+    final responseType = '_r.${className}Response';
 
     buffer.writeln('/// Mutation for ${endpoint.operationId} (${endpoint.method} ${endpoint.path})');
     buffer.writeln('final ${ReCase(endpoint.operationId).camelCase}Mutation = Mutation<$responseType>();');
@@ -380,7 +374,7 @@ class ProviderGenerator {
       StringBuffer buffer, String tag, FlorvalEndpoint endpoint,
       {List<FlorvalEndpoint> getEndpoints = const []}) {
     final className = ReCase(endpoint.operationId).pascalCase;
-    final responseType = '${className}Response';
+    final responseType = '_r.${className}Response';
     final clientProvider = '${ReCase(tag).camelCase}ApiClientProvider';
     final methodName = ReCase(endpoint.operationId).camelCase;
     final mutationName = '${ReCase(endpoint.operationId).camelCase}Mutation';

@@ -4,7 +4,11 @@ import '../config/template_config.dart';
 import '../model/api_schema.dart';
 import '../utils/dart_identifier.dart';
 
-/// Generates freezed 3.x model classes from FlorvalSchemas.
+/// Generates Dart model classes from FlorvalSchemas.
+///
+/// - Regular data classes → freezed 3.x (abstract class)
+/// - Discriminator union types (oneOf/anyOf) → freezed 3.x sealed class (unionKey)
+/// - Non-discriminator union types → plain Dart sealed class
 class ModelGenerator {
   final TemplateConfig? templateConfig;
 
@@ -162,10 +166,23 @@ class ModelGenerator {
     'var', 'void', 'while', 'with', 'yield',
   };
 
-  /// Generates a freezed sealed class for union types (oneOf/anyOf).
+  /// Routes union type generation based on discriminator presence.
   String _generateSealedClass(FlorvalSchema schema) {
-    final fileName = ReCase(schema.name).snakeCase;
+    if (schema.discriminator != null) {
+      return _generateFreezedSealedClass(schema);
+    }
+    return _generatePlainSealedClass(schema);
+  }
+
+  /// Generates a freezed sealed class for discriminator-based union types.
+  ///
+  /// Uses `@Freezed(unionKey: ...)` and `@FreezedUnionValue(...)` so that
+  /// freezed + json_serializable handle fromJson/toJson automatically,
+  /// including the discriminator field.
+  String _generateFreezedSealedClass(FlorvalSchema schema) {
+    final disc = schema.discriminator!;
     final variants = schema.oneOf ?? schema.anyOf ?? [];
+    final fileName = ReCase(schema.name).snakeCase;
     final buffer = StringBuffer();
 
     // Custom header
@@ -186,6 +203,85 @@ class ModelGenerator {
     }
     buffer.writeln();
 
+    // Import referenced types from variant fields
+    final imports = _collectUnionImports(schema);
+    for (final import_ in imports) {
+      buffer.writeln("import '$import_.dart';");
+    }
+    if (imports.isNotEmpty) buffer.writeln();
+
+    // Part directives
+    buffer.writeln("part '$fileName.freezed.dart';");
+    buffer.writeln("part '$fileName.g.dart';");
+    buffer.writeln();
+
+    // Class definition with unionKey
+    buffer.writeln("@Freezed(unionKey: '${disc.propertyName}')");
+    buffer.writeln(
+        'sealed class ${schema.name} with _\$${schema.name} {');
+
+    // Factory constructors for each variant with inlined fields
+    for (final variant in variants) {
+      // Determine discriminator value from mapping
+      final discriminatorValue = disc.mapping?.entries
+          .where((e) =>
+              e.value == variant.name || e.value.endsWith('/${variant.name}'))
+          .map((e) => e.key)
+          .firstOrNull;
+      final value = discriminatorValue ?? ReCase(variant.name).snakeCase;
+
+      // Factory name from discriminator value (e.g., 'task_assigned' → 'taskAssigned')
+      final factoryName = ReCase(value).camelCase;
+      final subclassName = '${schema.name}${ReCase(value).pascalCase}';
+
+      buffer.writeln("  @FreezedUnionValue('$value')");
+
+      // Filter out the discriminator property from variant fields
+      final fields = variant.fields
+          .where((f) => f.jsonKey != disc.propertyName)
+          .toList();
+
+      if (fields.isEmpty) {
+        buffer.writeln(
+            '  const factory ${schema.name}.$factoryName() = $subclassName;');
+      } else {
+        buffer.writeln('  const factory ${schema.name}.$factoryName({');
+        for (final field in fields) {
+          _writeField(buffer, field);
+        }
+        buffer.writeln('  }) = $subclassName;');
+      }
+    }
+
+    buffer.writeln();
+    buffer.writeln(
+        '  factory ${schema.name}.fromJson(Map<String, dynamic> json) => _\$${schema.name}FromJson(json);');
+    buffer.writeln('}');
+
+    return buffer.toString();
+  }
+
+  /// Generates a plain Dart sealed class for non-discriminator union types.
+  ///
+  /// No freezed dependency — without a discriminator, JSON serialization
+  /// cannot be automated.
+  String _generatePlainSealedClass(FlorvalSchema schema) {
+    final variants = schema.oneOf ?? schema.anyOf ?? [];
+    final buffer = StringBuffer();
+
+    // Custom header
+    if (templateConfig?.header != null) {
+      buffer.writeln(templateConfig!.header);
+      buffer.writeln();
+    }
+
+    // Custom model imports
+    if (templateConfig != null) {
+      for (final import_ in templateConfig!.modelImports) {
+        buffer.writeln(import_);
+      }
+    }
+
     // Import variant types
     final imports = <String>{};
     for (final variant in variants) {
@@ -196,19 +292,12 @@ class ModelGenerator {
     }
     if (imports.isNotEmpty) buffer.writeln();
 
-    // Part directives
-    buffer.writeln("part '$fileName.freezed.dart';");
-    // Only emit .g.dart when using generated fromJson (no discriminator)
-    if (schema.discriminator == null) {
-      buffer.writeln("part '$fileName.g.dart';");
-    }
+    // Sealed class definition
+    buffer.writeln('sealed class ${schema.name} {');
+    buffer.writeln('  const ${schema.name}();');
     buffer.writeln();
 
-    // Sealed class definition
-    buffer.writeln('@freezed');
-    buffer.writeln('sealed class ${schema.name} with _\$${schema.name} {');
-
-    // Factory constructors for each variant
+    // Redirecting factory constructors for each variant
     for (final variant in variants) {
       final factoryName = ReCase(variant.name).camelCase;
       final subclassName = '${schema.name}${variant.name}';
@@ -218,53 +307,45 @@ class ModelGenerator {
 
     buffer.writeln();
 
-    // fromJson with discriminator support
-    if (schema.discriminator != null) {
-      _writeDiscriminatorFromJson(buffer, schema);
-    } else {
-      buffer.writeln(
-          '  factory ${schema.name}.fromJson(Map<String, dynamic> json) => _\$${schema.name}FromJson(json);');
-    }
+    // For non-discriminator unions, provide a simple fromJson that tries each variant
+    buffer.writeln(
+        "  // TODO: Implement fromJson for non-discriminator union type '${schema.name}'");
 
     buffer.writeln('}');
+    buffer.writeln();
 
-    return buffer.toString();
-  }
-
-  /// Writes a fromJson factory that switches on a discriminator property.
-  void _writeDiscriminatorFromJson(StringBuffer buffer, FlorvalSchema schema) {
-    final disc = schema.discriminator!;
-    final variants = schema.oneOf ?? schema.anyOf ?? [];
-
-    buffer.writeln(
-        "  factory ${schema.name}.fromJson(Map<String, dynamic> json) {");
-    buffer.writeln("    switch (json['${disc.propertyName}']) {");
-
+    // Subclasses
     for (final variant in variants) {
-      final factoryName = ReCase(variant.name).camelCase;
-      // Use explicit mapping if available, otherwise infer from variant name
-      final discriminatorValue = disc.mapping?.entries
-          .where((e) =>
-              e.value == variant.name || e.value.endsWith('/${variant.name}'))
-          .map((e) => e.key)
-          .firstOrNull;
-      final value = discriminatorValue ?? ReCase(variant.name).snakeCase;
-
-      buffer.writeln("      case '$value':");
-      buffer.writeln(
-          '        return ${schema.name}.$factoryName(${variant.name}.fromJson(json));');
+      final subclassName = '${schema.name}${variant.name}';
+      buffer.writeln('class $subclassName extends ${schema.name} {');
+      buffer.writeln('  final ${variant.name} data;');
+      buffer.writeln('  const $subclassName(this.data);');
+      buffer.writeln('}');
+      buffer.writeln();
     }
 
-    buffer.writeln('      default:');
-    buffer.writeln(
-        "        throw UnimplementedError('Unknown ${disc.propertyName}: \${json[\"${disc.propertyName}\"]}');");
-    buffer.writeln('    }');
-    buffer.writeln('  }');
+    return buffer.toString();
   }
 
   bool _isUnionType(FlorvalSchema schema) {
     return (schema.oneOf != null && schema.oneOf!.isNotEmpty) ||
         (schema.anyOf != null && schema.anyOf!.isNotEmpty);
+  }
+
+  /// Returns the set of schema names that are inlined as variants
+  /// in discriminator-based union types and should not be generated
+  /// as standalone model files.
+  static Set<String> variantSchemaNames(List<FlorvalSchema> schemas) {
+    final names = <String>{};
+    for (final schema in schemas) {
+      if (schema.discriminator == null) continue;
+      final variants = schema.oneOf ?? schema.anyOf;
+      if (variants == null) continue;
+      for (final variant in variants) {
+        names.add(variant.name);
+      }
+    }
+    return names;
   }
 
   void _writeField(StringBuffer buffer, FlorvalField field) {
@@ -337,10 +418,32 @@ class ModelGenerator {
     return buffer.toString();
   }
 
-  /// Collects import paths for referenced types.
+  /// Collects import paths for referenced types in a schema's fields.
   Set<String> _collectImports(FlorvalSchema schema) {
     final imports = <String>{};
-    for (final field in schema.fields) {
+    _addFieldImports(imports, schema.fields);
+    return imports;
+  }
+
+  /// Collects import paths for referenced types across all variant fields
+  /// in a discriminator union schema.
+  Set<String> _collectUnionImports(FlorvalSchema schema) {
+    final imports = <String>{};
+    final variants = schema.oneOf ?? schema.anyOf ?? [];
+    final discProperty = schema.discriminator?.propertyName;
+    for (final variant in variants) {
+      // Exclude the discriminator property field's type from imports
+      final fields = discProperty != null
+          ? variant.fields.where((f) => f.jsonKey != discProperty)
+          : variant.fields;
+      _addFieldImports(imports, fields);
+    }
+    return imports;
+  }
+
+  /// Adds import paths for referenced types in a list of fields.
+  void _addFieldImports(Set<String> imports, Iterable<FlorvalField> fields) {
+    for (final field in fields) {
       final type = field.type;
       // Check if this is a reference type (not primitive)
       if (type.ref != null) {
@@ -353,6 +456,5 @@ class ModelGenerator {
         imports.add(ReCase(refName).snakeCase);
       }
     }
-    return imports;
   }
 }

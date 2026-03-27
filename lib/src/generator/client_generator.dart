@@ -31,22 +31,17 @@ class ClientGenerator {
     }
     buffer.writeln();
 
-    // Import response types
-    final responseImports = <String>{};
+    // Import model types (no prefix — no collision risk between models)
     final modelImports = <String>{};
-
     for (final endpoint in endpoints) {
-      final responseName = ReCase(endpoint.operationId).snakeCase;
-      responseImports.add(responseName);
       _collectModelImports(endpoint, modelImports);
     }
-
     for (final import_ in modelImports) {
       buffer.writeln("import '../models/$import_.dart';");
     }
-    for (final import_ in responseImports) {
-      buffer.writeln("import '../responses/${import_}_response.dart';");
-    }
+
+    // Import responses via barrel with _r prefix to avoid collision with models
+    buffer.writeln("import '../api_responses.dart' as _r;");
     buffer.writeln();
 
     // Class
@@ -67,7 +62,7 @@ class ClientGenerator {
 
   void _writeMethod(StringBuffer buffer, FlorvalEndpoint endpoint) {
     final responseType =
-        '${ReCase(endpoint.operationId).pascalCase}Response';
+        '_r.${ReCase(endpoint.operationId).pascalCase}Response';
     final methodName = ReCase(endpoint.operationId).camelCase;
 
     // Method signature
@@ -111,7 +106,6 @@ class ClientGenerator {
     if (endpoint.requestBody != null) {
       final body = endpoint.requestBody!;
       if (body.isMultipart && body.formFields != null) {
-        // Expand multipart form fields as individual parameters
         for (final field in body.formFields!) {
           if (field.isRequired) {
             params.add('required ${field.type.dartType} ${field.name},');
@@ -135,24 +129,20 @@ class ClientGenerator {
     final dioMethod = endpoint.method.toLowerCase();
     final pathExpr = _buildPathExpression(endpoint);
 
-    // Check if any response has a body (needs JSON parsing)
     final hasAnyResponseBody =
         endpoint.responses.values.any((r) => r.hasBody);
 
     buffer.write("      final response = await _dio.$dioMethod(");
     buffer.write("'$pathExpr'");
 
-    // Query parameters
     if (endpoint.queryParameters.isNotEmpty) {
       buffer.writeln(',');
       buffer.writeln('        queryParameters: {');
       for (final p in endpoint.queryParameters) {
         if (p.isRequired) {
-          // Enum types need .name to serialize as the string value
           final valueExpr = p.type.isEnum ? '${p.dartName}.name' : p.dartName;
           buffer.writeln("          '${p.name}': $valueExpr,");
         } else {
-          // Inside null-check guard, so use . not ?. for enum .name
           final valueExpr =
               p.type.isEnum ? '${p.dartName}.name' : p.dartName;
           buffer.writeln(
@@ -162,7 +152,6 @@ class ClientGenerator {
       buffer.write('        }');
     }
 
-    // Request body
     if (endpoint.requestBody != null) {
       final body = endpoint.requestBody!;
       if (body.isMultipart && body.formFields != null) {
@@ -190,7 +179,6 @@ class ClientGenerator {
       }
     }
 
-    // Use plain responseType when no response has a body to avoid JSON parse errors
     if (!hasAnyResponseBody) {
       buffer.writeln(',');
       buffer.write(
@@ -253,15 +241,12 @@ class ClientGenerator {
       buffer.writeln('        case $statusCode:');
 
       if (type.isList && type.itemType != null && !type.itemType.isPrimitive) {
-        // List of objects
         buffer.writeln(
             '          return $responseType.$factoryName(($dataExpr as List).map((e) => ${type.itemType.dartType}.fromJson(e as Map<String, dynamic>)).toList());');
       } else if (!type.isPrimitive && !type.isMap && !type.isList) {
-        // Single object
         buffer.writeln(
             '          return $responseType.$factoryName(${type.dartType}.fromJson($dataExpr as Map<String, dynamic>));');
       } else {
-        // Primitive or Map
         buffer.writeln(
             '          return $responseType.$factoryName($dataExpr as ${type.dartType});');
       }
@@ -302,17 +287,14 @@ class ClientGenerator {
 
   void _collectModelImports(
       FlorvalEndpoint endpoint, Set<String> imports) {
-    // From responses
     for (final response in endpoint.responses.values) {
       if (response.type != null) {
         _addTypeImport(imports, response.type!);
       }
     }
-    // From request body (skip multipart — no model to import)
     if (endpoint.requestBody != null && !endpoint.requestBody!.isMultipart) {
       _addTypeImport(imports, endpoint.requestBody!.type);
     }
-    // From path and query parameters (e.g. enum types)
     for (final p in endpoint.parameters) {
       _addTypeImport(imports, p.type);
     }

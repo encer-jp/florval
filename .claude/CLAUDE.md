@@ -114,10 +114,46 @@ abstract class User with _$User {
 ```
 ※ Freezed 3.xでは単純なデータクラスは`abstract class`を使用。`sealed`はUnion型のみ。
 
-### 2. ステータスコード別Union型 - Freezed 3.x sealed class
+### 2. discriminator付きUnion型 - Freezed 3.x sealed class (unionKey)
 ```dart
-@freezed
-sealed class GetUserResponse with _$GetUserResponse {
+@Freezed(unionKey: 'type')
+sealed class NotificationPayload with _$NotificationPayload {
+  @FreezedUnionValue('task_assigned')
+  const factory NotificationPayload.taskAssigned({
+    @JsonKey(name: 'task_id') required String taskId,
+    @JsonKey(name: 'task_title') required String taskTitle,
+    @JsonKey(name: 'assigned_by') required String assignedBy,
+  }) = NotificationPayloadTaskAssigned;
+
+  @FreezedUnionValue('comment_added')
+  const factory NotificationPayload.commentAdded({
+    @JsonKey(name: 'comment_text') required String commentText,
+  }) = NotificationPayloadCommentAdded;
+
+  factory NotificationPayload.fromJson(Map<String, dynamic> json) =>
+      _$NotificationPayloadFromJson(json);
+}
+```
+※ discriminator付きoneOf/anyOfはfreezedの`unionKey`+`@FreezedUnionValue`で生成。
+※ variant のフィールドはfactory constructorにインライン展開（`data`ラッパー不要）。
+※ discriminatorプロパティ自体はフィールドから除外（freezedが自動処理）。
+※ fromJson/toJsonはfreezed+json_serializableが自動生成。
+※ 利用側ではDart 3のswitch式でパターンマッチング：
+```dart
+final payload = NotificationPayload.fromJson(json);
+switch (payload) {
+  case NotificationPayloadTaskAssigned(:final taskId, :final taskTitle):
+    // task_assigned処理
+  case NotificationPayloadCommentAdded(:final commentText):
+    // comment_added処理
+}
+```
+
+### 3. ステータスコード別Union型 - plain Dart sealed class
+```dart
+sealed class GetUserResponse {
+  const GetUserResponse();
+
   const factory GetUserResponse.success(User data) = GetUserResponseSuccess;
   const factory GetUserResponse.badRequest(ValidationError error) = GetUserResponseBadRequest;
   const factory GetUserResponse.unauthorized(UnauthorizedError error) = GetUserResponseUnauthorized;
@@ -125,8 +161,15 @@ sealed class GetUserResponse with _$GetUserResponse {
   const factory GetUserResponse.serverError(ServerError error) = GetUserResponseServerError;
   const factory GetUserResponse.unknown(int statusCode, dynamic body) = GetUserResponseUnknown;
 }
+
+class GetUserResponseSuccess extends GetUserResponse {
+  final User data;
+  const GetUserResponseSuccess(this.data);
+}
+// ... 他のサブクラスも同様
 ```
-※ when/mapは廃止済み。利用側ではDart 3のswitch式でパターンマッチングする：
+※ freezedは使用しない（copyWith/equality不要、build_runner不要）。
+※ 利用側ではDart 3のswitch式でパターンマッチングする：
 ```dart
 final response = await client.getUser(id: 1);
 switch (response) {
@@ -137,7 +180,6 @@ switch (response) {
   case GetUserResponseUnknown(:final statusCode, :final body):
     // 未知のエラー
 }
-```
 ```
 
 ### 3. dioクライアント
