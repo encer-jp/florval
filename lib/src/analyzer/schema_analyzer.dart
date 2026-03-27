@@ -256,6 +256,29 @@ class SchemaAnalyzer {
       }
     }
 
+    // Handle anyOf/oneOf with [$ref, {type: "null"}] — nullable $ref idiom
+    // e.g. anyOf: [$ref User, {type: "null"}] → User?
+    for (final compositeList in [schema.anyOf, schema.oneOf]) {
+      if (compositeList != null && compositeList.length == 2) {
+        final refSchema = compositeList.where((s) => s.ref != null).toList();
+        final nullSchema = compositeList
+            .where((s) => s.ref == null && _isNullTypeSchema(s))
+            .toList();
+        if (refSchema.length == 1 && nullSchema.length == 1) {
+          final name = resolver.schemaName(refSchema.first)!;
+          final resolved = resolver.resolveSchema(refSchema.first);
+          final isEnumType = _isEnumSchema(resolved);
+          return FlorvalType(
+            name: name,
+            dartType: '$name?',
+            isNullable: true,
+            ref: refSchema.first.ref,
+            isEnum: isEnumType,
+          );
+        }
+      }
+    }
+
     final type = _extractType(schema);
     final isNullable = _isNullable(schema);
 
@@ -383,6 +406,14 @@ class SchemaAnalyzer {
       return type.cast<String>().contains('null');
     }
     return false;
+  }
+
+  /// Checks if a schema represents the null type ({type: "null"}).
+  bool _isNullTypeSchema(v31.Schema schema) {
+    final type = schema.type;
+    if (type is String && type == 'null') return true;
+    if (type is List && type.length == 1 && type.first == 'null') return true;
+    return _isNullable(schema);
   }
 
   /// Gets the list of required field names from a schema.
