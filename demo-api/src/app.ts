@@ -1,5 +1,6 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
+import { cors } from "hono/cors";
 import authRoutes from "./routes/auth.js";
 import taskRoutes from "./routes/tasks.js";
 import userRoutes from "./routes/users.js";
@@ -8,6 +9,9 @@ import notificationRoutes from "./routes/notifications.js";
 import uploadRoutes from "./routes/uploads.js";
 
 const app = new OpenAPIHono();
+
+// CORS for Flutter Web (localhost) access
+app.use("/*", cors());
 
 // Register routes
 app.route("/", authRoutes);
