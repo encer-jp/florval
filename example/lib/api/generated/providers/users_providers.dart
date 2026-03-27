@@ -2,7 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'retry.dart';
 import '../clients/users_api_client.dart';
-import '../api_responses.dart' as _r;
+import '../api_responses.dart' as r;
 
 part 'users_providers.g.dart';
 
@@ -14,7 +14,7 @@ UsersApiClient usersApiClient(Ref ref) {
 @Riverpod(retry: retry)
 class ListUsers extends _$ListUsers {
   @override
-  FutureOr<_r.ListUsersResponse> build({
+  FutureOr<r.ListUsersResponse> build({
     int? page,
     int? limit,
     String? search,
@@ -27,7 +27,7 @@ class ListUsers extends _$ListUsers {
 @Riverpod(retry: retry)
 class GetUser extends _$GetUser {
   @override
-  FutureOr<_r.GetUserResponse> build({
+  FutureOr<r.GetUserResponse> build({
     required String id,
   }) async {
     final client = ref.watch(usersApiClientProvider);

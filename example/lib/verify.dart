@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'api/generated/api.dart';
-import 'api/generated/api_responses.dart' as _r;
+import 'api/generated/api_responses.dart' as r;
 
 void main() async {
   final dio = Dio(
@@ -23,7 +23,7 @@ void main() async {
     body: LoginRequest(email: 'demo@example.com', password: 'password'),
   );
   switch (loginResp) {
-    case _r.LoginResponseSuccess(:final data):
+    case r.LoginResponseSuccess(:final data):
       print('OK: ${data.user.name} (token: ${data.token.substring(0, 20)}...)');
       dio.options.headers['Authorization'] = 'Bearer ${data.token}';
     default:
@@ -35,7 +35,7 @@ void main() async {
   print('\n=== 2. GET /tasks ===');
   final tasksResp = await tasksClient.listTasks();
   switch (tasksResp) {
-    case _r.ListTasksResponseSuccess(:final data):
+    case r.ListTasksResponseSuccess(:final data):
       print('OK: ${data.length} tasks');
     default:
       print('FAIL: $tasksResp');
@@ -48,7 +48,7 @@ void main() async {
     body: CreateTaskRequest(title: 'Test task', tags: ['test']),
   );
   switch (createResp) {
-    case _r.CreateTaskResponseCreated(:final data):
+    case r.CreateTaskResponseCreated(:final data):
       taskId = data.id;
       print('OK: "${data.title}" (${data.id})');
     default:
@@ -61,7 +61,7 @@ void main() async {
     id: '00000000-0000-0000-0000-000000000000',
   );
   switch (notFoundResp) {
-    case _r.GetTaskResponseNotFound(:final data):
+    case r.GetTaskResponseNotFound(:final data):
       print('OK (expected): ${data.message}');
     default:
       print('UNEXPECTED: $notFoundResp');
@@ -71,7 +71,7 @@ void main() async {
   print('\n=== 5. GET /tasks?trigger_error=true ===');
   final errorResp = await tasksClient.listTasks(triggerError: 'true');
   switch (errorResp) {
-    case _r.ListTasksResponseServerError(:final data):
+    case r.ListTasksResponseServerError(:final data):
       print('OK (expected): ${data.message} [${data.code}]');
     default:
       print('UNEXPECTED: $errorResp');
@@ -81,7 +81,7 @@ void main() async {
   print('\n=== 6. GET /users?page=1&limit=3 ===');
   final usersResp = await usersClient.listUsers(page: 1, limit: 3);
   switch (usersResp) {
-    case _r.ListUsersResponseSuccess(:final data):
+    case r.ListUsersResponseSuccess(:final data):
       print('OK: ${data.data.length}/${data.total} users (page ${data.page}/${data.totalPages})');
     default:
       print('FAIL: $usersResp');
@@ -91,7 +91,7 @@ void main() async {
   print('\n=== 7. GET /projects ===');
   final projResp = await projectsClient.listProjects();
   switch (projResp) {
-    case _r.ListProjectsResponseSuccess(:final data):
+    case r.ListProjectsResponseSuccess(:final data):
       for (final p in data) {
         print('  ${p.name} (owner: ${p.owner.name}, members: ${p.members.length})');
       }
@@ -104,7 +104,7 @@ void main() async {
   print('\n=== 8. GET /notifications ===');
   final notifResp = await notificationsClient.listNotifications();
   switch (notifResp) {
-    case _r.ListNotificationsResponseSuccess(:final data):
+    case r.ListNotificationsResponseSuccess(:final data):
       final types = data.map((n) => n.type).toSet();
       print('OK: ${data.length} notifications, types: $types');
     default:
@@ -116,7 +116,7 @@ void main() async {
     print('\n=== 9. DELETE /tasks/$taskId ===');
     final delResp = await tasksClient.deleteTask(id: taskId);
     switch (delResp) {
-      case _r.DeleteTaskResponseNoContent():
+      case r.DeleteTaskResponseNoContent():
         print('OK: deleted');
       default:
         print('FAIL: $delResp');

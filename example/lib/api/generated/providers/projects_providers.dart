@@ -4,7 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'retry.dart';
 import '../clients/projects_api_client.dart';
 import '../models/create_project_request.dart';
-import '../api_responses.dart' as _r;
+import '../api_responses.dart' as r;
 
 part 'projects_providers.g.dart';
 
@@ -16,17 +16,17 @@ ProjectsApiClient projectsApiClient(Ref ref) {
 @Riverpod(retry: retry)
 class ListProjects extends _$ListProjects {
   @override
-  FutureOr<_r.ListProjectsResponse> build() async {
+  FutureOr<r.ListProjectsResponse> build() async {
     final client = ref.watch(projectsApiClientProvider);
     return client.listProjects();
   }
 }
 
 /// Mutation for createProject (POST /projects)
-final createProjectMutation = Mutation<_r.CreateProjectResponse>();
+final createProjectMutation = Mutation<r.CreateProjectResponse>();
 
 /// Executes createProject mutation and invalidates related GET providers.
-Future<_r.CreateProjectResponse> createProject(
+Future<r.CreateProjectResponse> createProject(
   MutationTarget ref, {
   required CreateProjectRequest body,
 }) async {
@@ -42,7 +42,7 @@ Future<_r.CreateProjectResponse> createProject(
 @Riverpod(retry: retry)
 class GetProject extends _$GetProject {
   @override
-  FutureOr<_r.GetProjectResponse> build({
+  FutureOr<r.GetProjectResponse> build({
     required String id,
   }) async {
     final client = ref.watch(projectsApiClientProvider);

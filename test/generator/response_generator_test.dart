@@ -73,7 +73,7 @@ void main() {
       expect(code, contains('const GetUserResponseSuccess(this.data);'));
     });
 
-    test('imports model types with _m prefix', () {
+    test('imports model types with m prefix', () {
       final endpoint = FlorvalEndpoint(
         path: '/pets',
         method: 'POST',
@@ -95,11 +95,11 @@ void main() {
       );
 
       final code = generator.generate(endpoint);
-      expect(code, contains("import '../models/pet.dart' as _m;"));
-      expect(code, contains("import '../models/validation_error.dart' as _m;"));
+      expect(code, contains("import '../models/pet.dart' as m;"));
+      expect(code, contains("import '../models/validation_error.dart' as m;"));
     });
 
-    test('generates 201 as created factory with _m prefix', () {
+    test('generates 201 as created factory with m prefix', () {
       final endpoint = FlorvalEndpoint(
         path: '/pets',
         method: 'POST',
@@ -137,7 +137,7 @@ void main() {
       expect(code, contains('const DeletePetResponseNoContent();'));
     });
 
-    test('generates list type with _m prefix on items', () {
+    test('generates list type with m prefix on items', () {
       final endpoint = FlorvalEndpoint(
         path: '/pets',
         method: 'GET',
@@ -179,7 +179,7 @@ void main() {
 
       final code = generator.generate(endpoint);
       expect(code, contains('int data'));
-      expect(code, isNot(contains('_m.int')));
+      expect(code, isNot(contains('m.int')));
     });
   });
 }

@@ -67,11 +67,11 @@ void main() {
 
       expect(code, contains('switch (response.statusCode)'));
       expect(code, contains('case 200:'));
-      expect(code, contains('_r.GetUserResponse.success(User.fromJson('));
+      expect(code, contains('r.GetUserResponse.success(User.fromJson('));
       expect(code, contains('case 404:'));
-      expect(code, contains('_r.GetUserResponse.notFound()'));
+      expect(code, contains('r.GetUserResponse.notFound()'));
       expect(code, contains('case 500:'));
-      expect(code, contains('_r.GetUserResponse.serverError(Error.fromJson('));
+      expect(code, contains('r.GetUserResponse.serverError(Error.fromJson('));
     });
 
     test('generates DioException handling', () {
@@ -185,7 +185,7 @@ void main() {
 
       expect(code, contains("import 'package:dio/dio.dart';"));
       expect(code, contains("import '../models/user.dart';"));
-      expect(code, contains("import '../api_responses.dart' as _r;"));
+      expect(code, contains("import '../api_responses.dart' as r;"));
     });
 
     test('generates ResponseType.plain for endpoints with no response body',

@@ -1,28 +1,28 @@
-import '../models/project.dart' as _m;
-import '../models/unauthorized_error.dart' as _m;
-import '../models/validation_error.dart' as _m;
+import '../models/project.dart' as m;
+import '../models/unauthorized_error.dart' as m;
+import '../models/validation_error.dart' as m;
 
 sealed class CreateProjectResponse {
   const CreateProjectResponse();
 
-  const factory CreateProjectResponse.created(_m.Project data) = CreateProjectResponseCreated;
-  const factory CreateProjectResponse.unauthorized(_m.UnauthorizedError data) = CreateProjectResponseUnauthorized;
-  const factory CreateProjectResponse.unprocessableEntity(_m.ValidationError data) = CreateProjectResponseUnprocessableEntity;
+  const factory CreateProjectResponse.created(m.Project data) = CreateProjectResponseCreated;
+  const factory CreateProjectResponse.unauthorized(m.UnauthorizedError data) = CreateProjectResponseUnauthorized;
+  const factory CreateProjectResponse.unprocessableEntity(m.ValidationError data) = CreateProjectResponseUnprocessableEntity;
   const factory CreateProjectResponse.unknown(int statusCode, dynamic body) = CreateProjectResponseUnknown;
 }
 
 class CreateProjectResponseCreated extends CreateProjectResponse {
-  final _m.Project data;
+  final m.Project data;
   const CreateProjectResponseCreated(this.data);
 }
 
 class CreateProjectResponseUnauthorized extends CreateProjectResponse {
-  final _m.UnauthorizedError data;
+  final m.UnauthorizedError data;
   const CreateProjectResponseUnauthorized(this.data);
 }
 
 class CreateProjectResponseUnprocessableEntity extends CreateProjectResponse {
-  final _m.ValidationError data;
+  final m.ValidationError data;
   const CreateProjectResponseUnprocessableEntity(this.data);
 }
 

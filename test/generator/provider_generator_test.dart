@@ -128,7 +128,7 @@ void main() {
       final code = generator.generate('users', [makeGetEndpoint()]);
 
       expect(code,
-          contains("import '../api_responses.dart' as _r;"));
+          contains("import '../api_responses.dart' as r;"));
     });
 
     test('generates client provider', () {

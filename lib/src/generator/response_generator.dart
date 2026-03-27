@@ -26,10 +26,10 @@ class ResponseGenerator {
       buffer.writeln();
     }
 
-    // Import model types with _m prefix to avoid collision with response class name
+    // Import model types with m prefix to avoid collision with response class name
     final imports = _collectImports(endpoint);
     for (final import_ in imports) {
-      buffer.writeln("import '../models/$import_.dart' as _m;");
+      buffer.writeln("import '../models/$import_.dart' as m;");
     }
     if (imports.isNotEmpty) buffer.writeln();
 
@@ -108,7 +108,7 @@ class ResponseGenerator {
     buffer.writeln();
   }
 
-  /// Prefixes model types with `_m.` for imports that use the `as _m` alias.
+  /// Prefixes model types with `m.` for imports that use the `as m` alias.
   /// Primitives and Map types are not prefixed.
   String _prefixModelType(FlorvalType type) {
     if (type.isList && type.itemType != null) {
@@ -116,7 +116,7 @@ class ResponseGenerator {
       return 'List<$inner>';
     }
     if (type.ref != null) {
-      return '_m.${type.dartType}';
+      return 'm.${type.dartType}';
     }
     return type.dartType;
   }
