@@ -1,4 +1,5 @@
 import 'package:openapi_spec_plus/v31.dart' as v31;
+import 'package:recase/recase.dart';
 
 import '../model/api_schema.dart';
 import '../model/api_type.dart';
@@ -8,6 +9,10 @@ import '../utils/dart_identifier.dart';
 /// Converts OpenAPI schemas to florval intermediate representations.
 class SchemaAnalyzer {
   final RefResolver resolver;
+
+  /// Inline union schemas discovered during schema analysis.
+  /// These need to be generated as separate model files.
+  final List<FlorvalSchema> inlineUnionSchemas = [];
 
   SchemaAnalyzer(this.resolver);
 
@@ -41,7 +46,7 @@ class SchemaAnalyzer {
     }
 
     // Regular object with properties
-    final fields = _extractFields(resolved);
+    final fields = _extractFields(resolved, schemaName: name);
 
     return FlorvalSchema(
       name: name,
@@ -72,7 +77,9 @@ class SchemaAnalyzer {
   }
 
   /// Extracts fields from a schema's properties.
-  List<FlorvalField> _extractFields(v31.Schema schema) {
+  ///
+  /// [schemaName] is used to generate context names for inline union types.
+  List<FlorvalField> _extractFields(v31.Schema schema, {String? schemaName}) {
     final requiredFields = _requiredFields(schema);
     final fields = <FlorvalField>[];
     final usedNames = <String>{};
@@ -91,7 +98,10 @@ class SchemaAnalyzer {
 
         final fieldSchema = entry.value;
         final isRequired = requiredFields.contains(entry.key);
-        final type = schemaToType(fieldSchema);
+        final contextName = schemaName != null
+            ? '$schemaName${ReCase(entry.key).pascalCase}'
+            : null;
+        final type = schemaToType(fieldSchema, contextName: contextName);
 
         fields.add(FlorvalField(
           name: fieldName,
@@ -116,7 +126,7 @@ class SchemaAnalyzer {
       final subName = resolver.schemaName(subSchema) ?? name;
       final analyzed = FlorvalSchema(
         name: subName,
-        fields: _extractFields(resolved),
+        fields: _extractFields(resolved, schemaName: name),
       );
       for (final field in analyzed.fields) {
         mergedFields[field.jsonKey] = field;
@@ -124,7 +134,7 @@ class SchemaAnalyzer {
     }
 
     // Also merge fields from the schema itself (if any)
-    for (final field in _extractFields(schema)) {
+    for (final field in _extractFields(schema, schemaName: name)) {
       mergedFields[field.jsonKey] = field;
     }
 
@@ -145,7 +155,7 @@ class SchemaAnalyzer {
       if (subName != null) {
         variants.add(FlorvalSchema(
           name: subName,
-          fields: _extractFields(resolved),
+          fields: _extractFields(resolved, schemaName: subName),
           description: resolved.description,
         ));
       } else {
@@ -153,7 +163,7 @@ class SchemaAnalyzer {
         final variantName = '${name}Variant${variants.length}';
         variants.add(FlorvalSchema(
           name: variantName,
-          fields: _extractFields(resolved),
+          fields: _extractFields(resolved, schemaName: variantName),
           description: resolved.description,
         ));
       }
@@ -187,14 +197,14 @@ class SchemaAnalyzer {
       if (subName != null) {
         variants.add(FlorvalSchema(
           name: subName,
-          fields: _extractFields(resolved),
+          fields: _extractFields(resolved, schemaName: subName),
           description: resolved.description,
         ));
       } else {
         final variantName = '${name}Variant${variants.length}';
         variants.add(FlorvalSchema(
           name: variantName,
-          fields: _extractFields(resolved),
+          fields: _extractFields(resolved, schemaName: variantName),
           description: resolved.description,
         ));
       }
@@ -218,7 +228,10 @@ class SchemaAnalyzer {
   }
 
   /// Converts a schema to a FlorvalType.
-  FlorvalType schemaToType(v31.Schema schema) {
+  ///
+  /// [contextName] is used to generate names for inline union types
+  /// (e.g. 'TaskOwner' for field 'owner' in schema 'Task').
+  FlorvalType schemaToType(v31.Schema schema, {String? contextName}) {
     // Handle $ref
     if (schema.ref != null) {
       final name = resolver.schemaName(schema)!;
@@ -256,26 +269,54 @@ class SchemaAnalyzer {
       }
     }
 
-    // Handle anyOf/oneOf with [$ref, {type: "null"}] — nullable $ref idiom
-    // e.g. anyOf: [$ref User, {type: "null"}] → User?
+    // Handle anyOf/oneOf — nullable $ref idiom or inline union types
     for (final compositeList in [schema.anyOf, schema.oneOf]) {
-      if (compositeList != null && compositeList.length == 2) {
-        final refSchema = compositeList.where((s) => s.ref != null).toList();
-        final nullSchema = compositeList
-            .where((s) => s.ref == null && _isNullTypeSchema(s))
-            .toList();
-        if (refSchema.length == 1 && nullSchema.length == 1) {
-          final name = resolver.schemaName(refSchema.first)!;
-          final resolved = resolver.resolveSchema(refSchema.first);
+      if (compositeList != null && compositeList.isNotEmpty) {
+        // Separate null and non-null elements
+        final nonNullSchemas =
+            compositeList.where((s) => !_isNullTypeSchema(s)).toList();
+        final hasNullElement =
+            compositeList.any((s) => _isNullTypeSchema(s));
+
+        if (nonNullSchemas.length == 1 && nonNullSchemas.first.ref != null) {
+          // Single $ref + optional null → nullable $ref
+          final refSchema = nonNullSchemas.first;
+          final name = resolver.schemaName(refSchema)!;
+          final resolved = resolver.resolveSchema(refSchema);
           final isEnumType = _isEnumSchema(resolved);
+          final isNullable = hasNullElement;
           return FlorvalType(
             name: name,
-            dartType: '$name?',
-            isNullable: true,
-            ref: refSchema.first.ref,
+            dartType: isNullable ? '$name?' : name,
+            isNullable: isNullable,
+            ref: refSchema.ref,
             isEnum: isEnumType,
           );
+        } else if (nonNullSchemas.length >= 2) {
+          // True union type — generate inline union schema
+          final unionName = contextName ??
+              'InlineUnion${inlineUnionSchemas.length}';
+
+          // Build a synthetic schema with only non-null elements for analysis
+          final syntheticSchema = compositeList == schema.anyOf
+              ? v31.Schema(anyOf: nonNullSchemas,
+                  discriminator: schema.discriminator)
+              : v31.Schema(oneOf: nonNullSchemas,
+                  discriminator: schema.discriminator);
+
+          final unionSchema = analyze(unionName, syntheticSchema);
+
+          if (unionSchema.oneOf != null || unionSchema.anyOf != null) {
+            inlineUnionSchemas.add(unionSchema);
+            return FlorvalType(
+              name: unionName,
+              dartType: hasNullElement ? '$unionName?' : unionName,
+              isNullable: hasNullElement,
+              ref: '#/components/schemas/$unionName',
+            );
+          }
         }
+        // nonNullSchemas.length == 1 but not a $ref, or == 0 → fall through
       }
     }
 

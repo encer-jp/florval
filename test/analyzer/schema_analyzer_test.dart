@@ -423,5 +423,212 @@ components:
       expect(assignee.type.dartType, isNot('User?'));
       expect(assignee.type.dartType, isNot('Group?'));
     });
+
+    test('3-element anyOf (2 \$ref + null) generates inline union type', () {
+      final unionSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        name:
+          type: string
+    Group:
+      type: object
+      properties:
+        groupName:
+          type: string
+    Task:
+      type: object
+      properties:
+        owner:
+          anyOf:
+            - \$ref: '#/components/schemas/User'
+            - \$ref: '#/components/schemas/Group'
+            - type: "null"
+''');
+      final unionAnalyzer = SchemaAnalyzer(RefResolver(unionSpec));
+      final task = unionAnalyzer.analyze(
+        'Task',
+        unionSpec.components!.schemas!['Task']!,
+      );
+
+      final owner = task.fields.firstWhere((f) => f.name == 'owner');
+      expect(owner.type.dartType, 'TaskOwner?');
+      expect(owner.type.isNullable, isTrue);
+      expect(owner.type.ref, isNotNull);
+
+      // Should have registered one inline union schema
+      expect(unionAnalyzer.inlineUnionSchemas, hasLength(1));
+      final unionSchema = unionAnalyzer.inlineUnionSchemas.first;
+      expect(unionSchema.name, 'TaskOwner');
+      // Should have 2 variants (User and Group), null element excluded
+      expect(unionSchema.anyOf, isNotNull);
+      expect(unionSchema.anyOf, hasLength(2));
+      expect(unionSchema.anyOf!.map((v) => v.name).toSet(),
+          {'User', 'Group'});
+    });
+
+    test('2-element oneOf (2 \$ref, no null) generates inline union type', () {
+      final unionSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        name:
+          type: string
+    Group:
+      type: object
+      properties:
+        groupName:
+          type: string
+    Task:
+      type: object
+      properties:
+        target:
+          oneOf:
+            - \$ref: '#/components/schemas/User'
+            - \$ref: '#/components/schemas/Group'
+''');
+      final unionAnalyzer = SchemaAnalyzer(RefResolver(unionSpec));
+      final task = unionAnalyzer.analyze(
+        'Task',
+        unionSpec.components!.schemas!['Task']!,
+      );
+
+      final target = task.fields.firstWhere((f) => f.name == 'target');
+      expect(target.type.dartType, 'TaskTarget?');
+      // Not required, so nullable due to _extractFields logic
+      expect(target.type.isNullable, isTrue);
+      expect(target.type.ref, isNotNull);
+
+      expect(unionAnalyzer.inlineUnionSchemas, hasLength(1));
+      final unionSchema = unionAnalyzer.inlineUnionSchemas.first;
+      expect(unionSchema.name, 'TaskTarget');
+      expect(unionSchema.oneOf, isNotNull);
+      expect(unionSchema.oneOf, hasLength(2));
+    });
+
+    test('anyOf with primitive + null does not create inline union', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Task:
+      type: object
+      required:
+        - label
+      properties:
+        label:
+          anyOf:
+            - type: string
+            - type: "null"
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final task = analyzer.analyze(
+        'Task',
+        spec.components!.schemas!['Task']!,
+      );
+
+      final label = task.fields.firstWhere((f) => f.name == 'label');
+      // anyOf with 1 non-null element that is NOT a $ref falls through
+      // to _extractType — no inline union should be registered
+      expect(analyzer.inlineUnionSchemas, isEmpty);
+      // Should not be a union type name
+      expect(label.type.dartType, isNot('TaskLabel'));
+    });
+
+    test('inline union naming uses contextName from parent schema + field', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Dog:
+      type: object
+      properties:
+        breed:
+          type: string
+    Cat:
+      type: object
+      properties:
+        color:
+          type: string
+    Pet:
+      type: object
+      properties:
+        animal:
+          oneOf:
+            - \$ref: '#/components/schemas/Dog'
+            - \$ref: '#/components/schemas/Cat'
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      analyzer.analyze('Pet', spec.components!.schemas!['Pet']!);
+
+      expect(analyzer.inlineUnionSchemas, hasLength(1));
+      expect(analyzer.inlineUnionSchemas.first.name, 'PetAnimal');
+    });
+
+    test('multiple inline union fields in same schema have unique names', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        name:
+          type: string
+    Group:
+      type: object
+      properties:
+        groupName:
+          type: string
+    Bot:
+      type: object
+      properties:
+        botId:
+          type: string
+    Task:
+      type: object
+      properties:
+        owner:
+          anyOf:
+            - \$ref: '#/components/schemas/User'
+            - \$ref: '#/components/schemas/Group'
+        reviewer:
+          oneOf:
+            - \$ref: '#/components/schemas/User'
+            - \$ref: '#/components/schemas/Bot'
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      analyzer.analyze('Task', spec.components!.schemas!['Task']!);
+
+      expect(analyzer.inlineUnionSchemas, hasLength(2));
+      final names = analyzer.inlineUnionSchemas.map((s) => s.name).toSet();
+      expect(names, {'TaskOwner', 'TaskReviewer'});
+    });
   });
 }
