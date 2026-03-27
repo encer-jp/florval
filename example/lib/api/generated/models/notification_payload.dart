@@ -14,7 +14,6 @@ sealed class NotificationPayload with _$NotificationPayload {
     @JsonKey(name: 'assigned_by')
     required String assignedBy,
   }) = NotificationPayloadTaskAssigned;
-
   @FreezedUnionValue('comment_added')
   const factory NotificationPayload.commentAdded({
     @JsonKey(name: 'task_id')
@@ -26,7 +25,6 @@ sealed class NotificationPayload with _$NotificationPayload {
     @JsonKey(name: 'commented_by')
     required String commentedBy,
   }) = NotificationPayloadCommentAdded;
-
   @FreezedUnionValue('project_invited')
   const factory NotificationPayload.projectInvited({
     @JsonKey(name: 'project_id')
