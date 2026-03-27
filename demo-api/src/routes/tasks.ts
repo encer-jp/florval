@@ -205,13 +205,13 @@ app.openapi(updateTaskRoute, (c) => {
   const updated = {
     ...tasks[index],
     title: body.title,
-    description: body.description ?? tasks[index].description,
+    description: body.description ?? null,
     status: body.status,
     priority: body.priority,
-    assignee_id: body.assignee_id ?? tasks[index].assignee_id,
+    assignee_id: body.assignee_id ?? null,
     assignee,
-    tags: body.tags ?? tasks[index].tags,
-    due_date: body.due_date ?? tasks[index].due_date,
+    tags: body.tags ?? [],
+    due_date: body.due_date ?? null,
     updated_at: new Date().toISOString(),
   };
 
