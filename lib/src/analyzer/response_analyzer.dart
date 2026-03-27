@@ -44,6 +44,10 @@ class ResponseAnalyzer {
   }
 
   /// Extracts the response body type from a Response.
+  ///
+  /// Delegates all type resolution to [SchemaAnalyzer.schemaToType], which
+  /// correctly distinguishes nullable $ref patterns (e.g. `anyOf: [$ref, null]`)
+  /// from true inline unions.
   FlorvalType? _extractResponseType(
     v31.Response response, {
     String? operationId,
@@ -57,53 +61,16 @@ class ResponseAnalyzer {
     final schema = jsonContent.schema;
     if (schema == null) return null;
 
-    // Handle inline oneOf/anyOf with discriminator
-    if (_hasInlineOneOf(schema)) {
-      return _extractInlineUnionType(schema, operationId, statusCode);
-    }
-
-    return schemaAnalyzer.schemaToType(schema);
-  }
-
-  /// Checks if a schema has inline oneOf or anyOf (not a $ref).
-  bool _hasInlineOneOf(v31.Schema schema) {
-    if (schema.ref != null) return false;
-    return (schema.oneOf != null && schema.oneOf!.isNotEmpty) ||
-        (schema.anyOf != null && schema.anyOf!.isNotEmpty);
-  }
-
-  /// Extracts an inline oneOf/anyOf schema as a named union type.
-  FlorvalType? _extractInlineUnionType(
-    v31.Schema schema,
-    String? operationId,
-    int? statusCode,
-  ) {
-    // Generate a name for the inline union type
+    // Build contextName for inline unions/objects in response bodies
     final baseName = operationId != null
         ? ReCase(operationId).pascalCase
-        : 'InlineUnion';
+        : 'InlineType';
     final statusSuffix = statusCode != null
         ? _statusCodeToName(statusCode)
         : 'Body';
-    final unionName = '$baseName$statusSuffix';
+    final contextName = '$baseName$statusSuffix';
 
-    // Analyze the inline schema as a named union type
-    final unionSchema = schemaAnalyzer.analyze(unionName, schema);
-
-    // Only register if it's actually a union type
-    if (unionSchema.oneOf != null || unionSchema.anyOf != null) {
-      inlineUnionSchemas.add(unionSchema);
-
-      return FlorvalType(
-        name: unionName,
-        dartType: unionName,
-        // Synthetic ref so import collection picks up the model
-        ref: '#/components/schemas/$unionName',
-      );
-    }
-
-    // Fallback to standard type extraction
-    return schemaAnalyzer.schemaToType(schema);
+    return schemaAnalyzer.schemaToType(schema, contextName: contextName);
   }
 
   /// Maps status codes to human-readable suffixes for type names.

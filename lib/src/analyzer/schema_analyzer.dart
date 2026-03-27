@@ -409,8 +409,20 @@ class SchemaAnalyzer {
 
   FlorvalType _objectType(v31.Schema schema, bool isNullable,
       {String? contextName}) {
-    // Object with no properties → Map<String, dynamic>
+    // Object with no properties → check additionalProperties for typed Map
     if (schema.properties == null || schema.properties!.isEmpty) {
+      final addProps = schema.additionalProperties;
+      if (addProps != null && addProps is v31.Schema) {
+        // additionalProperties is a Schema → Map<String, T>
+        final valueType = schemaToType(addProps);
+        final dartType = 'Map<String, ${valueType.dartType}>';
+        return FlorvalType(
+          name: dartType,
+          dartType: isNullable ? '$dartType?' : dartType,
+          isNullable: isNullable,
+        );
+      }
+      // additionalProperties is true, false, or absent → Map<String, dynamic>
       const dartType = 'Map<String, dynamic>';
       return FlorvalType(
         name: dartType,
@@ -441,16 +453,18 @@ class SchemaAnalyzer {
   }
 
   /// Extracts the primary type string from a schema.
+  ///
+  /// Returns `'dynamic'` when type is unspecified (OpenAPI 3.1: "any type").
   String _extractType(v31.Schema schema) {
     final type = schema.type;
-    if (type == null) return 'object';
+    if (type == null) return 'dynamic';
     if (type is String) return type;
     if (type is List) {
       // e.g. ["string", "null"] → "string"
       final types = type.cast<String>();
-      return types.firstWhere((t) => t != 'null', orElse: () => 'object');
+      return types.firstWhere((t) => t != 'null', orElse: () => 'dynamic');
     }
-    return 'object';
+    return 'dynamic';
   }
 
   /// Checks if a schema is nullable.
