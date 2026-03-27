@@ -117,24 +117,24 @@ abstract class User with _$User {
 ### 2. ステータスコード別Union型 - Freezed 3.x sealed class
 ```dart
 @freezed
-sealed class GetUserResponse with _$GetUserResponse {
-  const factory GetUserResponse.success(User data) = GetUserResponseSuccess;
-  const factory GetUserResponse.badRequest(ValidationError error) = GetUserResponseBadRequest;
-  const factory GetUserResponse.unauthorized(UnauthorizedError error) = GetUserResponseUnauthorized;
-  const factory GetUserResponse.notFound() = GetUserResponseNotFound;
-  const factory GetUserResponse.serverError(ServerError error) = GetUserResponseServerError;
-  const factory GetUserResponse.unknown(int statusCode, dynamic body) = GetUserResponseUnknown;
+sealed class GetUserApiResponse with _$GetUserApiResponse {
+  const factory GetUserApiResponse.success(User data) = GetUserApiResponseSuccess;
+  const factory GetUserApiResponse.badRequest(ValidationError error) = GetUserApiResponseBadRequest;
+  const factory GetUserApiResponse.unauthorized(UnauthorizedError error) = GetUserApiResponseUnauthorized;
+  const factory GetUserApiResponse.notFound() = GetUserApiResponseNotFound;
+  const factory GetUserApiResponse.serverError(ServerError error) = GetUserApiResponseServerError;
+  const factory GetUserApiResponse.unknown(int statusCode, dynamic body) = GetUserApiResponseUnknown;
 }
 ```
 ※ when/mapは廃止済み。利用側ではDart 3のswitch式でパターンマッチングする：
 ```dart
 final response = await client.getUser(id: 1);
 switch (response) {
-  case GetUserResponseSuccess(:final data):
+  case GetUserApiResponseSuccess(:final data):
     // 成功処理
-  case GetUserResponseBadRequest(:final error):
+  case GetUserApiResponseBadRequest(:final error):
     // バリデーションエラー処理
-  case GetUserResponseUnknown(:final statusCode, :final body):
+  case GetUserApiResponseUnknown(:final statusCode, :final body):
     // 未知のエラー
 }
 ```
@@ -147,20 +147,20 @@ class UserApiClient {
   
   UserApiClient(this._dio);
   
-  Future<GetUserResponse> getUser({required int id}) async {
+  Future<GetUserApiResponse> getUser({required int id}) async {
     try {
       final response = await _dio.get('/users/$id');
       switch (response.statusCode) {
         case 200:
-          return GetUserResponse.success(User.fromJson(response.data));
+          return GetUserApiResponse.success(User.fromJson(response.data));
         case 400:
-          return GetUserResponse.badRequest(ValidationError.fromJson(response.data));
+          return GetUserApiResponse.badRequest(ValidationError.fromJson(response.data));
         case 401:
-          return GetUserResponse.unauthorized(UnauthorizedError.fromJson(response.data));
+          return GetUserApiResponse.unauthorized(UnauthorizedError.fromJson(response.data));
         case 404:
-          return GetUserResponse.notFound();
+          return GetUserApiResponse.notFound();
         default:
-          return GetUserResponse.unknown(response.statusCode ?? 0, response.data);
+          return GetUserApiResponse.unknown(response.statusCode ?? 0, response.data);
       }
     } on DioException catch (e) {
       if (e.response != null) {
@@ -179,7 +179,7 @@ GET用（従来通りNotifier）:
 @riverpod
 class GetUser extends _$GetUser {
   @override
-  FutureOr<GetUserResponse> build({required int id}) async {
+  FutureOr<GetUserApiResponse> build({required int id}) async {
     final client = ref.watch(userApiClientProvider);
     return client.getUser(id: id);
   }
@@ -189,13 +189,13 @@ class GetUser extends _$GetUser {
 POST/PUT/DELETE用（Mutation API）:
 ```dart
 /// Mutation for createUser (POST /users)
-final createUserMutation = Mutation<CreateUserResponse>();
+final createUserMutation = Mutation<CreateUserApiResponse>();
 ```
 
 autoInvalidate有効時のヘルパー関数:
 ```dart
 /// Executes createUser mutation and invalidates related GET providers.
-Future<CreateUserResponse> createUser(
+Future<CreateUserApiResponse> createUser(
   MutationTarget ref, {
   required CreateUserRequest body,
 }) async {

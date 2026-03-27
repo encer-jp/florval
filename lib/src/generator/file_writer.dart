@@ -29,7 +29,7 @@ class FileWriter {
 
   /// Writes a response file.
   void writeResponse(String operationId, String code) {
-    final fileName = '${ReCase(operationId).snakeCase}_response.dart';
+    final fileName = '${ReCase(operationId).snakeCase}_api_response.dart';
     _writeFile(p.join(outputDirectory, 'responses', fileName), code);
   }
 
@@ -67,7 +67,7 @@ class FileWriter {
     }
     for (final name in responseNames) {
       buffer.writeln(
-          "export 'responses/${ReCase(name).snakeCase}_response.dart';");
+          "export 'responses/${ReCase(name).snakeCase}_api_response.dart';");
     }
     for (final name in clientNames) {
       buffer.writeln(

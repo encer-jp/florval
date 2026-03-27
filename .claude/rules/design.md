@@ -326,7 +326,7 @@ class ResponseGenerator {
 @riverpod
 class GetUser extends _$GetUser {
   @override
-  FutureOr<GetUserResponse> build({required int id}) async {
+  FutureOr<GetUserApiResponse> build({required int id}) async {
     final client = ref.watch(userApiClientProvider);
     return client.getUser(id: id);
   }
@@ -336,13 +336,13 @@ class GetUser extends _$GetUser {
 生成例（POST / Mutation定数）:
 ```dart
 /// Mutation for createUser (POST /users)
-final createUserMutation = Mutation<CreateUserResponse>();
+final createUserMutation = Mutation<CreateUserApiResponse>();
 ```
 
 生成例（autoInvalidate有効時のヘルパー関数）:
 ```dart
 /// Executes createUser mutation and invalidates related GET providers.
-Future<CreateUserResponse> createUser(
+Future<CreateUserApiResponse> createUser(
   MutationTarget ref, {
   required CreateUserRequest body,
 }) async {

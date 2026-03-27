@@ -32,16 +32,16 @@ void main() {
 
       final code = generator.generate(endpoint);
 
-      expect(code, contains('sealed class GetUserResponse'));
-      expect(code, contains('with _\$GetUserResponse'));
+      expect(code, contains('sealed class GetUserApiResponse'));
+      expect(code, contains('with _\$GetUserApiResponse'));
       expect(code, contains(
-          'const factory GetUserResponse.success(User data) = GetUserResponseSuccess;'));
+          'const factory GetUserApiResponse.success(User data) = GetUserApiResponseSuccess;'));
       expect(code, contains(
-          'const factory GetUserResponse.notFound() = GetUserResponseNotFound;'));
+          'const factory GetUserApiResponse.notFound() = GetUserApiResponseNotFound;'));
       expect(code, contains(
-          'const factory GetUserResponse.serverError(Error data) = GetUserResponseServerError;'));
+          'const factory GetUserApiResponse.serverError(Error data) = GetUserApiResponseServerError;'));
       expect(code, contains(
-          'const factory GetUserResponse.unknown(int statusCode, dynamic body) = GetUserResponseUnknown;'));
+          'const factory GetUserApiResponse.unknown(int statusCode, dynamic body) = GetUserApiResponseUnknown;'));
     });
 
     test('generates correct part directive', () {
@@ -66,7 +66,7 @@ void main() {
       );
 
       final code = generator.generate(endpoint);
-      expect(code, contains("part 'list_pets_response.freezed.dart';"));
+      expect(code, contains("part 'list_pets_api_response.freezed.dart';"));
     });
 
     test('imports model types', () {
@@ -111,7 +111,7 @@ void main() {
       );
 
       final code = generator.generate(endpoint);
-      expect(code, contains('const factory CreatePetResponse.created(Pet data)'));
+      expect(code, contains('const factory CreatePetApiResponse.created(Pet data)'));
     });
 
     test('generates 204 as noContent factory', () {
@@ -128,7 +128,7 @@ void main() {
 
       final code = generator.generate(endpoint);
       expect(code, contains(
-          'const factory DeletePetResponse.noContent() = DeletePetResponseNoContent;'));
+          'const factory DeletePetApiResponse.noContent() = DeletePetApiResponseNoContent;'));
     });
   });
 }

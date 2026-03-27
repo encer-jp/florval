@@ -13,7 +13,7 @@ class ResponseGenerator {
   /// Generates a response Union type for an endpoint.
   String generate(FlorvalEndpoint endpoint) {
     final className =
-        '${ReCase(endpoint.operationId).pascalCase}Response';
+        '${ReCase(endpoint.operationId).pascalCase}ApiResponse';
     final fileName = ReCase(endpoint.operationId).snakeCase;
     final buffer = StringBuffer();
 
@@ -28,22 +28,15 @@ class ResponseGenerator {
         "import 'package:freezed_annotation/freezed_annotation.dart';");
     buffer.writeln();
 
-    // Detect model imports that collide with the response Union class name
+    // Import model types used in responses
     final imports = _collectImports(endpoint);
-    final collidingModels = _detectCollisions(className, imports, endpoint);
-
     for (final import_ in imports) {
-      if (collidingModels.containsKey(import_)) {
-        buffer.writeln(
-            "import '../models/$import_.dart' as ${collidingModels[import_]};");
-      } else {
-        buffer.writeln("import '../models/$import_.dart';");
-      }
+      buffer.writeln("import '../models/$import_.dart';");
     }
     if (imports.isNotEmpty) buffer.writeln();
 
     // Part directive
-    buffer.writeln("part '${fileName}_response.freezed.dart';");
+    buffer.writeln("part '${fileName}_api_response.freezed.dart';");
     buffer.writeln();
 
     // Sealed class
@@ -55,8 +48,7 @@ class ResponseGenerator {
       ..sort((a, b) => a.key.compareTo(b.key));
 
     for (final entry in sortedResponses) {
-      _writeFactory(buffer, className, entry.key, entry.value,
-          collidingModels: collidingModels);
+      _writeFactory(buffer, className, entry.key, entry.value);
     }
 
     // Unknown fallback
@@ -72,79 +64,17 @@ class ResponseGenerator {
     StringBuffer buffer,
     String className,
     int statusCode,
-    FlorvalResponse response, {
-    Map<String, String> collidingModels = const {},
-  }) {
+    FlorvalResponse response,
+  ) {
     final factoryName = _statusCodeToFactoryName(statusCode);
     final subclassName = '$className${ReCase(factoryName).pascalCase}';
 
     if (response.hasBody) {
-      final dartType =
-          _resolveType(response.type!, collidingModels);
       buffer.writeln(
-          '  const factory $className.$factoryName($dartType data) = $subclassName;');
+          '  const factory $className.$factoryName(${response.type!.dartType} data) = $subclassName;');
     } else {
       buffer.writeln(
           '  const factory $className.$factoryName() = $subclassName;');
-    }
-  }
-
-  /// Resolves a type's dart representation, applying import alias prefixes
-  /// for types that collide with the response class name.
-  String _resolveType(
-      dynamic type, Map<String, String> collidingModels) {
-    if (type.ref != null) {
-      final refName = (type.ref as String).split('/').last;
-      final snakeName = ReCase(refName).snakeCase;
-      if (collidingModels.containsKey(snakeName)) {
-        final prefix = collidingModels[snakeName]!;
-        if (type.isList == true) {
-          return 'List<$prefix.${type.itemType?.dartType ?? refName}>';
-        }
-        return '$prefix.${type.dartType as String}';
-      }
-    }
-    if (type.isList == true && type.itemType != null) {
-      final resolvedItem = _resolveType(type.itemType, collidingModels);
-      if (resolvedItem != (type.itemType.dartType as String)) {
-        return 'List<$resolvedItem>';
-      }
-    }
-    return type.dartType as String;
-  }
-
-  /// Detects model imports whose class name collides with the response
-  /// Union class name. Returns a map of snake_case import → alias prefix.
-  Map<String, String> _detectCollisions(
-    String responseClassName,
-    Set<String> modelImports,
-    FlorvalEndpoint endpoint,
-  ) {
-    final collisions = <String, String>{};
-    // Collect all model class names referenced in responses
-    for (final response in endpoint.responses.values) {
-      if (response.type != null) {
-        _checkTypeCollision(
-            response.type!, responseClassName, collisions);
-      }
-    }
-    return collisions;
-  }
-
-  void _checkTypeCollision(
-    dynamic type,
-    String responseClassName,
-    Map<String, String> collisions,
-  ) {
-    if (type.ref != null) {
-      final refName = (type.ref as String).split('/').last;
-      if (refName == responseClassName) {
-        final snakeName = ReCase(refName).snakeCase;
-        collisions[snakeName] = '_m';
-      }
-    }
-    if (type.isList == true && type.itemType != null) {
-      _checkTypeCollision(type.itemType, responseClassName, collisions);
     }
   }
 

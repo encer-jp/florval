@@ -53,7 +53,7 @@ void main() {
     test('generates method with correct return type', () {
       final code = generator.generate('users', [makeGetEndpoint()]);
 
-      expect(code, contains('Future<GetUserResponse> getUser('));
+      expect(code, contains('Future<GetUserApiResponse> getUser('));
     });
 
     test('generates path parameter interpolation', () {
@@ -67,11 +67,11 @@ void main() {
 
       expect(code, contains('switch (response.statusCode)'));
       expect(code, contains('case 200:'));
-      expect(code, contains('GetUserResponse.success(User.fromJson('));
+      expect(code, contains('GetUserApiResponse.success(User.fromJson('));
       expect(code, contains('case 404:'));
-      expect(code, contains('GetUserResponse.notFound()'));
+      expect(code, contains('GetUserApiResponse.notFound()'));
       expect(code, contains('case 500:'));
-      expect(code, contains('GetUserResponse.serverError(Error.fromJson('));
+      expect(code, contains('GetUserApiResponse.serverError(Error.fromJson('));
     });
 
     test('generates DioException handling', () {
@@ -185,7 +185,7 @@ void main() {
 
       expect(code, contains("import 'package:dio/dio.dart';"));
       expect(code, contains("import '../models/user.dart';"));
-      expect(code, contains("import '../responses/get_user_response.dart';"));
+      expect(code, contains("import '../responses/get_user_api_response.dart';"));
     });
 
     test('generates ResponseType.plain for endpoints with no response body',
