@@ -155,7 +155,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'get_user_response.freezed.dart';
 
-@freezed
+@Freezed(copyWith: false)
 sealed class GetUserResponse with _$GetUserResponse {
   const factory GetUserResponse.success(User data) = GetUserResponseSuccess;
   const factory GetUserResponse.badRequest(ValidationError error) = GetUserResponseBadRequest;
@@ -165,7 +165,7 @@ sealed class GetUserResponse with _$GetUserResponse {
   const factory GetUserResponse.unknown(int statusCode, dynamic body) = GetUserResponseUnknown;
 }
 ```
-※ freezedを使用（copyWith/equality/toStringが自動生成される）。JSON serializationは不要のため`.g.dart`は生成しない。
+※ freezedを使用（equality/toStringが自動生成される）。copyWithは無効化（レスポンス型はimmutableで変更不要、かつ`as _m`プレフィックス付きimportとdeep copyが競合するため）。JSON serializationは不要のため`.g.dart`は生成しない。
 ※ 利用側ではDart 3のswitch式でパターンマッチングする：
 ```dart
 final response = await client.getUser(id: 1);

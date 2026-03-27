@@ -32,7 +32,7 @@ void main() {
 
       final code = generator.generate(endpoint);
 
-      expect(code, contains('@freezed'));
+      expect(code, contains('@Freezed(copyWith: false)'));
       expect(code, contains('sealed class GetUserResponse with _\$GetUserResponse'));
       expect(code, contains("import 'package:freezed_annotation/freezed_annotation.dart';"));
       expect(code, contains("part 'get_user_response.freezed.dart';"));

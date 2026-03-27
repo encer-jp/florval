@@ -41,7 +41,7 @@ class ResponseGenerator {
     buffer.writeln();
 
     // Freezed sealed class with redirecting factory constructors
-    buffer.writeln('@freezed');
+    buffer.writeln('@Freezed(copyWith: false)');
     buffer.writeln('sealed class $className with _\$$className {');
 
     // Factory for each status code

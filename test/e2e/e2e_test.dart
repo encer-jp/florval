@@ -141,7 +141,7 @@ void main() {
           File(p.join(outputDir.path, 'responses', 'get_pet_response.dart'))
               .readAsStringSync();
 
-      expect(responseCode, contains('@freezed'));
+      expect(responseCode, contains('@Freezed(copyWith: false)'));
       expect(responseCode, contains('sealed class GetPetResponse with _\$GetPetResponse'));
       expect(responseCode, contains("part 'get_pet_response.freezed.dart';"));
       expect(responseCode,
