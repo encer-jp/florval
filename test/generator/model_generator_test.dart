@@ -316,6 +316,13 @@ void main() {
       expect(code, contains('male,'));
       expect(code, contains("@JsonValue('female')"));
       expect(code, contains('female;'));
+      // jsonValue getter
+      expect(code, contains('String get jsonValue => switch (this)'));
+      expect(code, contains("GenderEnum.male => 'male'"));
+      expect(code, contains("GenderEnum.female => 'female'"));
+      // fromJsonValue static method
+      expect(code, contains('static GenderEnum fromJsonValue(String value)'));
+      expect(code, contains('values.firstWhere((e) => e.jsonValue == value)'));
       // Should NOT contain freezed artifacts
       expect(code, isNot(contains('@freezed')));
       expect(code, isNot(contains('part ')));

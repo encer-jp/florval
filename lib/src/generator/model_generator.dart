@@ -133,15 +133,31 @@ class ModelGenerator {
     // Enum definition
     buffer.writeln('enum ${schema.name} {');
 
+    // Collect dart names for later use in helper methods
     final usedNames = <String>{};
+    final dartNames = <String>[];
     for (var i = 0; i < schema.enumValues!.length; i++) {
       final value = schema.enumValues![i];
       final dartName = _enumValueToDartName(value, i, usedNames);
+      dartNames.add(dartName);
       final isLast = i == schema.enumValues!.length - 1;
 
       buffer.writeln("  @JsonValue('$value')");
       buffer.writeln('  $dartName${isLast ? ';' : ','}');
     }
+
+    // jsonValue getter — returns the original JSON string for this member
+    buffer.writeln();
+    buffer.writeln('  String get jsonValue => switch (this) {');
+    for (var i = 0; i < schema.enumValues!.length; i++) {
+      buffer.writeln("    ${schema.name}.${dartNames[i]} => '${schema.enumValues![i]}',");
+    }
+    buffer.writeln('  };');
+
+    // fromJsonValue static method — reverse lookup by JSON string
+    buffer.writeln();
+    buffer.writeln('  static ${schema.name} fromJsonValue(String value) =>');
+    buffer.writeln('      values.firstWhere((e) => e.jsonValue == value);');
 
     buffer.writeln('}');
 
@@ -482,12 +498,12 @@ class ModelGenerator {
       return '$baseDartType.fromJson($accessor as Map<String, dynamic>)';
     }
 
-    // Enum types
+    // Enum types — use fromJsonValue for @JsonValue compatibility
     if (type.isEnum) {
       if (nullable) {
-        return '$accessor != null ? $baseDartType.values.byName($accessor as String) : null';
+        return '$accessor != null ? $baseDartType.fromJsonValue($accessor as String) : null';
       }
-      return '$baseDartType.values.byName($accessor as String)';
+      return '$baseDartType.fromJsonValue($accessor as String)';
     }
 
     // Primitives (String, bool, Map<String, dynamic>, dynamic)
@@ -500,7 +516,7 @@ class ModelGenerator {
       return '${itemType.dartType}.fromJson(e as Map<String, dynamic>)';
     }
     if (itemType.isEnum) {
-      return '${itemType.dartType}.values.byName(e as String)';
+      return '${itemType.dartType}.fromJsonValue(e as String)';
     }
     if (itemType.dartType == 'int') {
       return '(e as num).toInt()';
@@ -546,11 +562,11 @@ class ModelGenerator {
       return '$accessor$q.toIso8601String()';
     }
     if (type.isEnum) {
-      return '$accessor$q.name';
+      return '$accessor$q.jsonValue';
     }
     if (type.isList && type.itemType != null && !type.itemType!.isPrimitive && !type.itemType!.isMap) {
       if (type.itemType!.isEnum) {
-        return '$accessor$q.map((e) => e.name).toList()';
+        return '$accessor$q.map((e) => e.jsonValue).toList()';
       }
       return '$accessor$q.map((e) => e.toJson()).toList()';
     }
@@ -564,11 +580,11 @@ class ModelGenerator {
   void _writeToJsonField(StringBuffer buffer, FlorvalField field) {
     final type = field.type;
     if (type.isEnum) {
-      buffer.writeln("    json['${field.jsonKey}'] = ${field.name}.name;");
+      buffer.writeln("    json['${field.jsonKey}'] = ${field.name}.jsonValue;");
     } else if (type.isList && type.itemType != null && !type.itemType!.isPrimitive && !type.itemType!.isMap) {
       if (type.itemType!.isEnum) {
         buffer.writeln(
-            "    json['${field.jsonKey}'] = ${field.name}.map((e) => e.name).toList();");
+            "    json['${field.jsonKey}'] = ${field.name}.map((e) => e.jsonValue).toList();");
       } else {
         buffer.writeln(
             "    json['${field.jsonKey}'] = ${field.name}.map((e) => e.toJson()).toList();");
