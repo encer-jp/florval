@@ -201,11 +201,11 @@ class FlorvalRunner {
 
     // Barrel file
     writer.writeBarrel(
-      modelNames,
-      responseNames.map((n) => ReCase(n).snakeCase).toList(),
-      clientNames,
-      providerNames,
-      providerUtilityNames,
+      modelNames: modelNames,
+      responseNames: responseNames.map((n) => ReCase(n).snakeCase).toList(),
+      clientNames: clientNames,
+      providerNames: providerNames,
+      providerUtilityNames: providerUtilityNames,
     );
 
     logger.success(

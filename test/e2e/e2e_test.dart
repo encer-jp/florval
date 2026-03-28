@@ -143,11 +143,11 @@ void main() {
 
       expect(responseCode, contains('sealed class GetPetResponse'));
       expect(responseCode,
-          contains('const factory GetPetResponse.success(_m.Pet data)'));
+          contains('const factory GetPetResponse.success(m.Pet data)'));
       expect(responseCode,
           contains('const factory GetPetResponse.notFound()'));
       expect(responseCode,
-          contains('const factory GetPetResponse.serverError(_m.Error data)'));
+          contains('const factory GetPetResponse.serverError(m.Error data)'));
       expect(responseCode, contains('const factory GetPetResponse.unknown('));
     });
 
@@ -162,16 +162,16 @@ void main() {
 
       expect(clientCode, contains('class PetsApiClient'));
       expect(clientCode, contains('final Dio _dio;'));
-      expect(clientCode, contains('Future<_r.ListPetsResponse> listPets('));
-      expect(clientCode, contains('Future<_r.GetPetResponse> getPet('));
-      expect(clientCode, contains('Future<_r.CreatePetResponse> createPet('));
-      expect(clientCode, contains('Future<_r.DeletePetResponse> deletePet('));
+      expect(clientCode, contains('Future<r.ListPetsResponse> listPets('));
+      expect(clientCode, contains('Future<r.GetPetResponse> getPet('));
+      expect(clientCode, contains('Future<r.CreatePetResponse> createPet('));
+      expect(clientCode, contains('Future<r.DeletePetResponse> deletePet('));
       expect(clientCode, contains('switch (response.statusCode)'));
       expect(clientCode, contains('on DioException catch (e)'));
 
       // Verify multipart endpoint
       expect(clientCode,
-          contains('Future<_r.UploadPetPhotoResponse> uploadPetPhoto('));
+          contains('Future<r.UploadPetPhotoResponse> uploadPetPhoto('));
       expect(clientCode, contains('required MultipartFile file,'));
       expect(clientCode, contains('String? description,'));
       expect(clientCode, contains('FormData.fromMap('));
@@ -185,9 +185,8 @@ void main() {
       final barrelCode =
           File(p.join(outputDir.path, 'api.dart')).readAsStringSync();
 
-      expect(barrelCode, contains("export 'models/pet.dart';"));
-      expect(barrelCode, contains("export 'models/category.dart';"));
-      expect(barrelCode, contains("export 'clients/pets_api_client.dart';"));
+      expect(barrelCode, contains("export 'api_models.dart';"));
+      expect(barrelCode, contains("export 'api_clients.dart';"));
     });
 
     test('does not generate providers when riverpod is disabled', () {
@@ -237,16 +236,16 @@ void main() {
       expect(providerCode, contains('class GetPet extends _\$GetPet'));
 
       // POST/PUT/DELETE → Mutation constants
-      expect(providerCode, contains('final createPetMutation = Mutation<_r.CreatePetResponse>();'));
-      expect(providerCode, contains('final updatePetMutation = Mutation<_r.UpdatePetResponse>();'));
-      expect(providerCode, contains('final deletePetMutation = Mutation<_r.DeletePetResponse>();'));
+      expect(providerCode, contains('final createPetMutation = Mutation<r.CreatePetResponse>();'));
+      expect(providerCode, contains('final updatePetMutation = Mutation<r.UpdatePetResponse>();'));
+      expect(providerCode, contains('final deletePetMutation = Mutation<r.DeletePetResponse>();'));
       expect(providerCode, isNot(contains('class CreatePet extends _\$CreatePet')));
       expect(providerCode, isNot(contains('class UpdatePet extends _\$UpdatePet')));
       expect(providerCode, isNot(contains('class DeletePet extends _\$DeletePet')));
 
       // Multipart endpoint → Mutation constant
       expect(providerCode,
-          contains('final uploadPetPhotoMutation = Mutation<_r.UploadPetPhotoResponse>();'));
+          contains('final uploadPetPhotoMutation = Mutation<r.UploadPetPhotoResponse>();'));
       expect(providerCode, isNot(contains('class UploadPetPhoto extends _\$UploadPetPhoto')));
       expect(providerCode, contains("import 'package:dio/dio.dart';"));
       expect(providerCode, contains("import 'package:riverpod/experimental/mutation.dart';"));
@@ -260,7 +259,7 @@ void main() {
       final barrelCode =
           File(p.join(outputDir.path, 'api.dart')).readAsStringSync();
 
-      expect(barrelCode, contains("export 'providers/pets_providers.dart';"));
+      expect(barrelCode, contains("export 'api_providers.dart';"));
     });
 
     test('generates paginated_data.dart and api_exception.dart when pagination configured', () {
@@ -351,11 +350,11 @@ void main() {
 
       FlorvalRunner().run(config);
 
-      final barrelCode =
-          File(p.join(outputDir.path, 'api.dart')).readAsStringSync();
+      final modelsBarrelCode =
+          File(p.join(outputDir.path, 'api_models.dart')).readAsStringSync();
 
-      expect(barrelCode, contains("export 'models/paginated_data.dart';"));
-      expect(barrelCode, contains("export 'models/api_exception.dart';"));
+      expect(modelsBarrelCode, contains("export 'models/paginated_data.dart';"));
+      expect(modelsBarrelCode, contains("export 'models/api_exception.dart';"));
     });
 
     test('does not generate pagination utilities when no pagination configured', () {
@@ -399,12 +398,12 @@ void main() {
 
       expect(providerCode, contains("import 'retry.dart';"));
       expect(providerCode, contains('@Riverpod(retry: retry)'));
-      expect(providerCode, contains('final createPetMutation = Mutation<_r.CreatePetResponse>();'));
+      expect(providerCode, contains('final createPetMutation = Mutation<r.CreatePetResponse>();'));
 
-      // Verify barrel file exports retry.dart
-      final barrelCode =
-          File(p.join(outputDir.path, 'api.dart')).readAsStringSync();
-      expect(barrelCode, contains("export 'providers/retry.dart';"));
+      // Verify provider barrel file exports retry.dart
+      final providerBarrelCode =
+          File(p.join(outputDir.path, 'api_providers.dart')).readAsStringSync();
+      expect(providerBarrelCode, contains("export 'providers/retry.dart';"));
     });
 
     test('does not generate retry.dart when retry is not configured', () {

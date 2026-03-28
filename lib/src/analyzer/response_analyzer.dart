@@ -87,6 +87,9 @@ class ResponseAnalyzer {
   /// Maps status codes to human-readable suffixes for type names.
   String _statusCodeToName(int code) {
     return switch (code) {
+      200 => 'SuccessBody',
+      201 => 'CreatedBody',
+      204 => 'NoContentBody',
       400 => 'BadRequestBody',
       401 => 'UnauthorizedBody',
       403 => 'ForbiddenBody',

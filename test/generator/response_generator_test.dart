@@ -39,11 +39,11 @@ void main() {
       expect(code, isNot(contains("part '")));
       // Factory constructors
       expect(code, contains(
-          'const factory GetUserResponse.success(_m.User data) = GetUserResponseSuccess;'));
+          'const factory GetUserResponse.success(m.User data) = GetUserResponseSuccess;'));
       expect(code, contains(
           'const factory GetUserResponse.notFound() = GetUserResponseNotFound;'));
       expect(code, contains(
-          'const factory GetUserResponse.serverError(_m.Error data) = GetUserResponseServerError;'));
+          'const factory GetUserResponse.serverError(m.Error data) = GetUserResponseServerError;'));
       expect(code, contains(
           'const factory GetUserResponse.unknown(int statusCode, dynamic body) = GetUserResponseUnknown;'));
       // Subclasses
@@ -69,7 +69,7 @@ void main() {
       );
 
       final code = generator.generate(endpoint);
-      expect(code, contains('final _m.User data;'));
+      expect(code, contains('final m.User data;'));
       expect(code, contains('const GetUserResponseSuccess(this.data);'));
     });
 
@@ -116,7 +116,7 @@ void main() {
       );
 
       final code = generator.generate(endpoint);
-      expect(code, contains('const factory CreatePetResponse.created(_m.Pet data)'));
+      expect(code, contains('const factory CreatePetResponse.created(m.Pet data)'));
     });
 
     test('generates 204 as noContent factory', () {
@@ -159,7 +159,7 @@ void main() {
       );
 
       final code = generator.generate(endpoint);
-      expect(code, contains('List<_m.Pet> data'));
+      expect(code, contains('List<m.Pet> data'));
     });
 
     test('does not prefix primitive types', () {
