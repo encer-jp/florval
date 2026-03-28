@@ -43,10 +43,6 @@ class ModelGenerator {
     // Imports
     buffer.writeln(
         "import 'package:freezed_annotation/freezed_annotation.dart';");
-    if (hasAbsentable) {
-      buffer.writeln(
-          "import 'package:json_annotation/json_annotation.dart';");
-    }
 
     // Custom model imports
     if (templateConfig != null) {
@@ -68,14 +64,17 @@ class ModelGenerator {
 
     // Part directives
     buffer.writeln("part '$fileName.freezed.dart';");
-    buffer.writeln("part '$fileName.g.dart';");
+    if (!hasAbsentable) {
+      buffer.writeln("part '$fileName.g.dart';");
+    }
     buffer.writeln();
 
     // Class definition
     if (hasAbsentable) {
-      buffer.writeln('@JsonSerializable(createToJson: false)');
+      buffer.writeln('@Freezed(fromJson: false, toJson: false)');
+    } else {
+      buffer.writeln('@freezed');
     }
-    buffer.writeln('@freezed');
     buffer.writeln('abstract class ${schema.name} with _\$${schema.name} {');
 
     // Private constructor needed when adding methods to freezed class
@@ -95,12 +94,14 @@ class ModelGenerator {
       buffer.writeln('  }) = _${schema.name};');
     }
     buffer.writeln();
-    buffer.writeln(
-        '  factory ${schema.name}.fromJson(Map<String, dynamic> json) => _\$${schema.name}FromJson(json);');
 
-    // Custom toJson for absentable schemas
+    // fromJson / toJson
     if (hasAbsentable) {
+      _writeCustomFromJson(buffer, schema);
       _writeCustomToJson(buffer, schema);
+    } else {
+      buffer.writeln(
+          '  factory ${schema.name}.fromJson(Map<String, dynamic> json) => _\$${schema.name}FromJson(json);');
     }
 
     buffer.writeln('}');
@@ -132,15 +133,31 @@ class ModelGenerator {
     // Enum definition
     buffer.writeln('enum ${schema.name} {');
 
+    // Collect dart names for later use in helper methods
     final usedNames = <String>{};
+    final dartNames = <String>[];
     for (var i = 0; i < schema.enumValues!.length; i++) {
       final value = schema.enumValues![i];
       final dartName = _enumValueToDartName(value, i, usedNames);
+      dartNames.add(dartName);
       final isLast = i == schema.enumValues!.length - 1;
 
       buffer.writeln("  @JsonValue('$value')");
       buffer.writeln('  $dartName${isLast ? ';' : ','}');
     }
+
+    // jsonValue getter — returns the original JSON string for this member
+    buffer.writeln();
+    buffer.writeln('  String get jsonValue => switch (this) {');
+    for (var i = 0; i < schema.enumValues!.length; i++) {
+      buffer.writeln("    ${schema.name}.${dartNames[i]} => '${schema.enumValues![i]}',");
+    }
+    buffer.writeln('  };');
+
+    // fromJsonValue static method — reverse lookup by JSON string
+    buffer.writeln();
+    buffer.writeln('  static ${schema.name} fromJsonValue(String value) =>');
+    buffer.writeln('      values.firstWhere((e) => e.jsonValue == value);');
 
     buffer.writeln('}');
 
@@ -409,6 +426,110 @@ class ModelGenerator {
     return field.type.dartType.replaceAll('?', '');
   }
 
+  /// Generates a custom `fromJson` that uses `json.containsKey()` to distinguish
+  /// absent keys from null values for absentable fields.
+  void _writeCustomFromJson(StringBuffer buffer, FlorvalSchema schema) {
+    buffer.writeln(
+        '  factory ${schema.name}.fromJson(Map<String, dynamic> json) {');
+    buffer.writeln('    return ${schema.name}(');
+    for (final field in schema.fields) {
+      if (field.absentable) {
+        final innerType = _absentableInnerType(field);
+        final castExpr =
+            _fromJsonCastExpression(field.type, "json['${field.jsonKey}']");
+        buffer.writeln("      ${field.name}: json.containsKey('${field.jsonKey}')");
+        buffer.writeln('          ? JsonOptional.value($castExpr)');
+        buffer.writeln(
+            '          : const JsonOptional<$innerType>.absent(),');
+      } else {
+        final castExpr =
+            _fromJsonCastExpression(field.type, "json['${field.jsonKey}']");
+        buffer.writeln('      ${field.name}: $castExpr,');
+      }
+    }
+    buffer.writeln('    );');
+    buffer.writeln('  }');
+  }
+
+  /// Returns a Dart expression that casts a JSON value to the target type.
+  String _fromJsonCastExpression(FlorvalType type, String accessor) {
+    final nullable = type.isNullable;
+    final baseDartType = type.dartType.replaceAll('?', '');
+
+    // DateTime
+    if (baseDartType == 'DateTime') {
+      if (nullable) {
+        return '$accessor != null ? DateTime.parse($accessor as String) : null';
+      }
+      return 'DateTime.parse($accessor as String)';
+    }
+
+    // int (JSON numbers may be num)
+    if (baseDartType == 'int') {
+      if (nullable) {
+        return '($accessor as num?)?.toInt()';
+      }
+      return '($accessor as num).toInt()';
+    }
+
+    // double
+    if (baseDartType == 'double') {
+      if (nullable) {
+        return '($accessor as num?)?.toDouble()';
+      }
+      return '($accessor as num).toDouble()';
+    }
+
+    // List types
+    if (type.isList && type.itemType != null) {
+      final itemType = type.itemType!;
+      final itemCast = _fromJsonListItemCast(itemType);
+      if (nullable) {
+        return '($accessor as List<dynamic>?)?.map((e) => $itemCast).toList()';
+      }
+      return '($accessor as List<dynamic>).map((e) => $itemCast).toList()';
+    }
+
+    // Reference types (model classes with fromJson)
+    if (type.ref != null && !type.isEnum) {
+      if (nullable) {
+        return '$accessor != null ? $baseDartType.fromJson($accessor as Map<String, dynamic>) : null';
+      }
+      return '$baseDartType.fromJson($accessor as Map<String, dynamic>)';
+    }
+
+    // Enum types — use fromJsonValue for @JsonValue compatibility
+    if (type.isEnum) {
+      if (nullable) {
+        return '$accessor != null ? $baseDartType.fromJsonValue($accessor as String) : null';
+      }
+      return '$baseDartType.fromJsonValue($accessor as String)';
+    }
+
+    // Primitives (String, bool, Map<String, dynamic>, dynamic)
+    return '$accessor as ${type.dartType}';
+  }
+
+  /// Returns a cast expression for a single list item.
+  String _fromJsonListItemCast(FlorvalType itemType) {
+    if (itemType.ref != null && !itemType.isEnum) {
+      return '${itemType.dartType}.fromJson(e as Map<String, dynamic>)';
+    }
+    if (itemType.isEnum) {
+      return '${itemType.dartType}.fromJsonValue(e as String)';
+    }
+    if (itemType.dartType == 'int') {
+      return '(e as num).toInt()';
+    }
+    if (itemType.dartType == 'double') {
+      return '(e as num).toDouble()';
+    }
+    if (itemType.dartType == 'DateTime') {
+      return 'DateTime.parse(e as String)';
+    }
+    return 'e as ${itemType.dartType}';
+  }
+
   /// Generates a custom `toJson()` that excludes absent fields from the JSON map.
   void _writeCustomToJson(StringBuffer buffer, FlorvalSchema schema) {
     buffer.writeln();
@@ -419,8 +540,10 @@ class ModelGenerator {
         final innerType = _absentableInnerType(field);
         buffer.writeln(
             "    if (${field.name} is JsonOptionalValue<$innerType>) {");
+        final valueExpr = '(${field.name} as JsonOptionalValue<$innerType>).value';
+        final serialized = _toJsonValueExpression(field.type, valueExpr, nullable: true);
         buffer.writeln(
-            "      json['${field.jsonKey}'] = (${field.name} as JsonOptionalValue<$innerType>).value;");
+            "      json['${field.jsonKey}'] = $serialized;");
         buffer.writeln('    }');
       } else {
         _writeToJsonField(buffer, field);
@@ -430,15 +553,38 @@ class ModelGenerator {
     buffer.writeln('  }');
   }
 
+  /// Returns a Dart expression that converts a value to its JSON representation.
+  String _toJsonValueExpression(FlorvalType type, String accessor, {bool nullable = false}) {
+    final baseDartType = type.dartType.replaceAll('?', '');
+    final q = nullable ? '?' : '';
+
+    if (baseDartType == 'DateTime') {
+      return '$accessor$q.toIso8601String()';
+    }
+    if (type.isEnum) {
+      return '$accessor$q.jsonValue';
+    }
+    if (type.isList && type.itemType != null && !type.itemType!.isPrimitive && !type.itemType!.isMap) {
+      if (type.itemType!.isEnum) {
+        return '$accessor$q.map((e) => e.jsonValue).toList()';
+      }
+      return '$accessor$q.map((e) => e.toJson()).toList()';
+    }
+    if (type.ref != null && !type.isEnum && !type.isList) {
+      return '$accessor$q.toJson()';
+    }
+    return accessor;
+  }
+
   /// Writes a single required/regular field serialization in toJson.
   void _writeToJsonField(StringBuffer buffer, FlorvalField field) {
     final type = field.type;
     if (type.isEnum) {
-      buffer.writeln("    json['${field.jsonKey}'] = ${field.name}.name;");
+      buffer.writeln("    json['${field.jsonKey}'] = ${field.name}.jsonValue;");
     } else if (type.isList && type.itemType != null && !type.itemType!.isPrimitive && !type.itemType!.isMap) {
       if (type.itemType!.isEnum) {
         buffer.writeln(
-            "    json['${field.jsonKey}'] = ${field.name}.map((e) => e.name).toList();");
+            "    json['${field.jsonKey}'] = ${field.name}.map((e) => e.jsonValue).toList();");
       } else {
         buffer.writeln(
             "    json['${field.jsonKey}'] = ${field.name}.map((e) => e.toJson()).toList();");

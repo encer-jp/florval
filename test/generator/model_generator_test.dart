@@ -316,6 +316,13 @@ void main() {
       expect(code, contains('male,'));
       expect(code, contains("@JsonValue('female')"));
       expect(code, contains('female;'));
+      // jsonValue getter
+      expect(code, contains('String get jsonValue => switch (this)'));
+      expect(code, contains("GenderEnum.male => 'male'"));
+      expect(code, contains("GenderEnum.female => 'female'"));
+      // fromJsonValue static method
+      expect(code, contains('static GenderEnum fromJsonValue(String value)'));
+      expect(code, contains('values.firstWhere((e) => e.jsonValue == value)'));
       // Should NOT contain freezed artifacts
       expect(code, isNot(contains('@freezed')));
       expect(code, isNot(contains('part ')));
@@ -578,7 +585,7 @@ void main() {
         expect(code, isNot(contains('required JsonOptional')));
       });
 
-      test('generates @JsonSerializable(createToJson: false) for absentable schema', () {
+      test('generates @Freezed(fromJson: false, toJson: false) for absentable schema', () {
         final schema = FlorvalSchema(
           name: 'UpdateUserRequest',
           fields: [
@@ -604,8 +611,11 @@ void main() {
 
         final code = generator.generate(schema);
 
-        expect(code, contains('@JsonSerializable(createToJson: false)'));
-        expect(code, contains('@freezed'));
+        expect(code, contains('@Freezed(fromJson: false, toJson: false)'));
+        // Should NOT have plain @freezed or @JsonSerializable
+        expect(code, isNot(contains('@JsonSerializable')));
+        // Should NOT have .g.dart part directive
+        expect(code, isNot(contains(".g.dart';")));
       });
 
       test('generates custom toJson that excludes absent fields', () {
@@ -667,10 +677,10 @@ void main() {
         final code = generator.generate(schema);
 
         expect(code, contains("import '../core/json_optional.dart';"));
+        // json_annotation is NOT needed (no @JsonSerializable)
         expect(
           code,
-          contains(
-              "import 'package:json_annotation/json_annotation.dart';"),
+          isNot(contains("import 'package:json_annotation/json_annotation.dart';")),
         );
       });
 
@@ -723,8 +733,10 @@ void main() {
 
         expect(code, isNot(contains('JsonOptional')));
         expect(code, isNot(contains('json_optional')));
-        expect(code, isNot(contains('@JsonSerializable')));
+        expect(code, isNot(contains('@Freezed(fromJson')));
         expect(code, isNot(contains('Map<String, dynamic> toJson()')));
+        // Normal schema still has .g.dart
+        expect(code, contains(".g.dart';"));
       });
 
       test('generates private constructor for absentable schema', () {
@@ -749,6 +761,48 @@ void main() {
 
         // Private constructor needed for custom methods on freezed classes
         expect(code, contains('const UpdateUserRequest._();'));
+      });
+
+      test('generates custom fromJson with containsKey for absentable fields', () {
+        final schema = FlorvalSchema(
+          name: 'UpdateUserRequest',
+          fields: [
+            FlorvalField(
+              name: 'id',
+              jsonKey: 'id',
+              type: FlorvalType(name: 'int', dartType: 'int'),
+              isRequired: true,
+            ),
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(
+                name: 'String',
+                dartType: 'String?',
+                isNullable: true,
+              ),
+              isRequired: false,
+              absentable: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        // Custom fromJson factory
+        expect(
+          code,
+          contains(
+              'factory UpdateUserRequest.fromJson(Map<String, dynamic> json)'),
+        );
+        // Should NOT delegate to _$...FromJson
+        expect(code, isNot(contains('_\$UpdateUserRequestFromJson')));
+        // Required field: direct cast
+        expect(code, contains("id: (json['id'] as num).toInt(),"));
+        // Absentable field: containsKey check
+        expect(code, contains("json.containsKey('name')"));
+        expect(code, contains('JsonOptional.value('));
+        expect(code, contains('JsonOptional<String>.absent()'));
       });
 
       test('handles absentable field with JsonKey', () {

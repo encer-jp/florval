@@ -274,33 +274,42 @@ sealed class JsonOptional<T> with _$JsonOptional<T> {
 
 PATCH/PUTリクエストボディの生成例：
 ```dart
-@freezed
+@Freezed(fromJson: false, toJson: false)
 abstract class UpdateUserRequest with _$UpdateUserRequest {
+  const UpdateUserRequest._();
+
   const factory UpdateUserRequest({
     required int id,                                                    // required → 素の型
     @Default(JsonOptional<String>.absent()) JsonOptional<String> name,   // optional → JsonOptional
     @Default(JsonOptional<String>.absent()) JsonOptional<String> email,  // optional → JsonOptional
   }) = _UpdateUserRequest;
 
-  factory UpdateUserRequest.fromJson(Map<String, dynamic> json) =>
-      _$UpdateUserRequestFromJson(json);
-}
-```
+  factory UpdateUserRequest.fromJson(Map<String, dynamic> json) {
+    return UpdateUserRequest(
+      id: (json['id'] as num).toInt(),
+      name: json.containsKey('name')
+          ? JsonOptional.value(json['name'] as String?)
+          : const JsonOptional<String>.absent(),
+      email: json.containsKey('email')
+          ? JsonOptional.value(json['email'] as String?)
+          : const JsonOptional<String>.absent(),
+    );
+  }
 
-toJsonではabsentフィールドをMap除外するカスタムconverterを生成：
-```dart
-Map<String, dynamic> _$UpdateUserRequestToJson(UpdateUserRequest instance) {
-  final json = <String, dynamic>{};
-  json['id'] = instance.id;  // required: 常に含める
-  if (instance.name is JsonOptionalValue<String>) {
-    json['name'] = (instance.name as JsonOptionalValue<String>).value;
+  Map<String, dynamic> toJson() {
+    final json = <String, dynamic>{};
+    json['id'] = id;
+    if (name is JsonOptionalValue<String>) {
+      json['name'] = (name as JsonOptionalValue<String>).value;
+    }
+    if (email is JsonOptionalValue<String>) {
+      json['email'] = (email as JsonOptionalValue<String>).value;
+    }
+    return json;
   }
-  if (instance.email is JsonOptionalValue<String>) {
-    json['email'] = (instance.email as JsonOptionalValue<String>).value;
-  }
-  return json;
 }
 ```
+※ json_serializableは`JsonOptional<T>`を認識できないため、`@Freezed(fromJson: false, toJson: false)`で無効化し、fromJson/toJsonの両方をflorvalが生成する。`.g.dart` partは不要。
 
 判定ルール：
 - `absentable = !isRequired && (method == PATCH || method == PUT)`
