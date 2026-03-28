@@ -275,6 +275,117 @@ openapi_spec_plusのSchemaから freezed クラスを生成。
 | object | Map<String, dynamic>（propertiesなし） |
 | object + properties | 生成クラス |
 
+### 6.2.1 JsonOptional生成（PATCH/PUT部分更新）
+
+#### 背景
+
+JSONにおける「キーが存在しない」と「キーがnullである」は異なるセマンティクスを持つ。
+Dartの型システムには「undefined」に相当する概念がないため、sentinel型で3状態を表現する。
+
+他のswaggerライブラリ（swagger_parser, openapi_generator等）は全フィールドをnullableにするだけで区別不能。florvalの差別化ポイントの一つ。
+
+#### 生成物
+
+```
+lib/api/generated/
+├── core/
+│   └── json_optional.dart          ← florvalが生成するランタイム型
+│   └── json_optional.freezed.dart  ← build_runnerが生成
+├── models/
+│   └── update_user_request.dart    ← optionalフィールドにJsonOptional適用
+└── api.dart                        ← export 'core/json_optional.dart'; を含む
+```
+
+#### IR拡張
+
+`FlorvalField`に`absentable`フラグを追加：
+
+```dart
+class FlorvalField {
+  final String name;
+  final String jsonKey;
+  final FlorvalType type;
+  final bool isRequired;
+  final bool absentable;  // ← 追加
+  final String? defaultValue;
+  final String? description;
+
+  const FlorvalField({
+    required this.name,
+    required this.jsonKey,
+    required this.type,
+    required this.isRequired,
+    this.absentable = false,  // デフォルトfalse
+    this.defaultValue,
+    this.description,
+  });
+}
+```
+
+#### Analyzer判定ロジック
+
+`EndpointAnalyzer`がリクエストボディのフィールドを分析する際、
+エンドポイントのHTTPメソッドに基づいて`absentable`を決定：
+
+```
+absentable = !isRequired && (method == 'PATCH' || method == 'PUT')
+```
+
+POST・GETのリクエストボディ、レスポンスモデルには適用しない。
+
+#### ModelGenerator拡張
+
+`absentable == true`のフィールドは以下のように生成：
+
+- 型: `JsonOptional<OriginalType>` （元の型をラップ）
+- デフォルト値: `@Default(JsonOptional<OriginalType>.absent())`
+- import: `core/json_optional.dart`を追加
+
+#### toJsonカスタムconverter
+
+freezedの標準toJsonではJsonOptionalの除外制御ができないため、
+`@JsonSerializable(createToJson: false)`を指定し、手動toJsonを生成する：
+
+```dart
+@freezed
+@JsonSerializable(createToJson: false)
+abstract class UpdateUserRequest with _$UpdateUserRequest {
+  const factory UpdateUserRequest({
+    required int id,
+    @Default(JsonOptional<String>.absent()) JsonOptional<String> name,
+  }) = _UpdateUserRequest;
+
+  factory UpdateUserRequest.fromJson(Map<String, dynamic> json) =>
+      _$UpdateUserRequestFromJson(json);
+
+  // florvalが生成するカスタムtoJson
+  Map<String, dynamic> toJson() {
+    final json = <String, dynamic>{};
+    json['id'] = id;
+    if (name is JsonOptionalValue<String>) {
+      json['name'] = (name as JsonOptionalValue<String>).value;
+    }
+    return json;
+  }
+}
+```
+
+#### JsonOptionalのfromJson対応
+
+JSONレスポンスからの復元時（fromJson）は：
+- キーが存在しない → `JsonOptional.absent()`
+- キーが存在しvalueがnull → `JsonOptional.value(null)`
+- キーが存在しvalueがnon-null → `JsonOptional.value(parsedValue)`
+
+json_serializableのカスタムconverterで対応する。
+
+#### テスト方針
+
+- ユニット: ModelGeneratorが`absentable`フラグに基づき正しいコードを生成するか
+- ユニット: toJsonがabsentフィールドを除外、value(null)をnullとして含めるか
+- ユニット: fromJsonが3状態を正しく復元するか
+- E2E: PATCH/PUTエンドポイントの生成結果がbuild_runner通過→dart analyzeゼロ
+
 ### 6.3 レスポンスUnion型生成（ResponseGenerator）
 
 // freezedは不要。パターンマッチングのみ必要なため、plain Dart sealed classで生成する。

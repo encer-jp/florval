@@ -1,5 +1,14 @@
 ## 0.1.2
 
+### Design / Spec
+- **JsonOptional\<T\> spec**: Add `JsonOptional<T>` design for PATCH/PUT partial update support — distinguishes "key absent" (unchanged) from "key is null" (clear value) at the type level
+  - `core/json_optional.dart` generated as a freezed sealed class with `.absent()` and `.value(T?)` variants
+  - `FlorvalField.absentable` flag added to IR (`true` when `!isRequired && (method == PATCH || PUT)`)
+  - ModelGenerator wraps absentable fields in `JsonOptional<T>` with `@Default(JsonOptional<T>.absent())`
+  - Custom `toJson` generation excludes absent keys from serialized JSON
+  - Custom `fromJson` converter restores 3-state (`absent` / `value(null)` / `value(v)`)
+  - POST request bodies and response models are unaffected
+
 ### Breaking Changes
 - Rename response Union types from `{Op}Response` to `{Op}ApiResponse` to structurally resolve name collisions with model classes
 - Switch response Union types from freezed to plain Dart sealed classes (copyWith/equality/fromJson not needed, eliminates build_runner dependency for response types)
