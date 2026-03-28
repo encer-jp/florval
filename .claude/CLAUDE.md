@@ -256,6 +256,68 @@ Future<CreateUserResponse> createUser(
 - 自動リトライがビルトイン（ProviderScopeのretryで設定可能）
 - Mutation APIでPOST/PUT/DELETEの状態管理（`Mutation<T>()`定数 + `run()`で実行）
 
+### 5. JsonOptional<T>（PATCH/PUT部分更新のundefined/null区別）
+
+PATCH/PUTリクエストボディのoptionalフィールドは`JsonOptional<T>`で3状態を表現する。
+これにより「キー未送信（サーバー側は値を変更しない）」と「null送信（値をクリア）」を型レベルで区別する。
+
+florvalが`core/json_optional.dart`を生成物として出力し、バレルファイルからexportする。
+
+生成されるランタイム型：
+```dart
+@freezed
+sealed class JsonOptional<T> with _$JsonOptional<T> {
+  const factory JsonOptional.absent() = JsonOptionalAbsent<T>;
+  const factory JsonOptional.value(T? value) = JsonOptionalValue<T>;
+}
+```
+
+PATCH/PUTリクエストボディの生成例：
+```dart
+@freezed
+abstract class UpdateUserRequest with _$UpdateUserRequest {
+  const factory UpdateUserRequest({
+    required int id,                                                    // required → 素の型
+    @Default(JsonOptional<String>.absent()) JsonOptional<String> name,   // optional → JsonOptional
+    @Default(JsonOptional<String>.absent()) JsonOptional<String> email,  // optional → JsonOptional
+  }) = _UpdateUserRequest;
+
+  factory UpdateUserRequest.fromJson(Map<String, dynamic> json) =>
+      _$UpdateUserRequestFromJson(json);
+}
+```
+
+toJsonではabsentフィールドをMap除外するカスタムconverterを生成：
+```dart
+Map<String, dynamic> _$UpdateUserRequestToJson(UpdateUserRequest instance) {
+  final json = <String, dynamic>{};
+  json['id'] = instance.id;  // required: 常に含める
+  if (instance.name is JsonOptionalValue<String>) {
+    json['name'] = (instance.name as JsonOptionalValue<String>).value;
+  }
+  if (instance.email is JsonOptionalValue<String>) {
+    json['email'] = (instance.email as JsonOptionalValue<String>).value;
+  }
+  return json;
+}
+```
+
+判定ルール：
+- `absentable = !isRequired && (method == PATCH || method == PUT)`
+- requiredフィールドは素の型のまま
+- POST用・レスポンス用モデルには適用しない
+
+利用側：
+```dart
+// emailだけ更新、nameは触らない、ageを明示的にnullクリア
+final body = UpdateUserRequest(
+  id: 1,
+  email: JsonOptional.value('new@example.com'),
+  // name: 省略 → absent → JSONキー自体なし
+);
+// → {"id": 1, "email": "new@example.com"}
+```
+
 ## コーディング規約
 
 - Dart公式スタイルガイドに準拠
@@ -279,3 +341,5 @@ Future<CreateUserResponse> createUser(
 - `Schema.ref`には`$ref`文字列がそのまま入る（`#/components/schemas/User`形式）
 - `Schema`には`oneOf`, `anyOf`, `allOf`, `discriminator`がすべて定義済み
 - openapi_spec_plusは$ref解決を自動で行わないため、florval側で実装が必要
+- PATCH/PUTのoptionalフィールドには必ずJsonOptional<T>を使う。nullable型（T?）だけではundefinedとnullの区別ができない
+- JsonOptional<T>はflorvalの生成物（core/json_optional.dart）であり、florval本体への依存は持たない
