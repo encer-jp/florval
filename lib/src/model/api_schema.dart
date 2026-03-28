@@ -26,6 +26,9 @@ class FlorvalSchema {
   /// Enum values for string/integer enum schemas.
   final List<String>? enumValues;
 
+  /// Whether this schema is deprecated.
+  final bool deprecated;
+
   /// Whether this schema represents a Dart enum.
   bool get isEnum => enumValues != null && enumValues!.isNotEmpty;
 
@@ -38,6 +41,7 @@ class FlorvalSchema {
     this.allOf,
     this.description,
     this.enumValues,
+    this.deprecated = false,
   });
 
   @override
@@ -67,6 +71,9 @@ class FlorvalField {
   /// Default value expression (Dart literal).
   final String? defaultValue;
 
+  /// Whether this field is deprecated.
+  final bool deprecated;
+
   /// Description from the OpenAPI spec.
   final String? description;
 
@@ -77,6 +84,7 @@ class FlorvalField {
     required this.isRequired,
     this.absentable = false,
     this.defaultValue,
+    this.deprecated = false,
     this.description,
   });
 

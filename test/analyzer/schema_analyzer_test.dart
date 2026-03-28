@@ -19,7 +19,7 @@ void main() {
       final pet = result.schema;
 
       expect(pet.name, 'Pet');
-      expect(pet.fields.length, 5); // id, name, tag, category, createdAt
+      expect(pet.fields.length, 6); // id, name, tag, category, createdAt, legacyCode
 
       final idField = pet.fields.firstWhere((f) => f.name == 'id');
       expect(idField.type.dartType, 'int');
@@ -1060,6 +1060,274 @@ components:
 
       expect(result.inlineEnumSchemas, hasLength(1));
       expect(result.inlineEnumSchemas.first.name, 'ExtendedStatus');
+    });
+
+    group('default values', () {
+      test('extracts string default value', () {
+        final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Task:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          default: active
+''');
+        final analyzer = SchemaAnalyzer(RefResolver(spec));
+        final result = analyzer.analyze(
+          'Task',
+          spec.components!.schemas!['Task']!,
+        );
+        final status = result.schema.fields.firstWhere((f) => f.name == 'status');
+        expect(status.defaultValue, "'active'");
+      });
+
+      test('extracts integer default value', () {
+        final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Config:
+      type: object
+      properties:
+        retries:
+          type: integer
+          default: 10
+''');
+        final analyzer = SchemaAnalyzer(RefResolver(spec));
+        final result = analyzer.analyze(
+          'Config',
+          spec.components!.schemas!['Config']!,
+        );
+        final retries = result.schema.fields.firstWhere((f) => f.name == 'retries');
+        expect(retries.defaultValue, '10');
+      });
+
+      test('extracts boolean default value', () {
+        final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Config:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: true
+''');
+        final analyzer = SchemaAnalyzer(RefResolver(spec));
+        final result = analyzer.analyze(
+          'Config',
+          spec.components!.schemas!['Config']!,
+        );
+        final enabled = result.schema.fields.firstWhere((f) => f.name == 'enabled');
+        expect(enabled.defaultValue, 'true');
+      });
+
+      test('extracts empty array default value', () {
+        final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        tags:
+          type: array
+          items:
+            type: string
+          default: []
+''');
+        final analyzer = SchemaAnalyzer(RefResolver(spec));
+        final result = analyzer.analyze(
+          'Task',
+          spec.components!.schemas!['Task']!,
+        );
+        final tags = result.schema.fields.firstWhere((f) => f.name == 'tags');
+        expect(tags.defaultValue, 'const []');
+      });
+
+      test('extracts enum default value as EnumName.dartMemberName', () {
+        final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    TaskStatus:
+      type: string
+      enum:
+        - todo
+        - in_progress
+        - done
+    Task:
+      type: object
+      properties:
+        status:
+          \$ref: '#/components/schemas/TaskStatus'
+          default: todo
+''');
+        final analyzer = SchemaAnalyzer(RefResolver(spec));
+        final result = analyzer.analyze(
+          'Task',
+          spec.components!.schemas!['Task']!,
+        );
+        final status = result.schema.fields.firstWhere((f) => f.name == 'status');
+        expect(status.defaultValue, 'TaskStatus.todo');
+      });
+
+      test('returns null for date-time default', () {
+        final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+          default: "2024-01-01T00:00:00Z"
+''');
+        final analyzer = SchemaAnalyzer(RefResolver(spec));
+        final result = analyzer.analyze(
+          'Task',
+          spec.components!.schemas!['Task']!,
+        );
+        final createdAt = result.schema.fields.firstWhere((f) => f.name == 'createdAt');
+        expect(createdAt.defaultValue, isNull);
+      });
+
+      test('extracts number default value', () {
+        final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Config:
+      type: object
+      properties:
+        ratio:
+          type: number
+          default: 0.5
+''');
+        final analyzer = SchemaAnalyzer(RefResolver(spec));
+        final result = analyzer.analyze(
+          'Config',
+          spec.components!.schemas!['Config']!,
+        );
+        final ratio = result.schema.fields.firstWhere((f) => f.name == 'ratio');
+        expect(ratio.defaultValue, '0.5');
+      });
+    });
+
+    group('deprecated', () {
+      test('reads deprecated flag on field', () {
+        final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        name:
+          type: string
+        legacyId:
+          type: string
+          deprecated: true
+''');
+        final analyzer = SchemaAnalyzer(RefResolver(spec));
+        final result = analyzer.analyze(
+          'User',
+          spec.components!.schemas!['User']!,
+        );
+        final name = result.schema.fields.firstWhere((f) => f.name == 'name');
+        expect(name.deprecated, isFalse);
+        final legacyId = result.schema.fields.firstWhere((f) => f.name == 'legacyId');
+        expect(legacyId.deprecated, isTrue);
+      });
+
+      test('reads deprecated flag on schema', () {
+        final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    OldUser:
+      type: object
+      deprecated: true
+      properties:
+        name:
+          type: string
+''');
+        final analyzer = SchemaAnalyzer(RefResolver(spec));
+        final result = analyzer.analyze(
+          'OldUser',
+          spec.components!.schemas!['OldUser']!,
+        );
+        expect(result.schema.deprecated, isTrue);
+      });
+
+      test('reads deprecated flag on enum schema', () {
+        final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    OldStatus:
+      type: string
+      deprecated: true
+      enum:
+        - active
+        - inactive
+''');
+        final analyzer = SchemaAnalyzer(RefResolver(spec));
+        final result = analyzer.analyze(
+          'OldStatus',
+          spec.components!.schemas!['OldStatus']!,
+        );
+        expect(result.schema.deprecated, isTrue);
+        expect(result.schema.isEnum, isTrue);
+      });
     });
 
     test('multiple inline union fields in same schema have unique names', () {

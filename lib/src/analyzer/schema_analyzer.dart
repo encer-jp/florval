@@ -70,6 +70,7 @@ class SchemaAnalyzer {
         name: name,
         fields: fieldsResult.fields,
         description: resolved.description,
+        deprecated: resolved.$deprecated == true,
       ),
       inlineUnionSchemas: fieldsResult.inlineUnions,
       inlineObjectSchemas: fieldsResult.inlineObjects,
@@ -95,6 +96,7 @@ class SchemaAnalyzer {
       fields: [],
       enumValues: values,
       description: schema.description,
+      deprecated: schema.$deprecated == true,
     );
   }
 
@@ -131,11 +133,19 @@ class SchemaAnalyzer {
         inlineObjects.addAll(typeResult.inlineObjectSchemas);
         inlineEnums.addAll(typeResult.inlineEnumSchemas);
 
+        final defaultValue = _convertDefaultValue(
+          fieldSchema,
+          typeResult.type,
+          contextName: contextName,
+        );
+
         fields.add(FlorvalField(
           name: fieldName,
           jsonKey: entry.key,
           type: isRequired ? typeResult.type : typeResult.type.asNullable(),
           isRequired: isRequired,
+          defaultValue: defaultValue,
+          deprecated: fieldSchema.$deprecated == true,
           description: fieldSchema.description,
         ));
         index++;
@@ -177,6 +187,7 @@ class SchemaAnalyzer {
         name: name,
         fields: mergedFields.values.toList(),
         description: schema.description,
+        deprecated: schema.$deprecated == true,
       ),
       inlineUnionSchemas: allInlineUnions,
       inlineObjectSchemas: allInlineObjects,
@@ -251,6 +262,7 @@ class SchemaAnalyzer {
         anyOf: isOneOf ? null : variants,
         discriminator: discriminator,
         description: schema.description,
+        deprecated: schema.$deprecated == true,
       ),
       inlineUnionSchemas: allInlineUnions,
       inlineObjectSchemas: allInlineObjects,
@@ -585,6 +597,83 @@ class SchemaAnalyzer {
     if (type is String && type == 'null') return true;
     if (type is List && type.length == 1 && type.first == 'null') return true;
     return _isNullable(schema);
+  }
+
+  /// Converts an OpenAPI default value to a Dart literal string.
+  ///
+  /// Returns null if the default is not set or unsupported.
+  String? _convertDefaultValue(
+    v31.Schema schema,
+    FlorvalType type, {
+    String? contextName,
+  }) {
+    final defaultValue = schema.$default;
+    if (defaultValue == null) return null;
+
+    // For $ref schemas, resolve to get the actual type
+    var schemaType = _extractType(schema);
+    var resolvedSchema = schema;
+    if (schemaType == 'dynamic' && schema.ref != null) {
+      resolvedSchema = resolver.resolveSchema(schema);
+      schemaType = _extractType(resolvedSchema);
+    }
+
+    // string + date-time → not supported (DateTime.parse is not const)
+    final format = schema.format ?? resolvedSchema.format;
+    if (schemaType == 'string' && (format == 'date-time' || format == 'date')) {
+      logger?.warn(
+          "Default value for date-time/date field is not supported (DateTime.parse is not const). "
+          "Ignoring default: $defaultValue");
+      return null;
+    }
+
+    // Enum type — convert to EnumName.dartMemberName
+    if (type.isEnum && type.ref != null) {
+      final enumName = type.ref!.split('/').last;
+      final dartMember = _enumDefaultToDartName(defaultValue.toString());
+      return '$enumName.$dartMember';
+    }
+
+    // string
+    if (schemaType == 'string') {
+      return "'${defaultValue.toString()}'";
+    }
+
+    // integer / number
+    if (schemaType == 'integer' || schemaType == 'number') {
+      return defaultValue.toString();
+    }
+
+    // boolean
+    if (schemaType == 'boolean') {
+      return defaultValue.toString();
+    }
+
+    // array — only empty arrays are supported
+    if (schemaType == 'array') {
+      if (defaultValue is List && defaultValue.isEmpty) {
+        return 'const []';
+      }
+      logger?.warn(
+          "Non-empty array default values are not supported. "
+          "Ignoring default: $defaultValue");
+      return null;
+    }
+
+    // object / $ref → not supported
+    logger?.warn(
+        "Default value for object/\$ref type is not supported. "
+        "Ignoring default: $defaultValue");
+    return null;
+  }
+
+  /// Converts an OpenAPI enum default value string to a camelCase Dart identifier.
+  String _enumDefaultToDartName(String value) {
+    if (value.isEmpty) return 'empty';
+    final sanitized = sanitizeToCamelCase(value);
+    if (sanitized == null) return 'value0';
+    if (RegExp(r'^[0-9]').hasMatch(sanitized)) return 'value$sanitized';
+    return sanitized;
   }
 
   /// Gets the list of required field names from a schema.

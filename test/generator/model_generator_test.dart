@@ -528,6 +528,211 @@ void main() {
       expect(code, contains('class TaskOwnerGroup extends TaskOwner'));
     });
 
+    group('default values', () {
+      test('generates @Default annotation for field with defaultValue', () {
+        final schema = FlorvalSchema(
+          name: 'Config',
+          fields: [
+            FlorvalField(
+              name: 'retries',
+              jsonKey: 'retries',
+              type: FlorvalType(name: 'int', dartType: 'int'),
+              isRequired: true,
+              defaultValue: '3',
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains('@Default(3) int retries,'));
+        // Should NOT have required prefix when defaultValue is set
+        expect(code, isNot(contains('required int retries,')));
+      });
+
+      test('generates @Default for string defaultValue', () {
+        final schema = FlorvalSchema(
+          name: 'Task',
+          fields: [
+            FlorvalField(
+              name: 'status',
+              jsonKey: 'status',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: true,
+              defaultValue: "'active'",
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains("@Default('active') String status,"));
+        expect(code, isNot(contains('required String status,')));
+      });
+
+      test('generates @Default for boolean defaultValue', () {
+        final schema = FlorvalSchema(
+          name: 'Config',
+          fields: [
+            FlorvalField(
+              name: 'enabled',
+              jsonKey: 'enabled',
+              type: FlorvalType(name: 'bool', dartType: 'bool'),
+              isRequired: false,
+              defaultValue: 'true',
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains('@Default(true) bool enabled,'));
+      });
+
+      test('generates @Default for empty array defaultValue', () {
+        final schema = FlorvalSchema(
+          name: 'Task',
+          fields: [
+            FlorvalField(
+              name: 'tags',
+              jsonKey: 'tags',
+              type: FlorvalType(
+                name: 'List<String>',
+                dartType: 'List<String>',
+                isList: true,
+              ),
+              isRequired: false,
+              defaultValue: 'const []',
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains('@Default(const []) List<String> tags,'));
+      });
+
+      test('absentable takes priority over defaultValue', () {
+        final schema = FlorvalSchema(
+          name: 'UpdateUserRequest',
+          fields: [
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(
+                name: 'String',
+                dartType: 'String?',
+                isNullable: true,
+              ),
+              isRequired: false,
+              absentable: true,
+              defaultValue: "'default'",
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        // absentable wins — JsonOptional wrapping, not @Default
+        expect(code, contains('JsonOptional<String>'));
+        expect(code, isNot(contains("@Default('default')")));
+      });
+    });
+
+    group('deprecated', () {
+      test('generates @Deprecated on deprecated field', () {
+        final schema = FlorvalSchema(
+          name: 'User',
+          fields: [
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: true,
+            ),
+            FlorvalField(
+              name: 'legacyId',
+              jsonKey: 'legacy_id',
+              type: FlorvalType(
+                name: 'String',
+                dartType: 'String?',
+                isNullable: true,
+              ),
+              isRequired: false,
+              deprecated: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains("@Deprecated('')"));
+        expect(code, contains("@JsonKey(name: 'legacy_id')"));
+        // @Deprecated should appear before @JsonKey
+        final deprecatedIndex = code.indexOf("@Deprecated('')");
+        final jsonKeyIndex = code.indexOf("@JsonKey(name: 'legacy_id')");
+        expect(deprecatedIndex, lessThan(jsonKeyIndex));
+      });
+
+      test('generates @Deprecated on deprecated data class', () {
+        final schema = FlorvalSchema(
+          name: 'OldUser',
+          fields: [
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: true,
+            ),
+          ],
+          deprecated: true,
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains("@Deprecated('')"));
+        // @Deprecated should appear before @freezed
+        final deprecatedIndex = code.indexOf("@Deprecated('')");
+        final freezedIndex = code.indexOf('@freezed');
+        expect(deprecatedIndex, lessThan(freezedIndex));
+      });
+
+      test('generates @Deprecated on deprecated enum', () {
+        final schema = FlorvalSchema(
+          name: 'OldStatus',
+          fields: [],
+          enumValues: ['active', 'inactive'],
+          deprecated: true,
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains("@Deprecated('')"));
+        // @Deprecated should appear before enum definition
+        final deprecatedIndex = code.indexOf("@Deprecated('')");
+        final enumIndex = code.indexOf('enum OldStatus {');
+        expect(deprecatedIndex, lessThan(enumIndex));
+      });
+
+      test('non-deprecated field does not have @Deprecated', () {
+        final schema = FlorvalSchema(
+          name: 'User',
+          fields: [
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, isNot(contains("@Deprecated")));
+      });
+    });
+
     group('absentable fields (JsonOptional)', () {
       test('wraps absentable fields in JsonOptional with @Default', () {
         final schema = FlorvalSchema(

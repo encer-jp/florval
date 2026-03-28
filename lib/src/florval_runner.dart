@@ -94,6 +94,7 @@ class FlorvalRunner {
                   isRequired: f.isRequired,
                   absentable: !f.isRequired,
                   defaultValue: f.defaultValue,
+                  deprecated: f.deprecated,
                   description: f.description,
                 ))
             .toList(),
@@ -103,6 +104,7 @@ class FlorvalRunner {
         allOf: schema.allOf,
         description: schema.description,
         enumValues: schema.enumValues,
+        deprecated: schema.deprecated,
       );
     }).toList();
   }

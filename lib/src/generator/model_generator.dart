@@ -71,6 +71,9 @@ class ModelGenerator {
     buffer.writeln();
 
     // Class definition
+    if (schema.deprecated) {
+      buffer.writeln("@Deprecated('')");
+    }
     if (hasAbsentable) {
       buffer.writeln('@Freezed(fromJson: false, toJson: false)');
     } else {
@@ -132,6 +135,9 @@ class ModelGenerator {
     buffer.writeln();
 
     // Enum definition
+    if (schema.deprecated) {
+      buffer.writeln("@Deprecated('')");
+    }
     buffer.writeln('enum ${schema.name} {');
 
     // Collect dart names for later use in helper methods
@@ -406,6 +412,11 @@ class ModelGenerator {
   }
 
   void _writeField(StringBuffer buffer, FlorvalField field) {
+    // Add @Deprecated annotation if field is deprecated
+    if (field.deprecated) {
+      buffer.writeln("    @Deprecated('')");
+    }
+
     // Add JsonKey if the Dart name differs from the JSON key
     final needsJsonKey = field.name != field.jsonKey;
     if (needsJsonKey) {
@@ -413,9 +424,14 @@ class ModelGenerator {
     }
 
     if (field.absentable) {
+      // absentable takes priority over defaultValue
       final innerType = _absentableInnerType(field);
       buffer.writeln(
           '    @Default(JsonOptional<$innerType>.absent()) JsonOptional<$innerType> ${field.name},');
+    } else if (field.defaultValue != null) {
+      // defaultValue → @Default(...), no required prefix
+      buffer.writeln(
+          '    @Default(${field.defaultValue}) ${field.type.dartType} ${field.name},');
     } else {
       final prefix = field.isRequired ? 'required ' : '';
       buffer.writeln('    $prefix${field.type.dartType} ${field.name},');
