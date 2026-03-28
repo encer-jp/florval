@@ -53,7 +53,7 @@ void main() {
     test('generates method with correct return type', () {
       final code = generator.generate('users', [makeGetEndpoint()]);
 
-      expect(code, contains('Future<_r.GetUserResponse> getUser('));
+      expect(code, contains('Future<r.GetUserResponse> getUser('));
     });
 
     test('generates path parameter interpolation', () {

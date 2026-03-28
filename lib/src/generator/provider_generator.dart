@@ -1,10 +1,10 @@
-import 'package:florval/src/model/api_type.dart';
 import 'package:recase/recase.dart';
 
 import '../config/florval_config.dart';
 import '../config/template_config.dart';
 import '../model/api_endpoint.dart';
 import '../utils/dart_identifier.dart';
+import '../utils/import_collector.dart';
 
 /// Generates Riverpod 3.x providers grouped by tag.
 ///
@@ -534,29 +534,20 @@ class ProviderGenerator {
     if (endpoint.requestBody != null &&
         !endpoint.requestBody!.isMultipart &&
         (endpoint.method == 'GET' || includeMutationBody)) {
-      _addTypeImport(imports, endpoint.requestBody!.type);
+      addTypeImport(imports, endpoint.requestBody!.type);
     }
     if (endpoint.pagination != null) {
-      _addTypeImport(imports, endpoint.pagination!.itemType);
+      addTypeImport(imports, endpoint.pagination!.itemType);
       // Import the page type (e.g. SearchPetsPage, CommentPage) for PaginatedData<T, P>
       final pageType = endpoint.responses[200]?.type;
       if (pageType != null) {
-        _addTypeImport(imports, pageType);
+        addTypeImport(imports, pageType);
       }
     }
     // Import types from path and query parameters (e.g. enum types)
     for (final p in endpoint.parameters) {
-      _addTypeImport(imports, p.type);
+      addTypeImport(imports, p.type);
     }
   }
 
-  void _addTypeImport(Set<String> imports, FlorvalType type) {
-    if (type.ref != null) {
-      final refName = type.ref!.split('/').last;
-      imports.add(ReCase(refName).snakeCase);
-    }
-    if (type.isList && type.itemType != null) {
-      _addTypeImport(imports, type.itemType!);
-    }
-  }
 }

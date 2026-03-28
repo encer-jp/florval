@@ -231,7 +231,7 @@ lib/api/generated/
 │   ├── validation_error.freezed.dart
 │   └── ...
 ├── responses/
-│   ├── get_user_response.freezed.dart   # ステータスコード別Union型
+│   ├── get_user_response.dart           # ステータスコード別Union型（freezed不使用）
 │   └── ...
 ├── clients/
 │   ├── user_api_client.dart       # dioクライアント
@@ -277,31 +277,51 @@ openapi_spec_plusのSchemaから freezed クラスを生成。
 
 ### 6.3 レスポンスUnion型生成（ResponseGenerator）
 
+// freezedは不要。パターンマッチングのみ必要なため、plain Dart sealed classで生成する。
+// copyWith/equality/fromJson/toJsonはレスポンスUnion型には不要。
+
 ```dart
 class ResponseGenerator {
   String generate(FlorvalEndpoint endpoint) {
     final className = '${endpoint.operationId.toPascalCase()}Response';
     final buffer = StringBuffer();
-    
-    buffer.writeln("@freezed");
-    buffer.writeln("sealed class $className with _\$$className {");
-    
+
+    // plain sealed class（freezed不使用）
+    buffer.writeln("sealed class $className {");
+    buffer.writeln("  const $className();");
+
     for (final entry in endpoint.responses.entries) {
       final code = entry.key;
       final response = entry.value;
       final factoryName = _statusCodeToFactoryName(code);
-      
+
       if (response.type != null) {
         buffer.writeln("  const factory $className.$factoryName(${response.type!.dartType} data) = ${className}${factoryName.toPascalCase()};");
       } else {
         buffer.writeln("  const factory $className.$factoryName() = ${className}${factoryName.toPascalCase()};");
       }
     }
-    
+
     // unknown fallback
     buffer.writeln("  const factory $className.unknown(int statusCode, dynamic body) = ${className}Unknown;");
     buffer.writeln("}");
-    
+
+    // サブクラス生成（各ステータスコードに対応）
+    for (final entry in endpoint.responses.entries) {
+      final factoryName = _statusCodeToFactoryName(entry.key);
+      final subClassName = '${className}${factoryName.toPascalCase()}';
+      if (entry.value.type != null) {
+        buffer.writeln("class $subClassName extends $className {");
+        buffer.writeln("  final ${entry.value.type!.dartType} data;");
+        buffer.writeln("  const $subClassName(this.data);");
+        buffer.writeln("}");
+      } else {
+        buffer.writeln("class $subClassName extends $className {");
+        buffer.writeln("  const $subClassName();");
+        buffer.writeln("}");
+      }
+    }
+
     return buffer.toString();
   }
 }
