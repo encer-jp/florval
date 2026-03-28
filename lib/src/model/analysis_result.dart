@@ -7,11 +7,13 @@ class TypeResult {
   final FlorvalType type;
   final List<FlorvalSchema> inlineUnionSchemas;
   final List<FlorvalSchema> inlineObjectSchemas;
+  final List<FlorvalSchema> inlineEnumSchemas;
 
   const TypeResult({
     required this.type,
     this.inlineUnionSchemas = const [],
     this.inlineObjectSchemas = const [],
+    this.inlineEnumSchemas = const [],
   });
 }
 
@@ -20,11 +22,13 @@ class SchemaResult {
   final FlorvalSchema schema;
   final List<FlorvalSchema> inlineUnionSchemas;
   final List<FlorvalSchema> inlineObjectSchemas;
+  final List<FlorvalSchema> inlineEnumSchemas;
 
   const SchemaResult({
     required this.schema,
     this.inlineUnionSchemas = const [],
     this.inlineObjectSchemas = const [],
+    this.inlineEnumSchemas = const [],
   });
 }
 
@@ -33,11 +37,13 @@ class SchemaAnalysisResult {
   final List<FlorvalSchema> schemas;
   final List<FlorvalSchema> inlineUnionSchemas;
   final List<FlorvalSchema> inlineObjectSchemas;
+  final List<FlorvalSchema> inlineEnumSchemas;
 
   const SchemaAnalysisResult({
     required this.schemas,
     this.inlineUnionSchemas = const [],
     this.inlineObjectSchemas = const [],
+    this.inlineEnumSchemas = const [],
   });
 }
 
@@ -47,11 +53,13 @@ class AnalysisResult {
   final List<FlorvalEndpoint> endpoints;
   final List<FlorvalSchema> inlineUnionSchemas;
   final List<FlorvalSchema> inlineObjectSchemas;
+  final List<FlorvalSchema> inlineEnumSchemas;
 
   const AnalysisResult({
     required this.schemas,
     required this.endpoints,
     required this.inlineUnionSchemas,
     required this.inlineObjectSchemas,
+    this.inlineEnumSchemas = const [],
   });
 }

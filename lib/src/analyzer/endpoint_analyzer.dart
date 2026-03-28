@@ -31,10 +31,11 @@ class EndpointAnalyzer {
   }) : _paginationConfigs = paginationConfigs;
 
   /// Analyzes all endpoints from the spec's paths.
-  ({List<FlorvalEndpoint> endpoints, List<FlorvalSchema> inlineUnionSchemas, List<FlorvalSchema> inlineObjectSchemas}) analyzeAll(Map<String, v31.PathItem> paths) {
+  ({List<FlorvalEndpoint> endpoints, List<FlorvalSchema> inlineUnionSchemas, List<FlorvalSchema> inlineObjectSchemas, List<FlorvalSchema> inlineEnumSchemas}) analyzeAll(Map<String, v31.PathItem> paths) {
     final endpoints = <FlorvalEndpoint>[];
     final allInlineUnions = <FlorvalSchema>[];
     final allInlineObjects = <FlorvalSchema>[];
+    final allInlineEnums = <FlorvalSchema>[];
 
     for (final entry in paths.entries) {
       final path = entry.key;
@@ -53,14 +54,15 @@ class EndpointAnalyzer {
           endpoints.add(result.endpoint);
           allInlineUnions.addAll(result.inlineUnionSchemas);
           allInlineObjects.addAll(result.inlineObjectSchemas);
+          allInlineEnums.addAll(result.inlineEnumSchemas);
         }
       }
     }
 
-    return (endpoints: endpoints, inlineUnionSchemas: allInlineUnions, inlineObjectSchemas: allInlineObjects);
+    return (endpoints: endpoints, inlineUnionSchemas: allInlineUnions, inlineObjectSchemas: allInlineObjects, inlineEnumSchemas: allInlineEnums);
   }
 
-  ({FlorvalEndpoint endpoint, List<FlorvalSchema> inlineUnionSchemas, List<FlorvalSchema> inlineObjectSchemas}) _analyzeOperation(
+  ({FlorvalEndpoint endpoint, List<FlorvalSchema> inlineUnionSchemas, List<FlorvalSchema> inlineObjectSchemas, List<FlorvalSchema> inlineEnumSchemas}) _analyzeOperation(
     String path,
     String method,
     v31.Operation operation,
@@ -84,6 +86,7 @@ class EndpointAnalyzer {
     final responses = responseResult.responses;
     final inlineUnions = [...responseResult.inlineUnionSchemas];
     final inlineObjects = [...responseResult.inlineObjectSchemas];
+    final inlineEnums = [...responseResult.inlineEnumSchemas];
 
     // Check if this endpoint has a pagination config
     PaginationInfo? pagination;
@@ -131,6 +134,7 @@ class EndpointAnalyzer {
       ),
       inlineUnionSchemas: inlineUnions,
       inlineObjectSchemas: inlineObjects,
+      inlineEnumSchemas: inlineEnums,
     );
   }
 

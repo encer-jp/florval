@@ -20,18 +20,21 @@ class SchemaAnalyzer {
     final allSchemas = <FlorvalSchema>[];
     final allInlineUnions = <FlorvalSchema>[];
     final allInlineObjects = <FlorvalSchema>[];
+    final allInlineEnums = <FlorvalSchema>[];
 
     for (final entry in schemas.entries) {
       final result = analyze(entry.key, entry.value);
       allSchemas.add(result.schema);
       allInlineUnions.addAll(result.inlineUnionSchemas);
       allInlineObjects.addAll(result.inlineObjectSchemas);
+      allInlineEnums.addAll(result.inlineEnumSchemas);
     }
 
     return SchemaAnalysisResult(
       schemas: allSchemas,
       inlineUnionSchemas: allInlineUnions,
       inlineObjectSchemas: allInlineObjects,
+      inlineEnumSchemas: allInlineEnums,
     );
   }
 
@@ -70,6 +73,7 @@ class SchemaAnalyzer {
       ),
       inlineUnionSchemas: fieldsResult.inlineUnions,
       inlineObjectSchemas: fieldsResult.inlineObjects,
+      inlineEnumSchemas: fieldsResult.inlineEnums,
     );
   }
 
@@ -97,11 +101,12 @@ class SchemaAnalyzer {
   /// Extracts fields from a schema's properties.
   ///
   /// [schemaName] is used to generate context names for inline union types.
-  ({List<FlorvalField> fields, List<FlorvalSchema> inlineUnions, List<FlorvalSchema> inlineObjects}) _extractFields(v31.Schema schema, {String? schemaName}) {
+  ({List<FlorvalField> fields, List<FlorvalSchema> inlineUnions, List<FlorvalSchema> inlineObjects, List<FlorvalSchema> inlineEnums}) _extractFields(v31.Schema schema, {String? schemaName}) {
     final requiredFields = _requiredFields(schema);
     final fields = <FlorvalField>[];
     final inlineUnions = <FlorvalSchema>[];
     final inlineObjects = <FlorvalSchema>[];
+    final inlineEnums = <FlorvalSchema>[];
     final usedNames = <String>{};
 
     if (schema.properties != null) {
@@ -124,6 +129,7 @@ class SchemaAnalyzer {
         final typeResult = schemaToType(fieldSchema, contextName: contextName);
         inlineUnions.addAll(typeResult.inlineUnionSchemas);
         inlineObjects.addAll(typeResult.inlineObjectSchemas);
+        inlineEnums.addAll(typeResult.inlineEnumSchemas);
 
         fields.add(FlorvalField(
           name: fieldName,
@@ -136,7 +142,7 @@ class SchemaAnalyzer {
       }
     }
 
-    return (fields: fields, inlineUnions: inlineUnions, inlineObjects: inlineObjects);
+    return (fields: fields, inlineUnions: inlineUnions, inlineObjects: inlineObjects, inlineEnums: inlineEnums);
   }
 
   /// Handles allOf — merges all sub-schema fields into one flat schema.
@@ -144,12 +150,14 @@ class SchemaAnalyzer {
     final mergedFields = <String, FlorvalField>{};
     final allInlineUnions = <FlorvalSchema>[];
     final allInlineObjects = <FlorvalSchema>[];
+    final allInlineEnums = <FlorvalSchema>[];
 
     for (final subSchema in schema.allOf!) {
       final resolved = resolver.resolveSchema(subSchema);
       final fieldsResult = _extractFields(resolved, schemaName: name);
       allInlineUnions.addAll(fieldsResult.inlineUnions);
       allInlineObjects.addAll(fieldsResult.inlineObjects);
+      allInlineEnums.addAll(fieldsResult.inlineEnums);
       for (final field in fieldsResult.fields) {
         mergedFields[field.jsonKey] = field;
       }
@@ -159,6 +167,7 @@ class SchemaAnalyzer {
     final ownFieldsResult = _extractFields(schema, schemaName: name);
     allInlineUnions.addAll(ownFieldsResult.inlineUnions);
     allInlineObjects.addAll(ownFieldsResult.inlineObjects);
+    allInlineEnums.addAll(ownFieldsResult.inlineEnums);
     for (final field in ownFieldsResult.fields) {
       mergedFields[field.jsonKey] = field;
     }
@@ -171,6 +180,7 @@ class SchemaAnalyzer {
       ),
       inlineUnionSchemas: allInlineUnions,
       inlineObjectSchemas: allInlineObjects,
+      inlineEnumSchemas: allInlineEnums,
     );
   }
 
@@ -194,6 +204,7 @@ class SchemaAnalyzer {
     final variants = <FlorvalSchema>[];
     final allInlineUnions = <FlorvalSchema>[];
     final allInlineObjects = <FlorvalSchema>[];
+    final allInlineEnums = <FlorvalSchema>[];
 
     for (final subSchema in subSchemas) {
       final resolved = resolver.resolveSchema(subSchema);
@@ -202,6 +213,7 @@ class SchemaAnalyzer {
         final fieldsResult = _extractFields(resolved, schemaName: subName);
         allInlineUnions.addAll(fieldsResult.inlineUnions);
         allInlineObjects.addAll(fieldsResult.inlineObjects);
+        allInlineEnums.addAll(fieldsResult.inlineEnums);
         variants.add(FlorvalSchema(
           name: subName,
           fields: fieldsResult.fields,
@@ -213,6 +225,7 @@ class SchemaAnalyzer {
         final fieldsResult = _extractFields(resolved, schemaName: variantName);
         allInlineUnions.addAll(fieldsResult.inlineUnions);
         allInlineObjects.addAll(fieldsResult.inlineObjects);
+        allInlineEnums.addAll(fieldsResult.inlineEnums);
         variants.add(FlorvalSchema(
           name: variantName,
           fields: fieldsResult.fields,
@@ -241,6 +254,7 @@ class SchemaAnalyzer {
       ),
       inlineUnionSchemas: allInlineUnions,
       inlineObjectSchemas: allInlineObjects,
+      inlineEnumSchemas: allInlineEnums,
     );
   }
 
@@ -343,6 +357,7 @@ class SchemaAnalyzer {
               ),
               inlineUnionSchemas: inlineUnions,
               inlineObjectSchemas: unionResult.inlineObjectSchemas,
+              inlineEnumSchemas: unionResult.inlineEnumSchemas,
             );
           }
         }
@@ -355,8 +370,34 @@ class SchemaAnalyzer {
 
     switch (type) {
       case 'string':
+        if (_isEnumSchema(schema) && contextName != null) {
+          final enumSchema = _analyzeEnum(contextName, schema);
+          return TypeResult(
+            type: FlorvalType(
+              name: contextName,
+              dartType: isNullable ? '$contextName?' : contextName,
+              isNullable: isNullable,
+              isEnum: true,
+              ref: '#/components/schemas/$contextName',
+            ),
+            inlineEnumSchemas: [enumSchema],
+          );
+        }
         return TypeResult(type: _stringType(schema, isNullable));
       case 'integer':
+        if (_isEnumSchema(schema) && contextName != null) {
+          final enumSchema = _analyzeEnum(contextName, schema);
+          return TypeResult(
+            type: FlorvalType(
+              name: contextName,
+              dartType: isNullable ? '$contextName?' : contextName,
+              isNullable: isNullable,
+              isEnum: true,
+              ref: '#/components/schemas/$contextName',
+            ),
+            inlineEnumSchemas: [enumSchema],
+          );
+        }
         return TypeResult(type: _intType(schema, isNullable));
       case 'number':
         return TypeResult(type: _numberType(schema, isNullable));
@@ -445,6 +486,7 @@ class SchemaAnalyzer {
       ),
       inlineUnionSchemas: itemResult.inlineUnionSchemas,
       inlineObjectSchemas: itemResult.inlineObjectSchemas,
+      inlineEnumSchemas: itemResult.inlineEnumSchemas,
     );
   }
 
@@ -465,6 +507,7 @@ class SchemaAnalyzer {
           ),
           inlineUnionSchemas: valueResult.inlineUnionSchemas,
           inlineObjectSchemas: valueResult.inlineObjectSchemas,
+          inlineEnumSchemas: valueResult.inlineEnumSchemas,
         );
       }
       // additionalProperties is true, false, or absent → Map<String, dynamic>
@@ -493,6 +536,7 @@ class SchemaAnalyzer {
           inlineResult.schema,
           ...inlineResult.inlineObjectSchemas,
         ],
+        inlineEnumSchemas: inlineResult.inlineEnumSchemas,
       );
     }
 

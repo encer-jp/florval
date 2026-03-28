@@ -18,13 +18,14 @@ class ResponseAnalyzer {
 
   /// Analyzes all responses for an operation.
   /// [operationId] is used to generate names for inline oneOf/anyOf union types.
-  ({Map<int, FlorvalResponse> responses, List<FlorvalSchema> inlineUnionSchemas, List<FlorvalSchema> inlineObjectSchemas}) analyzeResponses(
+  ({Map<int, FlorvalResponse> responses, List<FlorvalSchema> inlineUnionSchemas, List<FlorvalSchema> inlineObjectSchemas, List<FlorvalSchema> inlineEnumSchemas}) analyzeResponses(
     Map<String, v31.Response> responses, {
     String? operationId,
   }) {
     final result = <int, FlorvalResponse>{};
     final allInlineUnions = <FlorvalSchema>[];
     final allInlineObjects = <FlorvalSchema>[];
+    final allInlineEnums = <FlorvalSchema>[];
 
     for (final entry in responses.entries) {
       final code = _parseStatusCode(entry.key);
@@ -36,6 +37,7 @@ class ResponseAnalyzer {
       if (typeResult != null) {
         allInlineUnions.addAll(typeResult.inlineUnionSchemas);
         allInlineObjects.addAll(typeResult.inlineObjectSchemas);
+        allInlineEnums.addAll(typeResult.inlineEnumSchemas);
       }
 
       result[code] = FlorvalResponse(
@@ -45,7 +47,7 @@ class ResponseAnalyzer {
       );
     }
 
-    return (responses: result, inlineUnionSchemas: allInlineUnions, inlineObjectSchemas: allInlineObjects);
+    return (responses: result, inlineUnionSchemas: allInlineUnions, inlineObjectSchemas: allInlineObjects, inlineEnumSchemas: allInlineEnums);
   }
 
   /// Extracts the response body type from a Response.

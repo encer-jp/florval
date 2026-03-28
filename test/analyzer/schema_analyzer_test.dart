@@ -858,6 +858,210 @@ components:
       expect(result.type.dartType, 'Map<String, dynamic>');
     });
 
+    test('generates inline enum for string property with enum values', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Task:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - todo
+            - in_progress
+            - done
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final result = analyzer.analyze(
+        'Task',
+        spec.components!.schemas!['Task']!,
+      );
+      final task = result.schema;
+
+      final status = task.fields.firstWhere((f) => f.name == 'status');
+      expect(status.type.dartType, 'TaskStatus');
+      expect(status.type.isEnum, isTrue);
+      expect(status.type.ref, contains('TaskStatus'));
+
+      expect(result.inlineEnumSchemas, hasLength(1));
+      final enumSchema = result.inlineEnumSchemas.first;
+      expect(enumSchema.name, 'TaskStatus');
+      expect(enumSchema.isEnum, isTrue);
+      expect(enumSchema.enumValues, ['todo', 'in_progress', 'done']);
+    });
+
+    test('generates inline enum for nullable string enum', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        priority:
+          type:
+            - string
+            - "null"
+          enum:
+            - low
+            - medium
+            - high
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final result = analyzer.analyze(
+        'Task',
+        spec.components!.schemas!['Task']!,
+      );
+      final task = result.schema;
+
+      final priority = task.fields.firstWhere((f) => f.name == 'priority');
+      expect(priority.type.dartType, 'TaskPriority?');
+      expect(priority.type.isNullable, isTrue);
+      expect(priority.type.isEnum, isTrue);
+
+      expect(result.inlineEnumSchemas, hasLength(1));
+      expect(result.inlineEnumSchemas.first.name, 'TaskPriority');
+    });
+
+    test('generates inline enum for integer enum', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Config:
+      type: object
+      required:
+        - level
+      properties:
+        level:
+          type: integer
+          enum:
+            - 1
+            - 2
+            - 3
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final result = analyzer.analyze(
+        'Config',
+        spec.components!.schemas!['Config']!,
+      );
+      final config = result.schema;
+
+      final level = config.fields.firstWhere((f) => f.name == 'level');
+      expect(level.type.dartType, 'ConfigLevel');
+      expect(level.type.isEnum, isTrue);
+
+      expect(result.inlineEnumSchemas, hasLength(1));
+      final enumSchema = result.inlineEnumSchemas.first;
+      expect(enumSchema.name, 'ConfigLevel');
+      expect(enumSchema.enumValues, ['1', '2', '3']);
+    });
+
+    test('contextName null falls back to String for inline enum', () {
+      final schema = v31.Schema(
+        type: 'string',
+        enumValues: ['a', 'b', 'c'],
+      );
+      final result = analyzer.schemaToType(schema);
+      // No contextName → should fall back to String
+      expect(result.type.dartType, 'String');
+      expect(result.inlineEnumSchemas, isEmpty);
+    });
+
+    test('multiple inline enum fields in same schema', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Task:
+      type: object
+      required:
+        - status
+        - priority
+      properties:
+        status:
+          type: string
+          enum:
+            - todo
+            - done
+        priority:
+          type: string
+          enum:
+            - low
+            - high
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final result = analyzer.analyze(
+        'Task',
+        spec.components!.schemas!['Task']!,
+      );
+
+      expect(result.inlineEnumSchemas, hasLength(2));
+      final names = result.inlineEnumSchemas.map((s) => s.name).toSet();
+      expect(names, {'TaskStatus', 'TaskPriority'});
+    });
+
+    test('inline enum in allOf schema is propagated', () {
+      final spec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Base:
+      type: object
+      properties:
+        name:
+          type: string
+    Extended:
+      allOf:
+        - \$ref: '#/components/schemas/Base'
+        - type: object
+          required:
+            - status
+          properties:
+            status:
+              type: string
+              enum:
+                - active
+                - inactive
+''');
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
+      final result = analyzer.analyze(
+        'Extended',
+        spec.components!.schemas!['Extended']!,
+      );
+
+      final status = result.schema.fields.firstWhere((f) => f.name == 'status');
+      expect(status.type.dartType, 'ExtendedStatus');
+      expect(status.type.isEnum, isTrue);
+
+      expect(result.inlineEnumSchemas, hasLength(1));
+      expect(result.inlineEnumSchemas.first.name, 'ExtendedStatus');
+    });
+
     test('multiple inline union fields in same schema have unique names', () {
       final spec = SpecReader().parse('''
 openapi: "3.1.0"
