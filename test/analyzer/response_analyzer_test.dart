@@ -37,7 +37,7 @@ components:
       final schemaAnalyzer = SchemaAnalyzer(resolver);
       final responseAnalyzer = ResponseAnalyzer(resolver, schemaAnalyzer);
 
-      final responses = spec.paths['/tasks/{id}']!.get!.responses!;
+      final responses = spec.paths['/tasks/{id}']!.get!.responses;
       final result = responseAnalyzer.analyzeResponses(
         responses,
         operationId: 'getTask',
@@ -51,8 +51,10 @@ components:
       expect(result.inlineUnionSchemas, isEmpty);
     });
 
-    test('oneOf with multiple \$refs in response body generates inline union', () {
-      final spec = SpecReader().parse('''
+    test(
+      'oneOf with multiple \$refs in response body generates inline union',
+      () {
+        final spec = SpecReader().parse('''
 openapi: "3.1.0"
 info:
   title: Test
@@ -83,21 +85,22 @@ components:
         director:
           type: string
 ''');
-      final resolver = RefResolver(spec);
-      final schemaAnalyzer = SchemaAnalyzer(resolver);
-      final responseAnalyzer = ResponseAnalyzer(resolver, schemaAnalyzer);
+        final resolver = RefResolver(spec);
+        final schemaAnalyzer = SchemaAnalyzer(resolver);
+        final responseAnalyzer = ResponseAnalyzer(resolver, schemaAnalyzer);
 
-      final responses = spec.paths['/items/{id}']!.get!.responses!;
-      final result = responseAnalyzer.analyzeResponses(
-        responses,
-        operationId: 'getItem',
-      );
+        final responses = spec.paths['/items/{id}']!.get!.responses;
+        final result = responseAnalyzer.analyzeResponses(
+          responses,
+          operationId: 'getItem',
+        );
 
-      final type200 = result.responses[200]!.type!;
-      // Should be an inline union type (via inlineUnionSchemas in result)
-      expect(type200.ref, isNotNull);
-      expect(result.inlineUnionSchemas, hasLength(1));
-    });
+        final type200 = result.responses[200]!.type!;
+        // Should be an inline union type (via inlineUnionSchemas in result)
+        expect(type200.ref, isNotNull);
+        expect(result.inlineUnionSchemas, hasLength(1));
+      },
+    );
 
     test('simple \$ref response body returns the referenced type', () {
       final spec = SpecReader().parse('''
@@ -128,7 +131,7 @@ components:
       final schemaAnalyzer = SchemaAnalyzer(resolver);
       final responseAnalyzer = ResponseAnalyzer(resolver, schemaAnalyzer);
 
-      final responses = spec.paths['/users/{id}']!.get!.responses!;
+      final responses = spec.paths['/users/{id}']!.get!.responses;
       final result = responseAnalyzer.analyzeResponses(
         responses,
         operationId: 'getUser',

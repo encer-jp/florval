@@ -4,7 +4,6 @@ import 'package:recase/recase.dart';
 import '../model/analysis_result.dart';
 import '../model/api_response.dart';
 import '../model/api_schema.dart';
-import '../model/api_type.dart';
 import '../parser/ref_resolver.dart';
 import '../utils/logger.dart';
 import 'schema_analyzer.dart';
