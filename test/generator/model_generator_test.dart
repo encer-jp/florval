@@ -520,5 +520,269 @@ void main() {
       expect(code, contains('class TaskOwnerUser extends TaskOwner'));
       expect(code, contains('class TaskOwnerGroup extends TaskOwner'));
     });
+
+    group('absentable fields (JsonOptional)', () {
+      test('wraps absentable fields in JsonOptional with @Default', () {
+        final schema = FlorvalSchema(
+          name: 'UpdateUserRequest',
+          fields: [
+            FlorvalField(
+              name: 'id',
+              jsonKey: 'id',
+              type: FlorvalType(name: 'int', dartType: 'int'),
+              isRequired: true,
+            ),
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(
+                name: 'String',
+                dartType: 'String?',
+                isNullable: true,
+              ),
+              isRequired: false,
+              absentable: true,
+            ),
+            FlorvalField(
+              name: 'email',
+              jsonKey: 'email',
+              type: FlorvalType(
+                name: 'String',
+                dartType: 'String?',
+                isNullable: true,
+              ),
+              isRequired: false,
+              absentable: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        // Required field stays as-is
+        expect(code, contains('required int id,'));
+
+        // Absentable fields wrapped in JsonOptional
+        expect(
+          code,
+          contains(
+              '@Default(JsonOptional<String>.absent()) JsonOptional<String> name,'),
+        );
+        expect(
+          code,
+          contains(
+              '@Default(JsonOptional<String>.absent()) JsonOptional<String> email,'),
+        );
+
+        // Should NOT have 'required' prefix on absentable fields
+        expect(code, isNot(contains('required JsonOptional')));
+      });
+
+      test('generates @JsonSerializable(createToJson: false) for absentable schema', () {
+        final schema = FlorvalSchema(
+          name: 'UpdateUserRequest',
+          fields: [
+            FlorvalField(
+              name: 'id',
+              jsonKey: 'id',
+              type: FlorvalType(name: 'int', dartType: 'int'),
+              isRequired: true,
+            ),
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(
+                name: 'String',
+                dartType: 'String?',
+                isNullable: true,
+              ),
+              isRequired: false,
+              absentable: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains('@JsonSerializable(createToJson: false)'));
+        expect(code, contains('@freezed'));
+      });
+
+      test('generates custom toJson that excludes absent fields', () {
+        final schema = FlorvalSchema(
+          name: 'UpdateUserRequest',
+          fields: [
+            FlorvalField(
+              name: 'id',
+              jsonKey: 'id',
+              type: FlorvalType(name: 'int', dartType: 'int'),
+              isRequired: true,
+            ),
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(
+                name: 'String',
+                dartType: 'String?',
+                isNullable: true,
+              ),
+              isRequired: false,
+              absentable: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        // Custom toJson method
+        expect(code, contains('Map<String, dynamic> toJson()'));
+        expect(code, contains("json['id'] = id;"));
+        expect(code, contains('if (name is JsonOptionalValue<String>)'));
+        expect(
+          code,
+          contains(
+              "json['name'] = (name as JsonOptionalValue<String>).value;"),
+        );
+        expect(code, contains('return json;'));
+      });
+
+      test('imports json_optional for absentable schema', () {
+        final schema = FlorvalSchema(
+          name: 'UpdateUserRequest',
+          fields: [
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(
+                name: 'String',
+                dartType: 'String?',
+                isNullable: true,
+              ),
+              isRequired: false,
+              absentable: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains("import '../core/json_optional.dart';"));
+        expect(
+          code,
+          contains(
+              "import 'package:json_annotation/json_annotation.dart';"),
+        );
+      });
+
+      test('does not apply JsonOptional to required fields', () {
+        final schema = FlorvalSchema(
+          name: 'UpdateUserRequest',
+          fields: [
+            FlorvalField(
+              name: 'id',
+              jsonKey: 'id',
+              type: FlorvalType(name: 'int', dartType: 'int'),
+              isRequired: true,
+              // absentable stays false by default
+            ),
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(
+                name: 'String',
+                dartType: 'String?',
+                isNullable: true,
+              ),
+              isRequired: false,
+              absentable: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        // Required field is NOT wrapped
+        expect(code, contains('required int id,'));
+        expect(code, isNot(contains('JsonOptional<int>')));
+      });
+
+      test('does not generate JsonOptional artifacts when no absentable fields', () {
+        final schema = FlorvalSchema(
+          name: 'CreateUserRequest',
+          fields: [
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, isNot(contains('JsonOptional')));
+        expect(code, isNot(contains('json_optional')));
+        expect(code, isNot(contains('@JsonSerializable')));
+        expect(code, isNot(contains('Map<String, dynamic> toJson()')));
+      });
+
+      test('generates private constructor for absentable schema', () {
+        final schema = FlorvalSchema(
+          name: 'UpdateUserRequest',
+          fields: [
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(
+                name: 'String',
+                dartType: 'String?',
+                isNullable: true,
+              ),
+              isRequired: false,
+              absentable: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        // Private constructor needed for custom methods on freezed classes
+        expect(code, contains('const UpdateUserRequest._();'));
+      });
+
+      test('handles absentable field with JsonKey', () {
+        final schema = FlorvalSchema(
+          name: 'UpdateUserRequest',
+          fields: [
+            FlorvalField(
+              name: 'assigneeId',
+              jsonKey: 'assignee_id',
+              type: FlorvalType(
+                name: 'String',
+                dartType: 'String?',
+                isNullable: true,
+              ),
+              isRequired: false,
+              absentable: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains("@JsonKey(name: 'assignee_id')"));
+        expect(
+          code,
+          contains(
+              '@Default(JsonOptional<String>.absent()) JsonOptional<String> assigneeId,'),
+        );
+        // toJson uses the jsonKey
+        expect(
+          code,
+          contains("json['assignee_id']"),
+        );
+      });
+    });
   });
 }

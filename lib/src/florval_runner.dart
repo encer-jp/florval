@@ -9,6 +9,7 @@ import 'model/api_endpoint.dart';
 import 'model/api_schema.dart';
 import 'generator/client_generator.dart';
 import 'generator/file_writer.dart';
+import 'generator/json_optional_generator.dart';
 import 'generator/model_generator.dart';
 import 'generator/provider_generator.dart';
 import 'generator/response_generator.dart';
@@ -27,7 +28,8 @@ class FlorvalRunner {
   void run(FlorvalConfig config) {
     logger.info('Reading OpenAPI spec from ${config.schemaPath}');
 
-    final analysis = _analyze(config);
+    final rawAnalysis = _analyze(config);
+    final analysis = _markAbsentableFields(rawAnalysis);
 
     if (analysis.inlineUnionSchemas.isNotEmpty) {
       logger.debug(
@@ -41,6 +43,77 @@ class FlorvalRunner {
         'Found ${analysis.schemas.length} schemas and ${analysis.endpoints.length} endpoints');
 
     _generate(config, analysis);
+  }
+
+  /// Marks non-required fields in PATCH/PUT request body schemas as absentable.
+  AnalysisResult _markAbsentableFields(AnalysisResult analysis) {
+    // Collect schema names used by PATCH/PUT JSON request bodies
+    final absentableSchemaNames = <String>{};
+    for (final endpoint in analysis.endpoints) {
+      if ((endpoint.method == 'PATCH' || endpoint.method == 'PUT') &&
+          endpoint.requestBody != null &&
+          !endpoint.requestBody!.isMultipart) {
+        absentableSchemaNames.add(endpoint.requestBody!.type.name);
+      }
+    }
+    if (absentableSchemaNames.isEmpty) return analysis;
+
+    logger.debug(
+        'Marking absentable fields in ${absentableSchemaNames.length} PATCH/PUT schemas: $absentableSchemaNames');
+
+    return AnalysisResult(
+      schemas: _applyAbsentable(analysis.schemas, absentableSchemaNames),
+      endpoints: analysis.endpoints,
+      inlineUnionSchemas: _applyAbsentable(
+          analysis.inlineUnionSchemas, absentableSchemaNames),
+      inlineObjectSchemas: _applyAbsentable(
+          analysis.inlineObjectSchemas, absentableSchemaNames),
+    );
+  }
+
+  /// Clones schemas whose names are in [names], setting `absentable=true`
+  /// on non-required fields.
+  List<FlorvalSchema> _applyAbsentable(
+    List<FlorvalSchema> schemas,
+    Set<String> names,
+  ) {
+    return schemas.map((schema) {
+      if (!names.contains(schema.name)) return schema;
+      return FlorvalSchema(
+        name: schema.name,
+        fields: schema.fields
+            .map((f) => FlorvalField(
+                  name: f.name,
+                  jsonKey: f.jsonKey,
+                  type: f.type,
+                  isRequired: f.isRequired,
+                  absentable: !f.isRequired,
+                  defaultValue: f.defaultValue,
+                  description: f.description,
+                ))
+            .toList(),
+        discriminator: schema.discriminator,
+        oneOf: schema.oneOf,
+        anyOf: schema.anyOf,
+        allOf: schema.allOf,
+        description: schema.description,
+        enumValues: schema.enumValues,
+      );
+    }).toList();
+  }
+
+  /// Returns true if any schema in the analysis has absentable fields.
+  bool _hasAbsentableFields(AnalysisResult analysis) {
+    for (final schemas in [
+      analysis.schemas,
+      analysis.inlineUnionSchemas,
+      analysis.inlineObjectSchemas,
+    ]) {
+      for (final schema in schemas) {
+        if (schema.fields.any((f) => f.absentable)) return true;
+      }
+    }
+    return false;
   }
 
   /// Parse, resolve, and analyze the OpenAPI spec.
@@ -106,6 +179,16 @@ class FlorvalRunner {
 
     final writer = FileWriter(config.outputDirectory);
     writer.ensureDirectories();
+
+    // Core runtime files (e.g. JsonOptional for PATCH/PUT)
+    final coreFileNames = <String>[];
+    final hasAbsentable = _hasAbsentableFields(analysis);
+    if (hasAbsentable) {
+      final jsonOptionalGen = JsonOptionalGenerator(templateConfig: tc);
+      writer.writeCoreFile('json_optional.dart', jsonOptionalGen.generate());
+      coreFileNames.add('json_optional.dart');
+      logger.debug('Generated core: json_optional');
+    }
 
     // Identify variant schemas that are inlined into discriminator unions
     // (these should not be generated as standalone model files)
@@ -224,6 +307,7 @@ class FlorvalRunner {
       clientNames: clientNames,
       providerNames: providerNames,
       providerUtilityNames: providerUtilityNames,
+      coreFileNames: coreFileNames,
     );
 
     logger.success(
