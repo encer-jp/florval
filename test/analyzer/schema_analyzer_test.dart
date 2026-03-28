@@ -1488,5 +1488,110 @@ components:
         expect(secretField.writeOnly, isTrue);
       });
     });
+
+    group('title', () {
+      test('reads title from schema', () {
+        final titleSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Pet:
+      title: A pet object
+      type: object
+      properties:
+        name:
+          type: string
+''');
+        final titleAnalyzer = SchemaAnalyzer(RefResolver(titleSpec));
+        final result = titleAnalyzer.analyze('Pet', titleSpec.components!.schemas!['Pet']!);
+        expect(result.schema.title, 'A pet object');
+      });
+
+      test('title is null when not specified', () {
+        final result = analyzer.analyze('Pet', spec.components!.schemas!['Pet']!);
+        expect(result.schema.title, isNull);
+      });
+
+      test('reads title from enum schema', () {
+        final enumSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Status:
+      title: Pet status
+      type: string
+      enum: [active, inactive]
+''');
+        final enumAnalyzer = SchemaAnalyzer(RefResolver(enumSpec));
+        final result = enumAnalyzer.analyze('Status', enumSpec.components!.schemas!['Status']!);
+        expect(result.schema.title, 'Pet status');
+      });
+
+      test('reads title from allOf schema', () {
+        final allOfSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Base:
+      type: object
+      properties:
+        id:
+          type: integer
+    Extended:
+      title: Extended object
+      allOf:
+        - \$ref: "#/components/schemas/Base"
+        - type: object
+          properties:
+            name:
+              type: string
+''');
+        final allOfAnalyzer = SchemaAnalyzer(RefResolver(allOfSpec));
+        final result = allOfAnalyzer.analyze('Extended', allOfSpec.components!.schemas!['Extended']!);
+        expect(result.schema.title, 'Extended object');
+      });
+
+      test('reads title from oneOf schema', () {
+        final oneOfSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Cat:
+      type: object
+      properties:
+        meow:
+          type: string
+    Dog:
+      type: object
+      properties:
+        bark:
+          type: string
+    Animal:
+      title: An animal
+      oneOf:
+        - \$ref: "#/components/schemas/Cat"
+        - \$ref: "#/components/schemas/Dog"
+''');
+        final oneOfAnalyzer = SchemaAnalyzer(RefResolver(oneOfSpec));
+        final result = oneOfAnalyzer.analyze('Animal', oneOfSpec.components!.schemas!['Animal']!);
+        expect(result.schema.title, 'An animal');
+      });
+    });
   });
 }

@@ -70,6 +70,7 @@ class SchemaAnalyzer {
         name: name,
         fields: fieldsResult.fields,
         description: resolved.description,
+        title: resolved.title,
         deprecated: resolved.$deprecated == true,
       ),
       inlineUnionSchemas: fieldsResult.inlineUnions,
@@ -96,6 +97,7 @@ class SchemaAnalyzer {
       fields: [],
       enumValues: values,
       description: schema.description,
+      title: schema.title,
       deprecated: schema.$deprecated == true,
     );
   }
@@ -190,6 +192,7 @@ class SchemaAnalyzer {
         name: name,
         fields: mergedFields.values.toList(),
         description: schema.description,
+        title: schema.title,
         deprecated: schema.$deprecated == true,
       ),
       inlineUnionSchemas: allInlineUnions,
@@ -265,6 +268,7 @@ class SchemaAnalyzer {
         anyOf: isOneOf ? null : variants,
         discriminator: discriminator,
         description: schema.description,
+        title: schema.title,
         deprecated: schema.$deprecated == true,
       ),
       inlineUnionSchemas: allInlineUnions,

@@ -34,6 +34,9 @@ class FlorvalEndpoint {
   /// Pagination info if this endpoint is configured for cursor-based pagination.
   final PaginationInfo? pagination;
 
+  /// Whether this operation is deprecated.
+  final bool deprecated;
+
   const FlorvalEndpoint({
     required this.path,
     required this.method,
@@ -45,6 +48,7 @@ class FlorvalEndpoint {
     this.summary,
     this.description,
     this.pagination,
+    this.deprecated = false,
   });
 
   /// The primary tag for grouping (first tag, or 'default').
@@ -85,6 +89,9 @@ class FlorvalParam {
   /// Example value from the OpenAPI spec.
   final Object? example;
 
+  /// Whether this parameter is deprecated.
+  final bool deprecated;
+
   const FlorvalParam({
     required this.name,
     required this.dartName,
@@ -93,6 +100,7 @@ class FlorvalParam {
     required this.isRequired,
     this.description,
     this.example,
+    this.deprecated = false,
   });
 
   @override

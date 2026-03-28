@@ -106,6 +106,7 @@ class FlorvalRunner {
         anyOf: schema.anyOf,
         allOf: schema.allOf,
         description: schema.description,
+        title: schema.title,
         enumValues: schema.enumValues,
         deprecated: schema.deprecated,
       );

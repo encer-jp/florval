@@ -68,6 +68,11 @@ class ClientGenerator {
     // Doc comment from summary and/or description
     _writeMethodDocComment(buffer, endpoint);
 
+    // Deprecated annotation
+    if (endpoint.deprecated) {
+      buffer.writeln("  @Deprecated('')");
+    }
+
     final responseType =
         'r.${ReCase(endpoint.operationId).pascalCase}Response';
     final methodName = ReCase(endpoint.operationId).camelCase;
