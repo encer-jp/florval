@@ -1,3 +1,45 @@
+## 0.1.2
+
+### Breaking Changes
+- Rename response Union types from `{Op}Response` to `{Op}ApiResponse` to structurally resolve name collisions with model classes
+- Switch response Union types from freezed to plain Dart sealed classes (copyWith/equality/fromJson not needed, eliminates build_runner dependency for response types)
+
+### Features
+- **Inline anyOf/oneOf union type support**: Detect anyOf/oneOf declared inline within schema properties and automatically generate Union types for them
+- **Restore freezed for discriminator union types**: Generate `@Freezed(unionKey: '...')` + `@FreezedUnionValue('...')` with variant fields inlined into factory constructors
+- **Non-discriminator union fromJson/toJson**: For oneOf/anyOf without a discriminator, generate fromJson that tries each variant sequentially and toJson that branches on runtimeType
+- **Logger warnings**: Emit warnings when an array type is missing `items` or when an unsupported content-type is encountered
+
+### Bug Fixes
+- **anyOf/oneOf nullable `$ref` pattern**: Fix `anyOf: [{$ref: '#/.../Foo'}, {type: 'null'}]` incorrectly resolving to `Map<String, dynamic>` instead of a nullable type
+- **additionalProperties typed Map**: Generate correct `Map<String, T>` type when `additionalProperties` specifies a schema
+- **ResponseAnalyzer nullable anyOf**: Fix false detection of nullable anyOf patterns during response analysis
+- **`_extractType` dynamic fallback**: Fix dynamic fallback handling when type extraction fails
+- **Inline object fallback**: Fix inline object schemas incorrectly falling back to `Map<String, dynamic>` instead of generating proper types
+- **Inline oneOf/anyOf responses**: Fix inline oneOf/anyOf in endpoint response definitions falling back to `Map<String, dynamic>`
+- **allOf + nullable `$ref`**: Fix resolution of nullable `$ref` entries within allOf compositions
+- **`List<dynamic>` type error**: Fix type inference error in `florval_runner` schemas variable
+- **Name collision structural fix**: Resolve response Union type vs. model class name collisions using import prefix splitting and barrel file separation
+- **`json_serializable` sealed class error**: Fix `json_serializable` errors on sealed class fields with discriminator
+- **`.g.dart` part directive exclusion**: Skip unnecessary `.g.dart` part directive generation for sealed classes with discriminator
+- **Library import prefix lint**: Remove leading underscores from generated import prefixes to fix `no_leading_underscores_for_library_prefixes` lint violation
+- **`includeIfNull: false` revert**: Revert `@JsonSerializable(includeIfNull: false)` addition due to incompatibility with demo-api default values; fix applied on API side instead
+
+### Refactoring
+- **Analyzers as pure functions**: Convert `SchemaAnalyzer`, `EndpointAnalyzer`, and `ResponseAnalyzer` to stateless pure functions for improved testability (+477/-305 lines)
+- **FlorvalRunner phase splitting**: Clearly separate Parse → Resolve → Analyze → Generate → Write phases with an `AnalysisResult` intermediate representation
+- **Generator layer deduplication**: Extract shared status code conversion and import collection logic from `client_generator` / `response_generator` into `utils/status_code.dart` and `utils/import_collector.dart` (+72/-115 lines)
+- **Import deduplication**: Reduce unnecessary import generation in provider generator
+- **Test readability improvements**: Unify formatting and structure in `model_generator_test`, remove unnecessary forced unwraps in `response_analyzer_test`
+- **Barrel file separation**: Exclude `api_responses.dart` from `api.dart` re-exports, keeping only models/clients/providers
+
+### Demo / Example
+- **Add demo-api server**: Hono + @hono/zod-openapi based mock API server with full endpoint coverage (auth, CRUD, file upload, notifications)
+- **Add Flutter Web project**: Flutter Web example app connecting to demo-api at localhost:3000
+- **Add CLI verification script**: `example/lib/verify.dart` for integration testing against demo-api
+- **Update example generated code**: Regenerate all code based on demo-api OpenAPI spec (6 tags, 15 response types, 35 models)
+- **Remove unused files**: Delete petstore-derived API client, model, provider, and response files
+
 ## 0.1.1
 
 ### Bug Fixes
