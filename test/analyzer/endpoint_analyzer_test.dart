@@ -208,6 +208,81 @@ void main() {
       expect(paginated.pagination, isNull);
     });
 
+    group('deprecated', () {
+      test('reads deprecated flag on operation', () {
+        final deprecatedSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /old:
+    get:
+      operationId: getOld
+      deprecated: true
+      tags:
+        - test
+      responses:
+        "200":
+          description: OK
+components:
+  schemas: {}
+''');
+        final resolver = RefResolver(deprecatedSpec);
+        final schemaAnalyzer = SchemaAnalyzer(resolver);
+        final responseAnalyzer = ResponseAnalyzer(resolver, schemaAnalyzer);
+        final depAnalyzer = EndpointAnalyzer(resolver, schemaAnalyzer, responseAnalyzer);
+
+        final result = depAnalyzer.analyzeAll(deprecatedSpec.paths);
+        final endpoint = result.endpoints.firstWhere((e) => e.operationId == 'getOld');
+        expect(endpoint.deprecated, isTrue);
+      });
+
+      test('reads deprecated flag on parameter', () {
+        final deprecatedSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /items:
+    get:
+      operationId: listItems
+      tags:
+        - test
+      parameters:
+        - name: oldFilter
+          in: query
+          deprecated: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+components:
+  schemas: {}
+''');
+        final resolver = RefResolver(deprecatedSpec);
+        final schemaAnalyzer = SchemaAnalyzer(resolver);
+        final responseAnalyzer = ResponseAnalyzer(resolver, schemaAnalyzer);
+        final depAnalyzer = EndpointAnalyzer(resolver, schemaAnalyzer, responseAnalyzer);
+
+        final result = depAnalyzer.analyzeAll(deprecatedSpec.paths);
+        final endpoint = result.endpoints.first;
+        final param = endpoint.parameters.firstWhere((p) => p.name == 'oldFilter');
+        expect(param.deprecated, isTrue);
+      });
+
+      test('deprecated defaults to false', () {
+        final result = analyzer.analyzeAll(spec.paths);
+        final listPets = result.endpoints.firstWhere((e) => e.operationId == 'listPets');
+        expect(listPets.deprecated, isFalse);
+        for (final p in listPets.parameters) {
+          expect(p.deprecated, isFalse);
+        }
+      });
+    });
+
     test('non-matching endpoints remain without pagination', () {
       final paginationConfigs = [
         PaginationConfig(

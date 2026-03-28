@@ -158,6 +158,9 @@ class ProviderGenerator {
     final clientProvider = '${ReCase(tag).camelCase}ApiClientProvider';
     final methodName = ReCase(endpoint.operationId).camelCase;
 
+    if (endpoint.deprecated) {
+      buffer.writeln("@Deprecated('')");
+    }
     if (retry != null) {
       buffer.writeln('@Riverpod(retry: retry)');
     } else {
@@ -203,6 +206,9 @@ class ProviderGenerator {
     final pageDartType = endpoint.responses[200]?.type?.dartType ?? 'dynamic';
     final paginatedType = 'PaginatedData<$itemDartType, $pageDartType>';
 
+    if (endpoint.deprecated) {
+      buffer.writeln("@Deprecated('')");
+    }
     if (retry != null) {
       buffer.writeln('@Riverpod(retry: retry)');
     } else {
@@ -367,6 +373,9 @@ class ProviderGenerator {
     final responseType = 'r.${className}Response';
 
     buffer.writeln('/// Mutation for ${endpoint.operationId} (${endpoint.method} ${endpoint.path})');
+    if (endpoint.deprecated) {
+      buffer.writeln("@Deprecated('')");
+    }
     buffer.writeln('final ${ReCase(endpoint.operationId).camelCase}Mutation = Mutation<$responseType>();');
   }
 
@@ -388,6 +397,9 @@ class ProviderGenerator {
       buffer.writeln('/// Executes ${ReCase(endpoint.operationId).camelCase} mutation and invalidates related GET providers.');
     } else {
       buffer.writeln('/// Executes ${ReCase(endpoint.operationId).camelCase} mutation.');
+    }
+    if (endpoint.deprecated) {
+      buffer.writeln("@Deprecated('')");
     }
     if (helperParams.isNotEmpty) {
       buffer.writeln('Future<$responseType> $helperName(');

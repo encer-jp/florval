@@ -407,5 +407,32 @@ void main() {
       expect(code, contains('(response.data as List)'));
       expect(code, contains('Pet.fromJson(e as Map<String, dynamic>)'));
     });
+
+    test('generates @Deprecated annotation for deprecated endpoint', () {
+      final endpoint = FlorvalEndpoint(
+        path: '/old',
+        method: 'GET',
+        operationId: 'getOld',
+        parameters: [],
+        responses: {
+          200: FlorvalResponse(statusCode: 200),
+        },
+        tags: ['test'],
+        deprecated: true,
+      );
+
+      final code = generator.generate('test', [endpoint]);
+
+      expect(code, contains("  @Deprecated('')"));
+      // @Deprecated should appear before the method signature
+      final depIndex = code.indexOf("@Deprecated('')");
+      final methodIndex = code.indexOf('Future<');
+      expect(depIndex, lessThan(methodIndex));
+    });
+
+    test('does not generate @Deprecated when deprecated is false', () {
+      final code = generator.generate('users', [makeGetEndpoint()]);
+      expect(code, isNot(contains('@Deprecated')));
+    });
   });
 }

@@ -72,7 +72,7 @@ class ModelGenerator {
     buffer.writeln();
 
     // Class definition
-    writeDocComment(buffer, description: schema.description);
+    writeDocComment(buffer, description: schema.description ?? schema.title);
     if (schema.deprecated) {
       buffer.writeln("@Deprecated('')");
     }
@@ -137,7 +137,7 @@ class ModelGenerator {
     buffer.writeln();
 
     // Enum definition
-    writeDocComment(buffer, description: schema.description);
+    writeDocComment(buffer, description: schema.description ?? schema.title);
     if (schema.deprecated) {
       buffer.writeln("@Deprecated('')");
     }
@@ -267,7 +267,7 @@ class ModelGenerator {
     buffer.writeln();
 
     // Class definition with unionKey
-    writeDocComment(buffer, description: schema.description);
+    writeDocComment(buffer, description: schema.description ?? schema.title);
     buffer.writeln("@Freezed(unionKey: '${disc.propertyName}')");
     buffer.writeln(
         'sealed class ${schema.name} with _\$${schema.name} {');
@@ -345,7 +345,7 @@ class ModelGenerator {
     if (imports.isNotEmpty) buffer.writeln();
 
     // Sealed class definition
-    writeDocComment(buffer, description: schema.description);
+    writeDocComment(buffer, description: schema.description ?? schema.title);
     buffer.writeln('sealed class ${schema.name} {');
     buffer.writeln('  const ${schema.name}();');
     buffer.writeln();

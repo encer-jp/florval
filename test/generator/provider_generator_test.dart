@@ -826,5 +826,75 @@ void main() {
       // Client call should map back: state: stateParam
       expect(code, contains('state: stateParam'));
     });
+
+    group('deprecated', () {
+      test('generates @Deprecated for deprecated GET provider', () {
+        final endpoint = FlorvalEndpoint(
+          path: '/old',
+          method: 'GET',
+          operationId: 'getOld',
+          parameters: [],
+          responses: {
+            200: FlorvalResponse(statusCode: 200),
+          },
+          tags: ['test'],
+          deprecated: true,
+        );
+
+        final code = generator.generate('test', [endpoint]);
+
+        expect(code, contains("@Deprecated('')"));
+        // @Deprecated should appear before @riverpod
+        final depIndex = code.indexOf("@Deprecated('')");
+        final riverpodIndex = code.indexOf('@riverpod', depIndex);
+        expect(depIndex, lessThan(riverpodIndex));
+      });
+
+      test('generates @Deprecated for deprecated mutation', () {
+        final endpoint = FlorvalEndpoint(
+          path: '/old',
+          method: 'POST',
+          operationId: 'createOld',
+          parameters: [],
+          responses: {
+            201: FlorvalResponse(statusCode: 201),
+          },
+          tags: ['test'],
+          deprecated: true,
+        );
+
+        final code = generator.generate('test', [endpoint]);
+
+        expect(code, contains("@Deprecated('')"));
+        expect(code, contains('final createOldMutation'));
+      });
+
+      test('does not generate @Deprecated when not deprecated', () {
+        final code = generator.generate('users', [makeGetEndpoint()]);
+        expect(code, isNot(contains("@Deprecated('')")));
+      });
+
+      test('generates @Deprecated for mutation helper when autoInvalidate', () {
+        final autoGen = ProviderGenerator(autoInvalidate: true);
+        final endpoint = FlorvalEndpoint(
+          path: '/old',
+          method: 'POST',
+          operationId: 'createOld',
+          parameters: [],
+          responses: {
+            201: FlorvalResponse(statusCode: 201),
+          },
+          tags: ['test'],
+          deprecated: true,
+        );
+
+        final code = autoGen.generate('test', [endpoint]);
+
+        // Both mutation constant and helper should be deprecated
+        final lines = code.split('\n');
+        final deprecatedLines = lines.where((l) => l.contains("@Deprecated('')")).toList();
+        expect(deprecatedLines.length, greaterThanOrEqualTo(2));
+      });
+    });
   });
 }

@@ -1419,5 +1419,86 @@ void main() {
         expect(code, contains("json['secret']"));
       });
     });
+
+    group('title as doc comment fallback', () {
+      test('uses title as doc comment when description is absent', () {
+        final schema = FlorvalSchema(
+          name: 'Pet',
+          fields: [
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: true,
+            ),
+          ],
+          title: 'A pet in the store',
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains('/// A pet in the store'));
+        final docIndex = code.indexOf('/// A pet in the store');
+        final freezedIndex = code.indexOf('@freezed');
+        expect(docIndex, lessThan(freezedIndex));
+      });
+
+      test('description takes precedence over title', () {
+        final schema = FlorvalSchema(
+          name: 'Pet',
+          fields: [
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: true,
+            ),
+          ],
+          title: 'Short title',
+          description: 'Detailed description of a pet',
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains('/// Detailed description of a pet'));
+        expect(code, isNot(contains('/// Short title')));
+      });
+
+      test('no doc comment when both title and description are absent', () {
+        final schema = FlorvalSchema(
+          name: 'Pet',
+          fields: [
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        // Should not have any doc comment before @freezed
+        final lines = code.split('\n');
+        final freezedLineIndex = lines.indexWhere((l) => l.contains('@freezed'));
+        if (freezedLineIndex > 0) {
+          expect(lines[freezedLineIndex - 1].trim(), isNot(startsWith('///')));
+        }
+      });
+
+      test('uses title for enum doc comment', () {
+        final schema = FlorvalSchema(
+          name: 'Status',
+          fields: [],
+          enumValues: ['active', 'inactive'],
+          title: 'Pet status enum',
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains('/// Pet status enum'));
+      });
+    });
   });
 }

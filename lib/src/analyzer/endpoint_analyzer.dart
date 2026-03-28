@@ -132,6 +132,7 @@ class EndpointAnalyzer {
         summary: operation.summary,
         description: operation.description,
         pagination: pagination,
+        deprecated: operation.$deprecated == true,
       ),
       inlineUnionSchemas: inlineUnions,
       inlineObjectSchemas: inlineObjects,
@@ -155,6 +156,7 @@ class EndpointAnalyzer {
         isRequired: resolved.required ?? false,
         description: resolved.description,
         example: resolved.example,
+        deprecated: resolved.$deprecated == true,
       );
     }).toList();
   }

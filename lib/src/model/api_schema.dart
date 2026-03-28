@@ -23,6 +23,9 @@ class FlorvalSchema {
   /// Description from the OpenAPI spec.
   final String? description;
 
+  /// Title from the OpenAPI spec (used as doc comment fallback when description is absent).
+  final String? title;
+
   /// Enum values for string/integer enum schemas.
   final List<String>? enumValues;
 
@@ -40,6 +43,7 @@ class FlorvalSchema {
     this.anyOf,
     this.allOf,
     this.description,
+    this.title,
     this.enumValues,
     this.deprecated = false,
   });
