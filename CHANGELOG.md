@@ -1,3 +1,9 @@
+## 0.2.1
+
+### Features
+- **`default` value support**: Read OpenAPI `default` values and generate `@Default(...)` annotations in freezed models. Supports string, integer, number, boolean, empty array, and enum types. DateTime and non-empty array defaults emit a warning and are skipped. Fields with both `required` and `default` use `@Default(...)` (freezed does not allow both).
+- **`deprecated` flag support**: Read OpenAPI `deprecated` flags at both schema and property levels and generate `@Deprecated('')` annotations. Schema-level deprecated applies to class/enum definitions; property-level deprecated applies to individual fields.
+
 ## 0.2.0
 
 ### Breaking Changes

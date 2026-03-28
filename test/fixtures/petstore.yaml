@@ -269,11 +269,15 @@ components:
           type: string
         tag:
           type: string
+          default: "none"
         category:
           $ref: "#/components/schemas/Category"
         createdAt:
           type: string
           format: date-time
+        legacyCode:
+          type: string
+          deprecated: true
 
     Category:
       type: object
