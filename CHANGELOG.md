@@ -1,8 +1,17 @@
 ## 0.2.1
 
 ### Features
-- **`default` value support**: Read OpenAPI `default` values and generate `@Default(...)` annotations in freezed models. Supports string, integer, number, boolean, empty array, and enum types. DateTime and non-empty array defaults emit a warning and are skipped. Fields with both `required` and `default` use `@Default(...)` (freezed does not allow both).
-- **`deprecated` flag support**: Read OpenAPI `deprecated` flags at both schema and property levels and generate `@Deprecated('')` annotations. Schema-level deprecated applies to class/enum definitions; property-level deprecated applies to individual fields.
+- **Inline enum generation**: Generate Dart enums from inline OpenAPI `enum` properties, instead of requiring top-level schema definitions
+- **`readOnly` / `writeOnly` support**: Read OpenAPI `readOnly` and `writeOnly` flags on schema fields and propagate them to the intermediate representation
+- **Doc comments and example output**: Generate `///` doc comments from OpenAPI `description` fields and `/// Example: ...` from `example` values on models, fields, enums, and endpoints
+- **`default` value support**: Read OpenAPI `default` values and generate `@Default(...)` annotations in freezed models. Supports string, integer, number, boolean, empty array, and enum types. DateTime and non-empty array defaults emit a warning and are skipped. Fields with both `required` and `default` use `@Default(...)` (freezed does not allow both)
+- **`deprecated` flag support**: Read OpenAPI `deprecated` flags at schema, property, operation, and parameter levels and generate `@Deprecated('')` annotations. Schema-level deprecated applies to class/enum definitions; property-level deprecated applies to individual fields; operation/parameter-level deprecated applies to client methods and their parameters
+- **Schema title fallback for doc comments**: Use schema `title` as doc comment when `description` is not available
+
+### Bug Fixes
+- **Preserve properties in `_applyAbsentable`**: Fix `example`, `readOnly`, and `writeOnly` fields being lost when `_applyAbsentable` transforms optional fields for PATCH/PUT request bodies
+- **Operation/Parameter deprecated field name**: Fix incorrect property name used when reading the `deprecated` flag from Operation and Parameter objects
+- **Null safety in doc comment generation**: Fix null safety operator for `description` and `example` in doc comment generation
 
 ## 0.2.0
 
