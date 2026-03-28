@@ -3,7 +3,7 @@ description: >-
   Generate type-safe Flutter/Dart API clients from OpenAPI specs.
   Status-code Union types, JsonOptional for PATCH/PUT partial updates,
   Riverpod 3.x integration, cursor-based pagination, and more.
-version: 0.2.0
+version: 0.2.1
 homepage: https://github.com/encer-jp/florval
 repository: https://github.com/encer-jp/florval
 issue_tracker: https://github.com/encer-jp/florval/issues
