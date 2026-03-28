@@ -579,23 +579,8 @@ class ModelGenerator {
 
   /// Writes a single required/regular field serialization in toJson.
   void _writeToJsonField(StringBuffer buffer, FlorvalField field) {
-    final type = field.type;
-    if (type.isEnum) {
-      buffer.writeln("    json['${field.jsonKey}'] = ${field.name}.jsonValue;");
-    } else if (type.isList && type.itemType != null && !type.itemType!.isPrimitive && !type.itemType!.isMap) {
-      if (type.itemType!.isEnum) {
-        buffer.writeln(
-            "    json['${field.jsonKey}'] = ${field.name}.map((e) => e.jsonValue).toList();");
-      } else {
-        buffer.writeln(
-            "    json['${field.jsonKey}'] = ${field.name}.map((e) => e.toJson()).toList();");
-      }
-    } else if (!type.isPrimitive && !type.isMap && !type.isList && type.ref != null) {
-      buffer.writeln(
-          "    json['${field.jsonKey}'] = ${field.name}.toJson();");
-    } else {
-      buffer.writeln("    json['${field.jsonKey}'] = ${field.name};");
-    }
+    final serialized = _toJsonValueExpression(field.type, field.name);
+    buffer.writeln("    json['${field.jsonKey}'] = $serialized;");
   }
 
   /// Generates the `PaginatedData<T, P>` utility class.
