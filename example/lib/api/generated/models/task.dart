@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'task_status.dart';
+import 'task_priority.dart';
 import 'user.dart';
 
 part 'task.freezed.dart';
@@ -11,8 +13,8 @@ abstract class Task with _$Task {
     required String id,
     required String title,
     required String? description,
-    required String status,
-    required String priority,
+    required TaskStatus status,
+    required TaskPriority priority,
     @JsonKey(name: 'assignee_id')
     required String? assigneeId,
     required User? assignee,

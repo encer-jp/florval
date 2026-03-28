@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'update_task_request_status.dart';
+import 'update_task_request_priority.dart';
 import '../core/json_optional.dart';
 
 part 'update_task_request.freezed.dart';
@@ -11,8 +13,8 @@ abstract class UpdateTaskRequest with _$UpdateTaskRequest {
   const factory UpdateTaskRequest({
     required String title,
     @Default(JsonOptional<String>.absent()) JsonOptional<String> description,
-    required String status,
-    required String priority,
+    required UpdateTaskRequestStatus status,
+    required UpdateTaskRequestPriority priority,
     @JsonKey(name: 'assignee_id')
     @Default(JsonOptional<String>.absent()) JsonOptional<String> assigneeId,
     @JsonKey(name: 'due_date')
@@ -26,8 +28,8 @@ abstract class UpdateTaskRequest with _$UpdateTaskRequest {
       description: json.containsKey('description')
           ? JsonOptional.value(json['description'] as String?)
           : const JsonOptional<String>.absent(),
-      status: json['status'] as String,
-      priority: json['priority'] as String,
+      status: UpdateTaskRequestStatus.fromJsonValue(json['status'] as String),
+      priority: UpdateTaskRequestPriority.fromJsonValue(json['priority'] as String),
       assigneeId: json.containsKey('assignee_id')
           ? JsonOptional.value(json['assignee_id'] as String?)
           : const JsonOptional<String>.absent(),
@@ -46,8 +48,8 @@ abstract class UpdateTaskRequest with _$UpdateTaskRequest {
     if (description is JsonOptionalValue<String>) {
       json['description'] = (description as JsonOptionalValue<String>).value;
     }
-    json['status'] = status;
-    json['priority'] = priority;
+    json['status'] = status.jsonValue;
+    json['priority'] = priority.jsonValue;
     if (assigneeId is JsonOptionalValue<String>) {
       json['assignee_id'] = (assigneeId as JsonOptionalValue<String>).value;
     }

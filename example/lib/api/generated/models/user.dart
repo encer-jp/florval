@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'user_role.dart';
+
 part 'user.freezed.dart';
 part 'user.g.dart';
 
@@ -11,7 +13,7 @@ abstract class User with _$User {
     required String email,
     @JsonKey(name: 'avatar_url')
     required String? avatarUrl,
-    required String role,
+    required UserRole role,
     @JsonKey(name: 'created_at')
     required DateTime createdAt,
   }) = _User;
