@@ -4,6 +4,7 @@ import 'package:openapi_spec_plus/v31.dart' as v31;
 import 'package:recase/recase.dart';
 
 import '../config/florval_config.dart';
+import '../model/analysis_result.dart';
 import '../model/api_endpoint.dart';
 import '../model/api_response.dart';
 import '../model/api_schema.dart';
@@ -30,39 +31,36 @@ class EndpointAnalyzer {
   }) : _paginationConfigs = paginationConfigs;
 
   /// Analyzes all endpoints from the spec's paths.
-  List<FlorvalEndpoint> analyzeAll(Map<String, v31.PathItem> paths) {
+  ({List<FlorvalEndpoint> endpoints, List<FlorvalSchema> inlineUnionSchemas, List<FlorvalSchema> inlineObjectSchemas}) analyzeAll(Map<String, v31.PathItem> paths) {
     final endpoints = <FlorvalEndpoint>[];
+    final allInlineUnions = <FlorvalSchema>[];
+    final allInlineObjects = <FlorvalSchema>[];
 
     for (final entry in paths.entries) {
       final path = entry.key;
       final pathItem = entry.value;
       final pathParams = pathItem.parameters ?? [];
 
-      if (pathItem.get != null) {
-        endpoints.add(_analyzeOperation(path, 'GET', pathItem.get!, pathParams));
-      }
-      if (pathItem.post != null) {
-        endpoints
-            .add(_analyzeOperation(path, 'POST', pathItem.post!, pathParams));
-      }
-      if (pathItem.put != null) {
-        endpoints
-            .add(_analyzeOperation(path, 'PUT', pathItem.put!, pathParams));
-      }
-      if (pathItem.delete != null) {
-        endpoints.add(
-            _analyzeOperation(path, 'DELETE', pathItem.delete!, pathParams));
-      }
-      if (pathItem.patch != null) {
-        endpoints.add(
-            _analyzeOperation(path, 'PATCH', pathItem.patch!, pathParams));
+      for (final (method, operation) in [
+        ('GET', pathItem.get),
+        ('POST', pathItem.post),
+        ('PUT', pathItem.put),
+        ('DELETE', pathItem.delete),
+        ('PATCH', pathItem.patch),
+      ]) {
+        if (operation != null) {
+          final result = _analyzeOperation(path, method, operation, pathParams);
+          endpoints.add(result.endpoint);
+          allInlineUnions.addAll(result.inlineUnionSchemas);
+          allInlineObjects.addAll(result.inlineObjectSchemas);
+        }
       }
     }
 
-    return endpoints;
+    return (endpoints: endpoints, inlineUnionSchemas: allInlineUnions, inlineObjectSchemas: allInlineObjects);
   }
 
-  FlorvalEndpoint _analyzeOperation(
+  ({FlorvalEndpoint endpoint, List<FlorvalSchema> inlineUnionSchemas, List<FlorvalSchema> inlineObjectSchemas}) _analyzeOperation(
     String path,
     String method,
     v31.Operation operation,
@@ -79,10 +77,13 @@ class EndpointAnalyzer {
 
     final parameters = _analyzeParameters(allParams);
     final requestBody = _analyzeRequestBody(operation.requestBody);
-    final responses = responseAnalyzer.analyzeResponses(
+    final responseResult = responseAnalyzer.analyzeResponses(
       operation.responses,
       operationId: operationId,
     );
+    final responses = responseResult.responses;
+    final inlineUnions = [...responseResult.inlineUnionSchemas];
+    final inlineObjects = [...responseResult.inlineObjectSchemas];
 
     // Check if this endpoint has a pagination config
     PaginationInfo? pagination;
@@ -116,31 +117,36 @@ class EndpointAnalyzer {
       }
     }
 
-    return FlorvalEndpoint(
-      path: path,
-      method: method,
-      operationId: operationId,
-      parameters: parameters,
-      requestBody: requestBody,
-      responses: responses,
-      tags: operation.tags,
-      summary: operation.summary,
-      pagination: pagination,
+    return (
+      endpoint: FlorvalEndpoint(
+        path: path,
+        method: method,
+        operationId: operationId,
+        parameters: parameters,
+        requestBody: requestBody,
+        responses: responses,
+        tags: operation.tags,
+        summary: operation.summary,
+        pagination: pagination,
+      ),
+      inlineUnionSchemas: inlineUnions,
+      inlineObjectSchemas: inlineObjects,
     );
   }
 
   List<FlorvalParam> _analyzeParameters(List<v31.Parameter> parameters) {
     return parameters.map((p) {
       final resolved = resolver.resolveParameter(p);
-      final type = resolved.schema != null
+      final typeResult = resolved.schema != null
           ? schemaAnalyzer.schemaToType(resolved.schema!)
-          : const FlorvalType(name: 'String', dartType: 'String');
+          : const TypeResult(
+              type: FlorvalType(name: 'String', dartType: 'String'));
 
       return FlorvalParam(
         name: resolved.name ?? '',
         dartName: ReCase(resolved.name ?? '').camelCase,
         location: _toParamLocation(resolved.location),
-        type: type,
+        type: typeResult.type,
         isRequired: resolved.required ?? false,
         description: resolved.description,
       );
@@ -156,10 +162,10 @@ class EndpointAnalyzer {
       final schema = jsonContent.schema;
       if (schema == null) return null;
 
-      final type = schemaAnalyzer.schemaToType(schema);
+      final typeResult = schemaAnalyzer.schemaToType(schema);
 
       return FlorvalRequestBody(
-        type: type,
+        type: typeResult.type,
         isRequired: requestBody.$required ?? false,
         description: requestBody.description,
         contentType: ContentType.json,
@@ -246,7 +252,7 @@ class EndpointAnalyzer {
       }
     }
     // For non-binary fields, use the standard schema-to-type mapping
-    return schemaAnalyzer.schemaToType(schema);
+    return schemaAnalyzer.schemaToType(schema).type;
   }
 
   /// Returns true if the schema represents a binary string (format: binary).
@@ -323,7 +329,7 @@ class EndpointAnalyzer {
     // Extract item element type
     final FlorvalType itemType;
     if (resolvedItems.items != null) {
-      itemType = schemaAnalyzer.schemaToType(resolvedItems.items!);
+      itemType = schemaAnalyzer.schemaToType(resolvedItems.items!).type;
     } else {
       logger?.warn(
         'Pagination items field "${config.itemsField}" in $operationId '
@@ -349,7 +355,7 @@ class EndpointAnalyzer {
         final fieldName = ReCase(entry.key).camelCase;
         final fieldSchema = entry.value;
         final isRequired = requiredFields.contains(entry.key);
-        final type = schemaAnalyzer.schemaToType(fieldSchema);
+        final type = schemaAnalyzer.schemaToType(fieldSchema).type;
 
         wrapperFields.add(FlorvalField(
           name: fieldName,

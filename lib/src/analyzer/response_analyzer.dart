@@ -1,6 +1,7 @@
 import 'package:openapi_spec_plus/v31.dart' as v31;
 import 'package:recase/recase.dart';
 
+import '../model/analysis_result.dart';
 import '../model/api_response.dart';
 import '../model/api_schema.dart';
 import '../model/api_type.dart';
@@ -14,35 +15,38 @@ class ResponseAnalyzer {
   final SchemaAnalyzer schemaAnalyzer;
   final FlorvalLogger? logger;
 
-  /// Inline union schemas discovered during response analysis.
-  /// These need to be generated as separate model files.
-  final List<FlorvalSchema> inlineUnionSchemas = [];
-
   ResponseAnalyzer(this.resolver, this.schemaAnalyzer, {this.logger});
 
   /// Analyzes all responses for an operation.
   /// [operationId] is used to generate names for inline oneOf/anyOf union types.
-  Map<int, FlorvalResponse> analyzeResponses(
+  ({Map<int, FlorvalResponse> responses, List<FlorvalSchema> inlineUnionSchemas, List<FlorvalSchema> inlineObjectSchemas}) analyzeResponses(
     Map<String, v31.Response> responses, {
     String? operationId,
   }) {
     final result = <int, FlorvalResponse>{};
+    final allInlineUnions = <FlorvalSchema>[];
+    final allInlineObjects = <FlorvalSchema>[];
 
     for (final entry in responses.entries) {
       final code = _parseStatusCode(entry.key);
       if (code == null) continue;
 
       final response = resolver.resolveResponse(entry.value);
-      final type = _extractResponseType(response, operationId: operationId, statusCode: code);
+      final typeResult = _extractResponseType(response, operationId: operationId, statusCode: code);
+
+      if (typeResult != null) {
+        allInlineUnions.addAll(typeResult.inlineUnionSchemas);
+        allInlineObjects.addAll(typeResult.inlineObjectSchemas);
+      }
 
       result[code] = FlorvalResponse(
         statusCode: code,
         description: response.description,
-        type: type,
+        type: typeResult?.type,
       );
     }
 
-    return result;
+    return (responses: result, inlineUnionSchemas: allInlineUnions, inlineObjectSchemas: allInlineObjects);
   }
 
   /// Extracts the response body type from a Response.
@@ -50,7 +54,7 @@ class ResponseAnalyzer {
   /// Delegates all type resolution to [SchemaAnalyzer.schemaToType], which
   /// correctly distinguishes nullable $ref patterns (e.g. `anyOf: [$ref, null]`)
   /// from true inline unions.
-  FlorvalType? _extractResponseType(
+  TypeResult? _extractResponseType(
     v31.Response response, {
     String? operationId,
     int? statusCode,

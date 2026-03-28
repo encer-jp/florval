@@ -43,13 +43,12 @@ components:
         operationId: 'getTask',
       );
 
-      final type200 = result[200]!.type!;
+      final type200 = result.responses[200]!.type!;
       expect(type200.dartType, 'User?');
       expect(type200.isNullable, isTrue);
       expect(type200.ref, contains('User'));
       // Should NOT have generated any inline union schemas
-      expect(responseAnalyzer.inlineUnionSchemas, isEmpty);
-      expect(schemaAnalyzer.inlineUnionSchemas, isEmpty);
+      expect(result.inlineUnionSchemas, isEmpty);
     });
 
     test('oneOf with multiple \$refs in response body generates inline union', () {
@@ -94,10 +93,10 @@ components:
         operationId: 'getItem',
       );
 
-      final type200 = result[200]!.type!;
-      // Should be an inline union type (via schemaAnalyzer.inlineUnionSchemas)
+      final type200 = result.responses[200]!.type!;
+      // Should be an inline union type (via inlineUnionSchemas in result)
       expect(type200.ref, isNotNull);
-      expect(schemaAnalyzer.inlineUnionSchemas, hasLength(1));
+      expect(result.inlineUnionSchemas, hasLength(1));
     });
 
     test('simple \$ref response body returns the referenced type', () {
@@ -135,7 +134,7 @@ components:
         operationId: 'getUser',
       );
 
-      final type200 = result[200]!.type!;
+      final type200 = result.responses[200]!.type!;
       expect(type200.dartType, 'User');
       expect(type200.ref, contains('User'));
     });
