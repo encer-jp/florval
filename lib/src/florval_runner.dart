@@ -4,6 +4,7 @@ import 'analyzer/endpoint_analyzer.dart';
 import 'analyzer/response_analyzer.dart';
 import 'analyzer/schema_analyzer.dart';
 import 'config/florval_config.dart';
+import 'model/analysis_result.dart';
 import 'model/api_endpoint.dart';
 import 'model/api_schema.dart';
 import 'generator/client_generator.dart';
@@ -26,6 +27,24 @@ class FlorvalRunner {
   void run(FlorvalConfig config) {
     logger.info('Reading OpenAPI spec from ${config.schemaPath}');
 
+    final analysis = _analyze(config);
+
+    if (analysis.inlineUnionSchemas.isNotEmpty) {
+      logger.debug(
+          'Found ${analysis.inlineUnionSchemas.length} inline union schemas');
+    }
+    if (analysis.inlineObjectSchemas.isNotEmpty) {
+      logger.debug(
+          'Found ${analysis.inlineObjectSchemas.length} inline object schemas');
+    }
+    logger.info(
+        'Found ${analysis.schemas.length} schemas and ${analysis.endpoints.length} endpoints');
+
+    _generate(config, analysis);
+  }
+
+  /// Parse, resolve, and analyze the OpenAPI spec.
+  AnalysisResult _analyze(FlorvalConfig config) {
     // 1. Parse
     final specReader = SpecReader();
     final spec = specReader.readFile(config.schemaPath);
@@ -45,53 +64,52 @@ class FlorvalRunner {
       paginationConfigs: config.riverpod.pagination,
     );
 
-    final schemas = spec.components?.schemas != null
+    // Schema analysis
+    final schemaResult = spec.components?.schemas != null
         ? schemaAnalyzer.analyzeAll(spec.components!.schemas!)
-        : <FlorvalSchema>[];
-    final endpoints = endpointAnalyzer.analyzeAll(spec.paths);
+        : const SchemaAnalysisResult(schemas: []);
 
-    // Collect inline union schemas discovered during analysis
-    // Merge from both response analyzer and schema analyzer, deduplicating by name
+    // Endpoint analysis (also discovers inline schemas via response analysis)
+    final endpointResult = endpointAnalyzer.analyzeAll(spec.paths);
+
+    // Merge inline schemas from both sources, deduplicating by name
     final allInlineUnions = <String, FlorvalSchema>{};
-    for (final s in responseAnalyzer.inlineUnionSchemas) {
+    for (final s in schemaResult.inlineUnionSchemas) {
       allInlineUnions[s.name] = s;
     }
-    for (final s in schemaAnalyzer.inlineUnionSchemas) {
+    for (final s in endpointResult.inlineUnionSchemas) {
       allInlineUnions[s.name] = s;
-    }
-    final inlineUnionSchemas = allInlineUnions.values.toList();
-    if (inlineUnionSchemas.isNotEmpty) {
-      logger.debug(
-          'Found ${inlineUnionSchemas.length} inline union schemas');
     }
 
-    // Collect inline object schemas discovered during analysis
     final allInlineObjects = <String, FlorvalSchema>{};
-    for (final s in schemaAnalyzer.inlineObjectSchemas) {
+    for (final s in schemaResult.inlineObjectSchemas) {
       allInlineObjects[s.name] = s;
     }
-    final inlineObjectSchemas = allInlineObjects.values.toList();
-    if (inlineObjectSchemas.isNotEmpty) {
-      logger.debug(
-          'Found ${inlineObjectSchemas.length} inline object schemas');
+    for (final s in endpointResult.inlineObjectSchemas) {
+      allInlineObjects[s.name] = s;
     }
 
-    logger.info(
-        'Found ${schemas.length} schemas and ${endpoints.length} endpoints');
+    return AnalysisResult(
+      schemas: schemaResult.schemas,
+      endpoints: endpointResult.endpoints,
+      inlineUnionSchemas: allInlineUnions.values.toList(),
+      inlineObjectSchemas: allInlineObjects.values.toList(),
+    );
+  }
 
-    // 4. Generate
+  /// Generate code and write files from analysis results.
+  void _generate(FlorvalConfig config, AnalysisResult analysis) {
     final tc = config.templates;
     final modelGenerator = ModelGenerator(templateConfig: tc);
     final responseGenerator = ResponseGenerator(templateConfig: tc);
     final clientGenerator = ClientGenerator(templateConfig: tc);
 
-    // 5. Write
     final writer = FileWriter(config.outputDirectory);
     writer.ensureDirectories();
 
     // Identify variant schemas that are inlined into discriminator unions
     // (these should not be generated as standalone model files)
-    final variantNames = ModelGenerator.variantSchemaNames(schemas);
+    final variantNames = ModelGenerator.variantSchemaNames(analysis.schemas);
     if (variantNames.isNotEmpty) {
       logger.debug(
           'Skipping ${variantNames.length} variant schemas inlined into unions: $variantNames');
@@ -99,7 +117,7 @@ class FlorvalRunner {
 
     // Models
     final modelNames = <String>[];
-    for (final schema in schemas) {
+    for (final schema in analysis.schemas) {
       if (variantNames.contains(schema.name)) continue;
       final code = modelGenerator.generate(schema);
       writer.writeModel(schema.name, code);
@@ -108,7 +126,7 @@ class FlorvalRunner {
     }
 
     // Inline union schemas (oneOf/anyOf with discriminator in response bodies)
-    for (final schema in inlineUnionSchemas) {
+    for (final schema in analysis.inlineUnionSchemas) {
       final code = modelGenerator.generate(schema);
       writer.writeModel(schema.name, code);
       modelNames.add(schema.name);
@@ -116,7 +134,7 @@ class FlorvalRunner {
     }
 
     // Inline object schemas (properties-bearing objects nested inside other schemas)
-    for (final schema in inlineObjectSchemas) {
+    for (final schema in analysis.inlineObjectSchemas) {
       final code = modelGenerator.generate(schema);
       writer.writeModel(schema.name, code);
       modelNames.add(schema.name);
@@ -136,7 +154,7 @@ class FlorvalRunner {
       logger.debug('Generated utility: api_exception');
 
       // Generate wrapper models for inline paginated response schemas
-      for (final endpoint in endpoints) {
+      for (final endpoint in analysis.endpoints) {
         if (endpoint.pagination?.wrapperSchema != null) {
           final wrapper = endpoint.pagination!.wrapperSchema!;
           final code = modelGenerator.generate(wrapper);
@@ -149,7 +167,7 @@ class FlorvalRunner {
 
     // Responses
     final responseNames = <String>[];
-    for (final endpoint in endpoints) {
+    for (final endpoint in analysis.endpoints) {
       final code = responseGenerator.generate(endpoint);
       writer.writeResponse(endpoint.operationId, code);
       responseNames.add(endpoint.operationId);
@@ -158,7 +176,7 @@ class FlorvalRunner {
 
     // Clients (grouped by tag)
     final endpointsByTag = <String, List<FlorvalEndpoint>>{};
-    for (final endpoint in endpoints) {
+    for (final endpoint in analysis.endpoints) {
       final tag = endpoint.primaryTag;
       endpointsByTag.putIfAbsent(tag, () => []).add(endpoint);
     }

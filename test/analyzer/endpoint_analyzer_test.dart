@@ -22,15 +22,15 @@ void main() {
     });
 
     test('extracts all endpoints', () {
-      final endpoints = analyzer.analyzeAll(spec.paths);
+      final result = analyzer.analyzeAll(spec.paths);
       // GET /pets, POST /pets, GET /pets/paginated, POST /pets/{petId}/photo, GET /pets/{petId}, PUT /pets/{petId}, DELETE /pets/{petId}
-      expect(endpoints.length, 7);
+      expect(result.endpoints.length, 7);
     });
 
     test('parses GET /pets correctly', () {
-      final endpoints = analyzer.analyzeAll(spec.paths);
+      final result = analyzer.analyzeAll(spec.paths);
       final listPets =
-          endpoints.firstWhere((e) => e.operationId == 'listPets');
+          result.endpoints.firstWhere((e) => e.operationId == 'listPets');
 
       expect(listPets.path, '/pets');
       expect(listPets.method, 'GET');
@@ -40,8 +40,8 @@ void main() {
     });
 
     test('parses path parameters', () {
-      final endpoints = analyzer.analyzeAll(spec.paths);
-      final getPet = endpoints.firstWhere((e) => e.operationId == 'getPet');
+      final result = analyzer.analyzeAll(spec.paths);
+      final getPet = result.endpoints.firstWhere((e) => e.operationId == 'getPet');
 
       expect(getPet.pathParameters.length, 1);
       expect(getPet.pathParameters.first.name, 'petId');
@@ -51,9 +51,9 @@ void main() {
     });
 
     test('parses query parameters', () {
-      final endpoints = analyzer.analyzeAll(spec.paths);
+      final result = analyzer.analyzeAll(spec.paths);
       final listPets =
-          endpoints.firstWhere((e) => e.operationId == 'listPets');
+          result.endpoints.firstWhere((e) => e.operationId == 'listPets');
 
       final limitParam =
           listPets.queryParameters.firstWhere((p) => p.name == 'limit');
@@ -62,9 +62,9 @@ void main() {
     });
 
     test('parses request body', () {
-      final endpoints = analyzer.analyzeAll(spec.paths);
+      final result = analyzer.analyzeAll(spec.paths);
       final createPet =
-          endpoints.firstWhere((e) => e.operationId == 'createPet');
+          result.endpoints.firstWhere((e) => e.operationId == 'createPet');
 
       expect(createPet.requestBody, isNotNull);
       expect(createPet.requestBody!.type.dartType, 'CreatePetRequest');
@@ -72,9 +72,9 @@ void main() {
     });
 
     test('parses responses with status codes', () {
-      final endpoints = analyzer.analyzeAll(spec.paths);
+      final result = analyzer.analyzeAll(spec.paths);
       final listPets =
-          endpoints.firstWhere((e) => e.operationId == 'listPets');
+          result.endpoints.firstWhere((e) => e.operationId == 'listPets');
 
       expect(listPets.responses.containsKey(200), isTrue);
       expect(listPets.responses.containsKey(400), isTrue);
@@ -85,26 +85,26 @@ void main() {
     });
 
     test('handles responses without body', () {
-      final endpoints = analyzer.analyzeAll(spec.paths);
-      final getPet = endpoints.firstWhere((e) => e.operationId == 'getPet');
+      final result = analyzer.analyzeAll(spec.paths);
+      final getPet = result.endpoints.firstWhere((e) => e.operationId == 'getPet');
 
       expect(getPet.responses[404]!.type, isNull);
       expect(getPet.responses[404]!.hasBody, isFalse);
     });
 
     test('handles DELETE with no-body responses', () {
-      final endpoints = analyzer.analyzeAll(spec.paths);
+      final result = analyzer.analyzeAll(spec.paths);
       final deletePet =
-          endpoints.firstWhere((e) => e.operationId == 'deletePet');
+          result.endpoints.firstWhere((e) => e.operationId == 'deletePet');
 
       expect(deletePet.responses[204]!.hasBody, isFalse);
       expect(deletePet.responses[404]!.hasBody, isFalse);
     });
 
     test('parses multipart/form-data request body', () {
-      final endpoints = analyzer.analyzeAll(spec.paths);
+      final result = analyzer.analyzeAll(spec.paths);
       final uploadPhoto =
-          endpoints.firstWhere((e) => e.operationId == 'uploadPetPhoto');
+          result.endpoints.firstWhere((e) => e.operationId == 'uploadPetPhoto');
 
       expect(uploadPhoto.requestBody, isNotNull);
       expect(uploadPhoto.requestBody!.contentType, ContentType.multipart);
@@ -113,9 +113,9 @@ void main() {
     });
 
     test('multipart form fields contain file and description', () {
-      final endpoints = analyzer.analyzeAll(spec.paths);
+      final result = analyzer.analyzeAll(spec.paths);
       final uploadPhoto =
-          endpoints.firstWhere((e) => e.operationId == 'uploadPetPhoto');
+          result.endpoints.firstWhere((e) => e.operationId == 'uploadPetPhoto');
 
       final fields = uploadPhoto.requestBody!.formFields!;
       expect(fields.length, 2);
@@ -130,9 +130,9 @@ void main() {
     });
 
     test('pagination is null when no pagination config provided', () {
-      final endpoints = analyzer.analyzeAll(spec.paths);
+      final result = analyzer.analyzeAll(spec.paths);
       final listPets =
-          endpoints.firstWhere((e) => e.operationId == 'listPets');
+          result.endpoints.firstWhere((e) => e.operationId == 'listPets');
 
       expect(listPets.pagination, isNull);
     });
@@ -156,9 +156,9 @@ void main() {
         paginationConfigs: paginationConfigs,
       );
 
-      final endpoints = paginatedAnalyzer.analyzeAll(spec.paths);
+      final result = paginatedAnalyzer.analyzeAll(spec.paths);
       final paginated =
-          endpoints.firstWhere((e) => e.operationId == 'listPetsPaginated');
+          result.endpoints.firstWhere((e) => e.operationId == 'listPetsPaginated');
 
       expect(paginated.pagination, isNotNull);
       expect(paginated.pagination!.cursorParam, 'after');
@@ -201,9 +201,9 @@ void main() {
         paginationConfigs: paginationConfigs,
       );
 
-      final endpoints = paginatedAnalyzer.analyzeAll(spec.paths);
+      final result = paginatedAnalyzer.analyzeAll(spec.paths);
       final paginated =
-          endpoints.firstWhere((e) => e.operationId == 'listPetsPaginated');
+          result.endpoints.firstWhere((e) => e.operationId == 'listPetsPaginated');
 
       expect(paginated.pagination, isNull);
     });
@@ -227,11 +227,11 @@ void main() {
         paginationConfigs: paginationConfigs,
       );
 
-      final endpoints = paginatedAnalyzer.analyzeAll(spec.paths);
+      final result = paginatedAnalyzer.analyzeAll(spec.paths);
       final listPets =
-          endpoints.firstWhere((e) => e.operationId == 'listPets');
+          result.endpoints.firstWhere((e) => e.operationId == 'listPets');
       final getPet =
-          endpoints.firstWhere((e) => e.operationId == 'getPet');
+          result.endpoints.firstWhere((e) => e.operationId == 'getPet');
 
       expect(listPets.pagination, isNull);
       expect(getPet.pagination, isNull);
