@@ -1,4 +1,4 @@
-## 0.1.2
+## 0.2.0
 
 ### Breaking Changes
 - Rename response Union types from `{Op}Response` to `{Op}ApiResponse` to structurally resolve name collisions with model classes
