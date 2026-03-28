@@ -14,6 +14,7 @@
 - Switch response Union types from freezed to plain Dart sealed classes (copyWith/equality/fromJson not needed, eliminates build_runner dependency for response types)
 
 ### Features
+- **JsonOptional\<T\> for PATCH/PUT partial updates**: Generate `JsonOptional<T>` sentinel type that distinguishes "key absent" (unchanged) from "key is null" (clear value) at the type level. Optional fields in PATCH/PUT request bodies are wrapped in `JsonOptional<T>` with `@Default(JsonOptional<T>.absent())`. Custom `fromJson` uses `json.containsKey()` for 3-state restoration; custom `toJson` excludes absent keys. `@Freezed(fromJson: false, toJson: false)` bypasses json_serializable entirely for absentable schemas. POST request bodies and response models are unaffected.
 - **Inline anyOf/oneOf union type support**: Detect anyOf/oneOf declared inline within schema properties and automatically generate Union types for them
 - **Restore freezed for discriminator union types**: Generate `@Freezed(unionKey: '...')` + `@FreezedUnionValue('...')` with variant fields inlined into factory constructors
 - **Non-discriminator union fromJson/toJson**: For oneOf/anyOf without a discriminator, generate fromJson that tries each variant sequentially and toJson that branches on runtimeType
@@ -40,6 +41,7 @@
 - **Generator layer deduplication**: Extract shared status code conversion and import collection logic from `client_generator` / `response_generator` into `utils/status_code.dart` and `utils/import_collector.dart` (+72/-115 lines)
 - **Import deduplication**: Reduce unnecessary import generation in provider generator
 - **Test readability improvements**: Unify formatting and structure in `model_generator_test`, remove unnecessary forced unwraps in `response_analyzer_test`
+- **Deduplicate toJson serialization logic**: Unify `_writeToJsonField` and `_toJsonValueExpression` in ModelGenerator — `_writeToJsonField` now delegates to `_toJsonValueExpression`, eliminating duplicated type-dispatch logic (DateTime, enum, List, reference types)
 - **Barrel file separation**: Exclude `api_responses.dart` from `api.dart` re-exports, keeping only models/clients/providers
 
 ### Demo / Example
