@@ -58,6 +58,12 @@ class FlorvalField {
   /// Whether this field is required.
   final bool isRequired;
 
+  /// Whether this field supports absent/null/value distinction (PATCH/PUT).
+  ///
+  /// When true, the generated code wraps this field in `JsonOptional<T>`
+  /// so that "key not sent" and "key is null" are distinguishable.
+  final bool absentable;
+
   /// Default value expression (Dart literal).
   final String? defaultValue;
 
@@ -69,6 +75,7 @@ class FlorvalField {
     required this.jsonKey,
     required this.type,
     required this.isRequired,
+    this.absentable = false,
     this.defaultValue,
     this.description,
   });

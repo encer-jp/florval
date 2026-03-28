@@ -31,6 +31,7 @@ class ModelGenerator {
   /// Generates a regular freezed abstract data class.
   String _generateDataClass(FlorvalSchema schema) {
     final fileName = ReCase(schema.name).snakeCase;
+    final hasAbsentable = schema.fields.any((f) => f.absentable);
     final buffer = StringBuffer();
 
     // Custom header
@@ -42,6 +43,10 @@ class ModelGenerator {
     // Imports
     buffer.writeln(
         "import 'package:freezed_annotation/freezed_annotation.dart';");
+    if (hasAbsentable) {
+      buffer.writeln(
+          "import 'package:json_annotation/json_annotation.dart';");
+    }
 
     // Custom model imports
     if (templateConfig != null) {
@@ -53,6 +58,9 @@ class ModelGenerator {
 
     // Import referenced types
     final imports = _collectImports(schema);
+    if (hasAbsentable) {
+      imports.add('../core/json_optional');
+    }
     for (final import_ in imports) {
       buffer.writeln("import '$import_.dart';");
     }
@@ -64,8 +72,18 @@ class ModelGenerator {
     buffer.writeln();
 
     // Class definition
+    if (hasAbsentable) {
+      buffer.writeln('@JsonSerializable(createToJson: false)');
+    }
     buffer.writeln('@freezed');
     buffer.writeln('abstract class ${schema.name} with _\$${schema.name} {');
+
+    // Private constructor needed when adding methods to freezed class
+    if (hasAbsentable) {
+      buffer.writeln('  const ${schema.name}._();');
+      buffer.writeln();
+    }
+
     // Empty fields → no named parameters (avoids freezed parse error)
     if (schema.fields.isEmpty) {
       buffer.writeln('  const factory ${schema.name}() = _${schema.name};');
@@ -79,6 +97,12 @@ class ModelGenerator {
     buffer.writeln();
     buffer.writeln(
         '  factory ${schema.name}.fromJson(Map<String, dynamic> json) => _\$${schema.name}FromJson(json);');
+
+    // Custom toJson for absentable schemas
+    if (hasAbsentable) {
+      _writeCustomToJson(buffer, schema);
+    }
+
     buffer.writeln('}');
 
     return buffer.toString();
@@ -370,8 +394,61 @@ class ModelGenerator {
       buffer.writeln("    @JsonKey(name: '${field.jsonKey}')");
     }
 
-    final prefix = field.isRequired ? 'required ' : '';
-    buffer.writeln('    $prefix${field.type.dartType} ${field.name},');
+    if (field.absentable) {
+      final innerType = _absentableInnerType(field);
+      buffer.writeln(
+          '    @Default(JsonOptional<$innerType>.absent()) JsonOptional<$innerType> ${field.name},');
+    } else {
+      final prefix = field.isRequired ? 'required ' : '';
+      buffer.writeln('    $prefix${field.type.dartType} ${field.name},');
+    }
+  }
+
+  /// Extracts the inner (non-nullable) type name for wrapping in JsonOptional.
+  String _absentableInnerType(FlorvalField field) {
+    return field.type.dartType.replaceAll('?', '');
+  }
+
+  /// Generates a custom `toJson()` that excludes absent fields from the JSON map.
+  void _writeCustomToJson(StringBuffer buffer, FlorvalSchema schema) {
+    buffer.writeln();
+    buffer.writeln('  Map<String, dynamic> toJson() {');
+    buffer.writeln('    final json = <String, dynamic>{};');
+    for (final field in schema.fields) {
+      if (field.absentable) {
+        final innerType = _absentableInnerType(field);
+        buffer.writeln(
+            "    if (${field.name} is JsonOptionalValue<$innerType>) {");
+        buffer.writeln(
+            "      json['${field.jsonKey}'] = (${field.name} as JsonOptionalValue<$innerType>).value;");
+        buffer.writeln('    }');
+      } else {
+        _writeToJsonField(buffer, field);
+      }
+    }
+    buffer.writeln('    return json;');
+    buffer.writeln('  }');
+  }
+
+  /// Writes a single required/regular field serialization in toJson.
+  void _writeToJsonField(StringBuffer buffer, FlorvalField field) {
+    final type = field.type;
+    if (type.isEnum) {
+      buffer.writeln("    json['${field.jsonKey}'] = ${field.name}.name;");
+    } else if (type.isList && type.itemType != null && !type.itemType!.isPrimitive && !type.itemType!.isMap) {
+      if (type.itemType!.isEnum) {
+        buffer.writeln(
+            "    json['${field.jsonKey}'] = ${field.name}.map((e) => e.name).toList();");
+      } else {
+        buffer.writeln(
+            "    json['${field.jsonKey}'] = ${field.name}.map((e) => e.toJson()).toList();");
+      }
+    } else if (!type.isPrimitive && !type.isMap && !type.isList && type.ref != null) {
+      buffer.writeln(
+          "    json['${field.jsonKey}'] = ${field.name}.toJson();");
+    } else {
+      buffer.writeln("    json['${field.jsonKey}'] = ${field.name};");
+    }
   }
 
   /// Generates the `PaginatedData<T, P>` utility class.
