@@ -39,6 +39,10 @@ class FlorvalRunner {
       logger.debug(
           'Found ${analysis.inlineObjectSchemas.length} inline object schemas');
     }
+    if (analysis.inlineEnumSchemas.isNotEmpty) {
+      logger.debug(
+          'Found ${analysis.inlineEnumSchemas.length} inline enum schemas');
+    }
     logger.info(
         'Found ${analysis.schemas.length} schemas and ${analysis.endpoints.length} endpoints');
 
@@ -68,6 +72,7 @@ class FlorvalRunner {
           analysis.inlineUnionSchemas, absentableSchemaNames),
       inlineObjectSchemas: _applyAbsentable(
           analysis.inlineObjectSchemas, absentableSchemaNames),
+      inlineEnumSchemas: analysis.inlineEnumSchemas,
     );
   }
 
@@ -162,11 +167,20 @@ class FlorvalRunner {
       allInlineObjects[s.name] = s;
     }
 
+    final allInlineEnums = <String, FlorvalSchema>{};
+    for (final s in schemaResult.inlineEnumSchemas) {
+      allInlineEnums[s.name] = s;
+    }
+    for (final s in endpointResult.inlineEnumSchemas) {
+      allInlineEnums[s.name] = s;
+    }
+
     return AnalysisResult(
       schemas: schemaResult.schemas,
       endpoints: endpointResult.endpoints,
       inlineUnionSchemas: allInlineUnions.values.toList(),
       inlineObjectSchemas: allInlineObjects.values.toList(),
+      inlineEnumSchemas: allInlineEnums.values.toList(),
     );
   }
 
@@ -222,6 +236,14 @@ class FlorvalRunner {
       writer.writeModel(schema.name, code);
       modelNames.add(schema.name);
       logger.debug('Generated inline object model: ${schema.name}');
+    }
+
+    // Inline enum schemas (enum values defined inline in properties)
+    for (final schema in analysis.inlineEnumSchemas) {
+      final code = modelGenerator.generate(schema);
+      writer.writeModel(schema.name, code);
+      modelNames.add(schema.name);
+      logger.debug('Generated inline enum model: ${schema.name}');
     }
 
     // Pagination utility models (generated only when pagination is configured)
