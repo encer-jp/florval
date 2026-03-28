@@ -97,6 +97,94 @@ switch (response) {
 }
 ```
 
+### Mutation endpoint → Status-code Union type + Client + Mutation with auto-invalidation
+
+**Your OpenAPI spec:**
+
+```yaml
+/tasks:
+  post:
+    operationId: createTask
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateTaskRequest"
+    responses:
+      "201":
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Task"
+      "401":
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnauthorizedError"
+      "422":
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidationError"
+```
+
+**florval generates:**
+
+```dart
+// responses/create_task_response.dart — same sealed class pattern
+sealed class CreateTaskResponse {
+  const CreateTaskResponse();
+  const factory CreateTaskResponse.created(Task data) = CreateTaskResponseCreated;
+  const factory CreateTaskResponse.unauthorized(UnauthorizedError data) = CreateTaskResponseUnauthorized;
+  const factory CreateTaskResponse.unprocessableEntity(ValidationError data) = CreateTaskResponseUnprocessableEntity;
+  const factory CreateTaskResponse.unknown(int statusCode, dynamic body) = CreateTaskResponseUnknown;
+}
+
+// clients/tasks_api_client.dart
+Future<CreateTaskResponse> createTask({required CreateTaskRequest body}) async {
+  try {
+    final response = await _dio.post('/tasks', data: body.toJson());
+    return switch (response.statusCode) {
+      201 => CreateTaskResponse.created(Task.fromJson(response.data)),
+      401 => CreateTaskResponse.unauthorized(UnauthorizedError.fromJson(response.data)),
+      422 => CreateTaskResponse.unprocessableEntity(ValidationError.fromJson(response.data)),
+      _ => CreateTaskResponse.unknown(response.statusCode ?? 0, response.data),
+    };
+  } on DioException catch (e) { /* same routing for error responses */ }
+}
+
+// providers/tasks_providers.dart — Mutation + auto-invalidation
+final createTaskMutation = Mutation<CreateTaskResponse>();
+
+Future<CreateTaskResponse> createTask(
+  MutationTarget ref, {
+  required CreateTaskRequest body,
+}) async {
+  return createTaskMutation.run(ref, (tsx) async {
+    final client = tsx.get(tasksApiClientProvider);
+    final result = await client.createTask(body: body);
+    ref.container.invalidate(listTasksProvider);  // auto-invalidate GET providers
+    ref.container.invalidate(getTaskProvider);
+    return result;
+  });
+}
+```
+
+**You write:**
+
+```dart
+final response = await createTask(ref, body: CreateTaskRequest(title: 'New task'));
+
+switch (response) {
+  case CreateTaskResponseCreated(:final data)              => showTask(data),
+  case CreateTaskResponseUnprocessableEntity(:final data)  => showErrors(data.errors),
+  case CreateTaskResponseUnauthorized(:final data)         => handleAuth(data),
+  case CreateTaskResponseUnknown(:final statusCode)        => showError('Error: $statusCode'),
+}
+// listTasks and getTask providers are automatically refreshed!
+```
+
 ### Schema → freezed model
 
 **Your OpenAPI spec:**
