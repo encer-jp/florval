@@ -12,7 +12,7 @@ Inspired by [orval](https://orval.dev) for React. florval brings the same level 
 
 ## OpenAPI in, type-safe Dart out
 
-### Endpoint → Status-code Union type + Client + Riverpod provider
+### GET endpoint → Client + Riverpod provider
 
 **Your OpenAPI spec:**
 
@@ -43,19 +43,10 @@ Inspired by [orval](https://orval.dev) for React. florval brings the same level 
               $ref: "#/components/schemas/NotFoundError"
 ```
 
-**florval generates:**
+**florval generates** a dio client and Riverpod provider — each status code is routed to a typed variant automatically:
 
 ```dart
-// responses/get_task_response.dart — sealed class, one variant per status code
-sealed class GetTaskResponse {
-  const GetTaskResponse();
-  const factory GetTaskResponse.success(Task data) = GetTaskResponseSuccess;
-  const factory GetTaskResponse.unauthorized(UnauthorizedError data) = GetTaskResponseUnauthorized;
-  const factory GetTaskResponse.notFound(NotFoundError data) = GetTaskResponseNotFound;
-  const factory GetTaskResponse.unknown(int statusCode, dynamic body) = GetTaskResponseUnknown;
-}
-
-// clients/tasks_api_client.dart — dio client with status-code routing
+// clients/tasks_api_client.dart
 class TasksApiClient {
   final Dio _dio;
   TasksApiClient(this._dio);
@@ -73,7 +64,7 @@ class TasksApiClient {
   }
 }
 
-// providers/tasks_providers.dart — Riverpod Notifier with retry
+// providers/tasks_providers.dart
 @Riverpod(retry: retry)
 class GetTask extends _$GetTask {
   @override
@@ -84,20 +75,20 @@ class GetTask extends _$GetTask {
 }
 ```
 
-**You write:**
+**You write** — pattern-match to get the freezed `Task` model directly:
 
 ```dart
 final response = await client.getTask(id: taskId);
 
 switch (response) {
-  case GetTaskResponseSuccess(:final data)        => showTask(data),
+  case GetTaskResponseSuccess(:final data)        => showTask(data), // data is Task
   case GetTaskResponseNotFound(:final data)       => showError(data.message),
   case GetTaskResponseUnauthorized(:final data)   => handleAuth(data),
   case GetTaskResponseUnknown(:final statusCode)  => showError('Error: $statusCode'),
 }
 ```
 
-### Mutation endpoint → Status-code Union type + Client + Mutation with auto-invalidation
+### POST endpoint → Client + Mutation with auto-invalidation
 
 **Your OpenAPI spec:**
 
@@ -129,18 +120,9 @@ switch (response) {
               $ref: "#/components/schemas/ValidationError"
 ```
 
-**florval generates:**
+**florval generates** a client method and a Mutation helper that auto-invalidates related GET providers:
 
 ```dart
-// responses/create_task_response.dart — same sealed class pattern
-sealed class CreateTaskResponse {
-  const CreateTaskResponse();
-  const factory CreateTaskResponse.created(Task data) = CreateTaskResponseCreated;
-  const factory CreateTaskResponse.unauthorized(UnauthorizedError data) = CreateTaskResponseUnauthorized;
-  const factory CreateTaskResponse.unprocessableEntity(ValidationError data) = CreateTaskResponseUnprocessableEntity;
-  const factory CreateTaskResponse.unknown(int statusCode, dynamic body) = CreateTaskResponseUnknown;
-}
-
 // clients/tasks_api_client.dart
 Future<CreateTaskResponse> createTask({required CreateTaskRequest body}) async {
   try {
@@ -154,7 +136,7 @@ Future<CreateTaskResponse> createTask({required CreateTaskRequest body}) async {
   } on DioException catch (e) { /* same routing for error responses */ }
 }
 
-// providers/tasks_providers.dart — Mutation + auto-invalidation
+// providers/tasks_providers.dart
 final createTaskMutation = Mutation<CreateTaskResponse>();
 
 Future<CreateTaskResponse> createTask(
@@ -177,7 +159,7 @@ Future<CreateTaskResponse> createTask(
 final response = await createTask(ref, body: CreateTaskRequest(title: 'New task'));
 
 switch (response) {
-  case CreateTaskResponseCreated(:final data)              => showTask(data),
+  case CreateTaskResponseCreated(:final data)              => showTask(data), // data is Task
   case CreateTaskResponseUnprocessableEntity(:final data)  => showErrors(data.errors),
   case CreateTaskResponseUnauthorized(:final data)         => handleAuth(data),
   case CreateTaskResponseUnknown(:final statusCode)        => showError('Error: $statusCode'),
