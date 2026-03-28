@@ -167,7 +167,7 @@ switch (response) {
 // listTasks and getTask providers are automatically refreshed!
 ```
 
-### Schema → freezed model
+### Schema → freezed model + inline enums
 
 **Your OpenAPI spec:**
 
@@ -188,7 +188,7 @@ Task:
     updated_at:  { type: string, format: date-time }
 ```
 
-**florval generates:**
+**florval generates** — inline `enum` properties become dedicated Dart enums automatically:
 
 ```dart
 // models/task.dart
@@ -198,9 +198,10 @@ abstract class Task with _$Task {
     required String id,
     required String title,
     required String? description,
-    required String status,
-    required String priority,
+    required TaskStatus status,
+    required TaskPriority priority,
     @JsonKey(name: 'assignee_id') required String? assigneeId,
+    required User? assignee,
     required List<String> tags,
     @JsonKey(name: 'due_date') required DateTime? dueDate,
     @JsonKey(name: 'created_at') required DateTime createdAt,
@@ -208,6 +209,25 @@ abstract class Task with _$Task {
   }) = _Task;
 
   factory Task.fromJson(Map<String, dynamic> json) => _$TaskFromJson(json);
+}
+
+// models/task_status.dart — generated from inline enum
+enum TaskStatus {
+  @JsonValue('todo')
+  todo,
+  @JsonValue('in_progress')
+  inProgress,
+  @JsonValue('done')
+  done;
+
+  String get jsonValue => switch (this) {
+    TaskStatus.todo => 'todo',
+    TaskStatus.inProgress => 'in_progress',
+    TaskStatus.done => 'done',
+  };
+
+  static TaskStatus fromJsonValue(String value) =>
+      values.firstWhere((e) => e.jsonValue == value);
 }
 ```
 
@@ -242,8 +262,8 @@ abstract class UpdateTaskRequest with _$UpdateTaskRequest {
   const factory UpdateTaskRequest({
     required String title,
     @Default(JsonOptional<String>.absent()) JsonOptional<String> description,
-    required String status,
-    required String priority,
+    required UpdateTaskRequestStatus status,
+    required UpdateTaskRequestPriority priority,
     @JsonKey(name: 'assignee_id')
     @Default(JsonOptional<String>.absent()) JsonOptional<String> assigneeId,
     @JsonKey(name: 'due_date')
@@ -260,12 +280,18 @@ abstract class UpdateTaskRequest with _$UpdateTaskRequest {
 
 ```dart
 // Only update title — optional fields stay untouched on the server
-final body = UpdateTaskRequest(title: 'New title', status: 'done', priority: 'high');
+final body = UpdateTaskRequest(
+  title: 'New title',
+  status: UpdateTaskRequestStatus.done,
+  priority: UpdateTaskRequestPriority.high,
+);
 // → {"title": "New title", "status": "done", "priority": "high"}
 
 // Explicitly clear the due date
 final body = UpdateTaskRequest(
-  title: 'New title', status: 'done', priority: 'high',
+  title: 'New title',
+  status: UpdateTaskRequestStatus.done,
+  priority: UpdateTaskRequestPriority.high,
   dueDate: JsonOptional.value(null),
 );
 // → {"title": "New title", "status": "done", "priority": "high", "due_date": null}
@@ -320,6 +346,11 @@ No exceptions. No `statusCode == 200` checks. Every response path is exhaustive 
 **Generation:**
 
 - **freezed 3.x models** — immutable data classes with `copyWith`, JSON serialization
+- **Inline enum generation** — `enum` properties in schemas become dedicated Dart enums with `@JsonValue`
+- **Doc comments** — `description` and `example` from OpenAPI specs become `///` doc comments
+- **`@Deprecated` annotations** — schema, property, operation, and parameter-level `deprecated` flags
+- **`readOnly` / `writeOnly`** — OpenAPI field flags propagated to the intermediate representation
+- **`@Default` values** — OpenAPI `default` values generate `@Default(...)` annotations
 - **dio clients** — clean HTTP clients, no Retrofit, full control over your Dio instance
 - **Cursor-based pagination** — `fetchMore()` with automatic data accumulation
 - **Discriminator Union types** — `@Freezed(unionKey: ...)` with `@FreezedUnionValue`
@@ -367,17 +398,20 @@ This runs freezed, json_serializable, and riverpod_generator on the generated co
 
 All examples below are from actual florval output ([example/lib/api/generated/](example/lib/api/generated/)).
 
-### Data Models (freezed 3.x)
+### Data Models (freezed 3.x) + Inline Enums
+
+Inline `enum` properties are extracted into dedicated Dart enums with `@JsonValue` annotations:
 
 ```dart
+// models/task.dart
 @freezed
 abstract class Task with _$Task {
   const factory Task({
     required String id,
     required String title,
     required String? description,
-    required String status,
-    required String priority,
+    required TaskStatus status,
+    required TaskPriority priority,
     @JsonKey(name: 'assignee_id')
     required String? assigneeId,
     required User? assignee,
@@ -391,6 +425,19 @@ abstract class Task with _$Task {
   }) = _Task;
 
   factory Task.fromJson(Map<String, dynamic> json) => _$TaskFromJson(json);
+}
+
+// models/task_status.dart
+enum TaskStatus {
+  @JsonValue('todo')
+  todo,
+  @JsonValue('in_progress')
+  inProgress,
+  @JsonValue('done')
+  done;
+
+  String get jsonValue => switch (this) { ... };
+  static TaskStatus fromJsonValue(String value) => ...;
 }
 ```
 
@@ -483,8 +530,8 @@ abstract class UpdateTaskRequest with _$UpdateTaskRequest {
   const factory UpdateTaskRequest({
     required String title,
     @Default(JsonOptional<String>.absent()) JsonOptional<String> description,
-    required String status,
-    required String priority,
+    required UpdateTaskRequestStatus status,
+    required UpdateTaskRequestPriority priority,
     @JsonKey(name: 'assignee_id')
     @Default(JsonOptional<String>.absent()) JsonOptional<String> assigneeId,
     @JsonKey(name: 'due_date')
@@ -504,8 +551,8 @@ Usage:
 // Only update the title — other optional fields are untouched
 final body = UpdateTaskRequest(
   title: 'New title',
-  status: 'in_progress',
-  priority: 'high',
+  status: UpdateTaskRequestStatus.inProgress,
+  priority: UpdateTaskRequestPriority.high,
   // description: not specified → absent → key omitted from JSON
 );
 // → {"title": "New title", "status": "in_progress", "priority": "high"}
@@ -513,8 +560,8 @@ final body = UpdateTaskRequest(
 // Explicitly clear the due date
 final body = UpdateTaskRequest(
   title: 'New title',
-  status: 'in_progress',
-  priority: 'high',
+  status: UpdateTaskRequestStatus.inProgress,
+  priority: UpdateTaskRequestPriority.high,
   dueDate: JsonOptional.value(null),
 );
 // → {"title": "New title", "status": "in_progress", "priority": "high", "due_date": null}
@@ -616,6 +663,10 @@ florval:
 | JsonOptional (undefined vs null) | ✅ | ❌ | ❌ |
 | Riverpod integration | ✅ | ❌ | ❌ |
 | Auto-invalidation after mutations | ✅ | ❌ | ❌ |
+| Inline enum generation | ✅ | ✅ | ✅ |
+| Doc comments from description/example | ✅ | ❌ | ✅ |
+| @Deprecated from OpenAPI flags | ✅ | ❌ | ✅ |
+| @Default from OpenAPI defaults | ✅ | ❌ | ❌ |
 | Cursor-based pagination | ✅ | ❌ | ❌ |
 | freezed 3.x | ✅ | ✅ | ❌ |
 | No Retrofit dependency | ✅ | ❌ | N/A |
