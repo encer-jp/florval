@@ -28,6 +28,9 @@ class FlorvalEndpoint {
   /// Summary from the OpenAPI spec.
   final String? summary;
 
+  /// Description from the OpenAPI spec.
+  final String? description;
+
   /// Pagination info if this endpoint is configured for cursor-based pagination.
   final PaginationInfo? pagination;
 
@@ -40,6 +43,7 @@ class FlorvalEndpoint {
     required this.responses,
     required this.tags,
     this.summary,
+    this.description,
     this.pagination,
   });
 
@@ -78,6 +82,9 @@ class FlorvalParam {
   /// Description from the OpenAPI spec.
   final String? description;
 
+  /// Example value from the OpenAPI spec.
+  final Object? example;
+
   const FlorvalParam({
     required this.name,
     required this.dartName,
@@ -85,6 +92,7 @@ class FlorvalParam {
     required this.type,
     required this.isRequired,
     this.description,
+    this.example,
   });
 
   @override

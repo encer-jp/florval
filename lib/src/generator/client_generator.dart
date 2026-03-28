@@ -3,6 +3,7 @@ import 'package:recase/recase.dart';
 import '../config/template_config.dart';
 import '../model/api_endpoint.dart';
 import '../model/api_response.dart';
+import '../utils/doc_comment.dart';
 import '../utils/import_collector.dart';
 import '../utils/status_code.dart';
 
@@ -64,6 +65,9 @@ class ClientGenerator {
   }
 
   void _writeMethod(StringBuffer buffer, FlorvalEndpoint endpoint) {
+    // Doc comment from summary and/or description
+    _writeMethodDocComment(buffer, endpoint);
+
     final responseType =
         'r.${ReCase(endpoint.operationId).pascalCase}Response';
     final methodName = ReCase(endpoint.operationId).camelCase;
@@ -257,6 +261,24 @@ class ClientGenerator {
       buffer.writeln('        case $statusCode:');
       buffer.writeln(
           '          return $responseType.$factoryName();');
+    }
+  }
+
+  void _writeMethodDocComment(StringBuffer buffer, FlorvalEndpoint endpoint) {
+    final hasSummary = endpoint.summary != null && endpoint.summary!.isNotEmpty;
+    final hasDescription =
+        endpoint.description != null && endpoint.description!.isNotEmpty;
+
+    if (!hasSummary && !hasDescription) return;
+
+    if (hasSummary) {
+      writeDocComment(buffer, description: endpoint.summary, indent: '  ');
+    }
+    if (hasDescription) {
+      if (hasSummary) {
+        buffer.writeln('  ///');
+      }
+      writeDocComment(buffer, description: endpoint.description, indent: '  ');
     }
   }
 

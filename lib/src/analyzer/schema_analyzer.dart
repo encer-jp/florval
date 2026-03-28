@@ -149,6 +149,7 @@ class SchemaAnalyzer {
           readOnly: fieldSchema.readOnly == true,
           writeOnly: fieldSchema.writeOnly == true,
           description: fieldSchema.description,
+          example: _extractExample(fieldSchema),
         ));
         index++;
       }
@@ -681,5 +682,17 @@ class SchemaAnalyzer {
   /// Gets the list of required field names from a schema.
   List<String> _requiredFields(v31.Schema schema) {
     return schema.$required ?? [];
+  }
+
+  /// Extracts the example value from a schema.
+  ///
+  /// Prefers `example` (singular). Falls back to the first entry in `examples`
+  /// if `example` is not set.
+  Object? _extractExample(v31.Schema schema) {
+    if (schema.example != null) return schema.example;
+    if (schema.examples != null && schema.examples!.isNotEmpty) {
+      return schema.examples!.first;
+    }
+    return null;
   }
 }

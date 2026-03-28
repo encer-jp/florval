@@ -277,6 +277,108 @@ void main() {
       expect(code, isNot(contains('body.toJson()')));
     });
 
+    test('generates doc comment from endpoint summary', () {
+      final endpoint = FlorvalEndpoint(
+        path: '/users/{id}',
+        method: 'GET',
+        operationId: 'getUser',
+        parameters: [
+          FlorvalParam(
+            name: 'id',
+            dartName: 'id',
+            location: ParamLocation.path,
+            type: FlorvalType(name: 'int', dartType: 'int'),
+            isRequired: true,
+          ),
+        ],
+        responses: {
+          200: FlorvalResponse(
+            statusCode: 200,
+            type: FlorvalType(
+                name: 'User',
+                dartType: 'User',
+                ref: '#/components/schemas/User'),
+          ),
+        },
+        tags: ['users'],
+        summary: 'Find user by ID',
+      );
+
+      final code = generator.generate('users', [endpoint]);
+
+      expect(code, contains('  /// Find user by ID'));
+      // Doc comment should appear before the method signature
+      final docIndex = code.indexOf('  /// Find user by ID');
+      final methodIndex = code.indexOf('Future<r.GetUserResponse> getUser(');
+      expect(docIndex, lessThan(methodIndex));
+    });
+
+    test('generates doc comment with summary and description', () {
+      final endpoint = FlorvalEndpoint(
+        path: '/pets/{petId}',
+        method: 'GET',
+        operationId: 'getPetById',
+        parameters: [
+          FlorvalParam(
+            name: 'petId',
+            dartName: 'petId',
+            location: ParamLocation.path,
+            type: FlorvalType(name: 'int', dartType: 'int'),
+            isRequired: true,
+          ),
+        ],
+        responses: {
+          200: FlorvalResponse(
+            statusCode: 200,
+            type: FlorvalType(
+                name: 'Pet',
+                dartType: 'Pet',
+                ref: '#/components/schemas/Pet'),
+          ),
+        },
+        tags: ['pets'],
+        summary: 'Find pet by ID',
+        description: 'Returns a single pet',
+      );
+
+      final code = generator.generate('pets', [endpoint]);
+
+      expect(code, contains('  /// Find pet by ID'));
+      expect(code, contains('  /// Returns a single pet'));
+      // Blank line separator between summary and description
+      final summaryIndex = code.indexOf('  /// Find pet by ID');
+      final blankDocIndex = code.indexOf('  ///', summaryIndex + 1);
+      final descIndex = code.indexOf('  /// Returns a single pet');
+      expect(blankDocIndex, lessThan(descIndex));
+    });
+
+    test('does not generate doc comment when no summary or description', () {
+      final code = generator.generate('users', [makeGetEndpoint()]);
+
+      // The method should not have doc comments
+      final methodIndex = code.indexOf('Future<r.GetUserResponse> getUser(');
+      final preceding = code.substring(0, methodIndex);
+      expect(preceding, isNot(contains('  ///')));
+    });
+
+    test('generates doc comment with only description', () {
+      final endpoint = FlorvalEndpoint(
+        path: '/users',
+        method: 'GET',
+        operationId: 'listUsers',
+        parameters: [],
+        responses: {
+          200: FlorvalResponse(statusCode: 200),
+        },
+        tags: ['users'],
+        description: 'Returns all users in the system',
+      );
+
+      final code = generator.generate('users', [endpoint]);
+
+      expect(code, contains('  /// Returns all users in the system'));
+    });
+
     test('generates list deserialization', () {
       final endpoint = FlorvalEndpoint(
         path: '/pets',
