@@ -4,6 +4,8 @@ import '../config/template_config.dart';
 import '../model/api_endpoint.dart';
 import '../model/api_response.dart';
 import '../model/api_type.dart';
+import '../utils/import_collector.dart';
+import '../utils/status_code.dart';
 
 /// Generates plain Dart sealed classes for status-code-based response Union types.
 ///
@@ -74,7 +76,7 @@ class ResponseGenerator {
     int statusCode,
     FlorvalResponse response,
   ) {
-    final factoryName = _statusCodeToFactoryName(statusCode);
+    final factoryName = statusCodeToFactoryName(statusCode);
     final subclassName = '$className${ReCase(factoryName).pascalCase}';
 
     if (response.hasBody) {
@@ -93,7 +95,7 @@ class ResponseGenerator {
     int statusCode,
     FlorvalResponse response,
   ) {
-    final factoryName = _statusCodeToFactoryName(statusCode);
+    final factoryName = statusCodeToFactoryName(statusCode);
     final subclassName = '$className${ReCase(factoryName).pascalCase}';
 
     buffer.writeln('class $subclassName extends $className {');
@@ -121,45 +123,14 @@ class ResponseGenerator {
     return type.dartType;
   }
 
-  /// Maps HTTP status codes to factory names.
-  String _statusCodeToFactoryName(int code) {
-    return switch (code) {
-      200 => 'success',
-      201 => 'created',
-      204 => 'noContent',
-      400 => 'badRequest',
-      401 => 'unauthorized',
-      403 => 'forbidden',
-      404 => 'notFound',
-      409 => 'conflict',
-      422 => 'unprocessableEntity',
-      429 => 'tooManyRequests',
-      500 => 'serverError',
-      502 => 'badGateway',
-      503 => 'serviceUnavailable',
-      0 => 'defaultResponse',
-      _ => 'status$code',
-    };
-  }
-
   /// Collects model imports needed for response types.
   Set<String> _collectImports(FlorvalEndpoint endpoint) {
     final imports = <String>{};
     for (final response in endpoint.responses.values) {
       if (response.type != null) {
-        _addTypeImport(imports, response.type!);
+        addTypeImport(imports, response.type!);
       }
     }
     return imports;
-  }
-
-  void _addTypeImport(Set<String> imports, dynamic type) {
-    if (type.ref != null) {
-      final refName = (type.ref as String).split('/').last;
-      imports.add(ReCase(refName).snakeCase);
-    }
-    if (type.isList == true && type.itemType != null) {
-      _addTypeImport(imports, type.itemType);
-    }
   }
 }

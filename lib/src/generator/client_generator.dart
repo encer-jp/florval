@@ -2,6 +2,9 @@ import 'package:recase/recase.dart';
 
 import '../config/template_config.dart';
 import '../model/api_endpoint.dart';
+import '../model/api_response.dart';
+import '../utils/import_collector.dart';
+import '../utils/status_code.dart';
 
 /// Generates dio API client classes grouped by tag.
 class ClientGenerator {
@@ -231,18 +234,18 @@ class ClientGenerator {
     StringBuffer buffer,
     String responseType,
     int statusCode,
-    dynamic response, {
+    FlorvalResponse response, {
     String dataExpr = 'response.data',
   }) {
-    final factoryName = _statusCodeToFactoryName(statusCode);
+    final factoryName = statusCodeToFactoryName(statusCode);
 
     if (response.hasBody) {
-      final type = response.type;
+      final type = response.type!;
       buffer.writeln('        case $statusCode:');
 
-      if (type.isList && type.itemType != null && !type.itemType.isPrimitive) {
+      if (type.isList && type.itemType != null && !type.itemType!.isPrimitive) {
         buffer.writeln(
-            '          return $responseType.$factoryName(($dataExpr as List).map((e) => ${type.itemType.dartType}.fromJson(e as Map<String, dynamic>)).toList());');
+            '          return $responseType.$factoryName(($dataExpr as List).map((e) => ${type.itemType!.dartType}.fromJson(e as Map<String, dynamic>)).toList());');
       } else if (!type.isPrimitive && !type.isMap && !type.isList) {
         buffer.writeln(
             '          return $responseType.$factoryName(${type.dartType}.fromJson($dataExpr as Map<String, dynamic>));');
@@ -265,48 +268,18 @@ class ClientGenerator {
     return path;
   }
 
-  String _statusCodeToFactoryName(int code) {
-    return switch (code) {
-      200 => 'success',
-      201 => 'created',
-      204 => 'noContent',
-      400 => 'badRequest',
-      401 => 'unauthorized',
-      403 => 'forbidden',
-      404 => 'notFound',
-      409 => 'conflict',
-      422 => 'unprocessableEntity',
-      429 => 'tooManyRequests',
-      500 => 'serverError',
-      502 => 'badGateway',
-      503 => 'serviceUnavailable',
-      0 => 'defaultResponse',
-      _ => 'status$code',
-    };
-  }
-
   void _collectModelImports(
       FlorvalEndpoint endpoint, Set<String> imports) {
     for (final response in endpoint.responses.values) {
       if (response.type != null) {
-        _addTypeImport(imports, response.type!);
+        addTypeImport(imports, response.type!);
       }
     }
     if (endpoint.requestBody != null && !endpoint.requestBody!.isMultipart) {
-      _addTypeImport(imports, endpoint.requestBody!.type);
+      addTypeImport(imports, endpoint.requestBody!.type);
     }
     for (final p in endpoint.parameters) {
-      _addTypeImport(imports, p.type);
-    }
-  }
-
-  void _addTypeImport(Set<String> imports, dynamic type) {
-    if (type.ref != null) {
-      final refName = (type.ref as String).split('/').last;
-      imports.add(ReCase(refName).snakeCase);
-    }
-    if (type.isList == true && type.itemType != null) {
-      _addTypeImport(imports, type.itemType);
+      addTypeImport(imports, p.type);
     }
   }
 }
