@@ -130,6 +130,7 @@ class EndpointAnalyzer {
         responses: responses,
         tags: operation.tags,
         summary: operation.summary,
+        description: operation.description,
         pagination: pagination,
       ),
       inlineUnionSchemas: inlineUnions,
@@ -153,6 +154,7 @@ class EndpointAnalyzer {
         type: typeResult.type,
         isRequired: resolved.required ?? false,
         description: resolved.description,
+        example: resolved.example,
       );
     }).toList();
   }

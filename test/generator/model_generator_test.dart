@@ -1044,6 +1044,218 @@ void main() {
       });
     });
 
+    group('doc comments', () {
+      test('generates doc comment for schema with description', () {
+        final schema = FlorvalSchema(
+          name: 'Pet',
+          fields: [
+            FlorvalField(
+              name: 'id',
+              jsonKey: 'id',
+              type: FlorvalType(name: 'int', dartType: 'int'),
+              isRequired: true,
+            ),
+          ],
+          description: 'Represents a pet in the store',
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains('/// Represents a pet in the store'));
+        // Doc comment should appear before @freezed
+        final docIndex = code.indexOf('/// Represents a pet in the store');
+        final freezedIndex = code.indexOf('@freezed');
+        expect(docIndex, lessThan(freezedIndex));
+      });
+
+      test('does not generate doc comment when description is null', () {
+        final schema = FlorvalSchema(
+          name: 'Pet',
+          fields: [
+            FlorvalField(
+              name: 'id',
+              jsonKey: 'id',
+              type: FlorvalType(name: 'int', dartType: 'int'),
+              isRequired: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, isNot(contains('///')));
+      });
+
+      test('generates doc comment for field with description', () {
+        final schema = FlorvalSchema(
+          name: 'User',
+          fields: [
+            FlorvalField(
+              name: 'id',
+              jsonKey: 'id',
+              type: FlorvalType(name: 'int', dartType: 'int'),
+              isRequired: true,
+              description: 'The unique identifier of the user',
+            ),
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains('    /// The unique identifier of the user'));
+        // Only the first field has a doc comment
+        expect('///'.allMatches(code).length, 1);
+      });
+
+      test('generates doc comment with example for field', () {
+        final schema = FlorvalSchema(
+          name: 'User',
+          fields: [
+            FlorvalField(
+              name: 'email',
+              jsonKey: 'email',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: true,
+              description: "The user's email address",
+              example: 'user@example.com',
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains("    /// The user's email address"));
+        expect(code, contains('    ///'));
+        expect(code, contains('    /// Example: "user@example.com"'));
+      });
+
+      test('generates doc comment with example only (no description)', () {
+        final schema = FlorvalSchema(
+          name: 'User',
+          fields: [
+            FlorvalField(
+              name: 'age',
+              jsonKey: 'age',
+              type: FlorvalType(name: 'int', dartType: 'int'),
+              isRequired: true,
+              example: 25,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains('    /// Example: 25'));
+      });
+
+      test('generates doc comment for enum schema', () {
+        final schema = FlorvalSchema(
+          name: 'Status',
+          fields: [],
+          enumValues: ['active', 'inactive'],
+          description: 'The status of the resource',
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains('/// The status of the resource'));
+        final docIndex = code.indexOf('/// The status of the resource');
+        final enumIndex = code.indexOf('enum Status {');
+        expect(docIndex, lessThan(enumIndex));
+      });
+
+      test('generates doc comment for sealed class (union type)', () {
+        final schema = FlorvalSchema(
+          name: 'Animal',
+          fields: [],
+          oneOf: [
+            FlorvalSchema(name: 'Dog', fields: []),
+            FlorvalSchema(name: 'Cat', fields: []),
+          ],
+          description: 'A union of animal types',
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains('/// A union of animal types'));
+        final docIndex = code.indexOf('/// A union of animal types');
+        final sealedIndex = code.indexOf('sealed class Animal');
+        expect(docIndex, lessThan(sealedIndex));
+      });
+
+      test('generates doc comment for discriminator sealed class', () {
+        final schema = FlorvalSchema(
+          name: 'Payload',
+          fields: [],
+          oneOf: [
+            FlorvalSchema(
+              name: 'TypeA',
+              fields: [
+                FlorvalField(
+                  name: 'kind',
+                  jsonKey: 'kind',
+                  type: FlorvalType(name: 'String', dartType: 'String'),
+                  isRequired: true,
+                ),
+              ],
+            ),
+          ],
+          discriminator: FlorvalDiscriminator(
+            propertyName: 'kind',
+            mapping: {'a': 'TypeA'},
+          ),
+          description: 'A polymorphic payload',
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains('/// A polymorphic payload'));
+        final docIndex = code.indexOf('/// A polymorphic payload');
+        final freezedIndex = code.indexOf("@Freezed(unionKey:");
+        expect(docIndex, lessThan(freezedIndex));
+      });
+
+      test('handles multi-line description on schema', () {
+        final schema = FlorvalSchema(
+          name: 'Pet',
+          fields: [],
+          description: 'A pet object.\nContains all pet details.',
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains('/// A pet object.'));
+        expect(code, contains('/// Contains all pet details.'));
+      });
+
+      test('generates example with map value as JSON', () {
+        final schema = FlorvalSchema(
+          name: 'Config',
+          fields: [
+            FlorvalField(
+              name: 'metadata',
+              jsonKey: 'metadata',
+              type: FlorvalType(
+                  name: 'Map<String, dynamic>',
+                  dartType: 'Map<String, dynamic>'),
+              isRequired: true,
+              example: {'key': 'value'},
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains('    /// Example: {"key":"value"}'));
+      });
+    });
+
     group('readOnly / writeOnly', () {
       test('readOnly field generates @JsonKey(includeToJson: false)', () {
         final schema = FlorvalSchema(

@@ -83,6 +83,9 @@ class FlorvalField {
   /// Description from the OpenAPI spec.
   final String? description;
 
+  /// Example value from the OpenAPI spec.
+  final Object? example;
+
   const FlorvalField({
     required this.name,
     required this.jsonKey,
@@ -94,6 +97,7 @@ class FlorvalField {
     this.readOnly = false,
     this.writeOnly = false,
     this.description,
+    this.example,
   });
 
   @override

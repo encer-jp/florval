@@ -4,6 +4,7 @@ import '../config/template_config.dart';
 import '../model/api_schema.dart';
 import '../model/api_type.dart';
 import '../utils/dart_identifier.dart';
+import '../utils/doc_comment.dart';
 
 /// Generates Dart model classes from FlorvalSchemas.
 ///
@@ -71,6 +72,7 @@ class ModelGenerator {
     buffer.writeln();
 
     // Class definition
+    writeDocComment(buffer, description: schema.description);
     if (schema.deprecated) {
       buffer.writeln("@Deprecated('')");
     }
@@ -135,6 +137,7 @@ class ModelGenerator {
     buffer.writeln();
 
     // Enum definition
+    writeDocComment(buffer, description: schema.description);
     if (schema.deprecated) {
       buffer.writeln("@Deprecated('')");
     }
@@ -264,6 +267,7 @@ class ModelGenerator {
     buffer.writeln();
 
     // Class definition with unionKey
+    writeDocComment(buffer, description: schema.description);
     buffer.writeln("@Freezed(unionKey: '${disc.propertyName}')");
     buffer.writeln(
         'sealed class ${schema.name} with _\$${schema.name} {');
@@ -341,6 +345,7 @@ class ModelGenerator {
     if (imports.isNotEmpty) buffer.writeln();
 
     // Sealed class definition
+    writeDocComment(buffer, description: schema.description);
     buffer.writeln('sealed class ${schema.name} {');
     buffer.writeln('  const ${schema.name}();');
     buffer.writeln();
@@ -412,6 +417,14 @@ class ModelGenerator {
   }
 
   void _writeField(StringBuffer buffer, FlorvalField field) {
+    // Add doc comment if description or example is present
+    writeDocComment(
+      buffer,
+      description: field.description,
+      example: field.example,
+      indent: '    ',
+    );
+
     // Add @Deprecated annotation if field is deprecated
     if (field.deprecated) {
       buffer.writeln("    @Deprecated('')");
