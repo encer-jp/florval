@@ -96,6 +96,9 @@ class FlorvalRunner {
                   defaultValue: f.defaultValue,
                   deprecated: f.deprecated,
                   description: f.description,
+                  example: f.example,
+                  readOnly: f.readOnly,
+                  writeOnly: f.writeOnly,
                 ))
             .toList(),
         discriminator: schema.discriminator,
