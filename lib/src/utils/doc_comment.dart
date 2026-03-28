@@ -16,7 +16,7 @@ void writeDocComment(
   if (!hasDescription && !hasExample) return;
 
   if (hasDescription) {
-    final lines = description!.split('\n');
+    final lines = description.split('\n');
     for (final line in lines) {
       final escaped = _escapeDocComment(line);
       if (escaped.isEmpty) {
@@ -32,7 +32,7 @@ void writeDocComment(
       // Blank doc comment line between description and example
       buffer.writeln('$indent///');
     }
-    final exampleStr = _formatExample(example!);
+    final exampleStr = _formatExample(example);
     buffer.writeln('$indent/// Example: $exampleStr');
   }
 }
