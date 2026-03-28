@@ -38,6 +38,9 @@ void main() {
                       defaultValue: f.defaultValue,
                       deprecated: f.deprecated,
                       description: f.description,
+                      example: f.example,
+                      readOnly: f.readOnly,
+                      writeOnly: f.writeOnly,
                     ))
                 .toList(),
             discriminator: schema.discriminator,
@@ -241,6 +244,72 @@ void main() {
         expect(field.absentable, isFalse,
             reason: 'User schema should not be affected');
       }
+    });
+
+    test('preserves example, readOnly, writeOnly through absentable marking',
+        () {
+      final analysis = AnalysisResult(
+        schemas: [
+          FlorvalSchema(
+            name: 'UpdateResource',
+            fields: [
+              FlorvalField(
+                name: 'id',
+                jsonKey: 'id',
+                type: const FlorvalType(name: 'int', dartType: 'int'),
+                isRequired: true,
+                readOnly: true,
+                example: 42,
+              ),
+              FlorvalField(
+                name: 'name',
+                jsonKey: 'name',
+                type: const FlorvalType(
+                  name: 'String',
+                  dartType: 'String?',
+                  isNullable: true,
+                ),
+                isRequired: false,
+                description: 'Display name',
+                example: 'Alice',
+              ),
+              FlorvalField(
+                name: 'secret',
+                jsonKey: 'secret',
+                type: const FlorvalType(
+                  name: 'String',
+                  dartType: 'String?',
+                  isNullable: true,
+                ),
+                isRequired: false,
+                writeOnly: true,
+              ),
+            ],
+          ),
+        ],
+        endpoints: [
+          makeEndpoint('PATCH', 'updateResource',
+              requestBodyType: 'UpdateResource'),
+        ],
+        inlineUnionSchemas: [],
+        inlineObjectSchemas: [],
+      );
+
+      final result = markAbsentableFields(analysis);
+      final fields = result.schemas.first.fields;
+
+      // readOnly preserved
+      expect(fields[0].readOnly, isTrue);
+      expect(fields[0].example, 42);
+
+      // example preserved on absentable field
+      expect(fields[1].absentable, isTrue);
+      expect(fields[1].example, 'Alice');
+      expect(fields[1].description, 'Display name');
+
+      // writeOnly preserved on absentable field
+      expect(fields[2].absentable, isTrue);
+      expect(fields[2].writeOnly, isTrue);
     });
 
     test('marks inline object schemas used by PATCH/PUT', () {
