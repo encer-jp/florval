@@ -19,7 +19,7 @@ void main() {
       final pet = result.schema;
 
       expect(pet.name, 'Pet');
-      expect(pet.fields.length, 6); // id, name, tag, category, createdAt, legacyCode
+      expect(pet.fields.length, 7); // id, name, tag, category, createdAt, legacyCode, secret
 
       final idField = pet.fields.firstWhere((f) => f.name == 'id');
       expect(idField.type.dartType, 'int');
@@ -1372,6 +1372,121 @@ components:
       expect(result.inlineUnionSchemas, hasLength(2));
       final names = result.inlineUnionSchemas.map((s) => s.name).toSet();
       expect(names, {'TaskOwner', 'TaskReviewer'});
+    });
+
+    group('readOnly / writeOnly', () {
+      test('reads readOnly flag on field', () {
+        final rwSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Resource:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+''');
+        final rwAnalyzer = SchemaAnalyzer(RefResolver(rwSpec));
+        final result = rwAnalyzer.analyze(
+          'Resource',
+          rwSpec.components!.schemas!['Resource']!,
+        );
+        final schema = result.schema;
+
+        final idField = schema.fields.firstWhere((f) => f.name == 'id');
+        expect(idField.readOnly, isTrue);
+        expect(idField.writeOnly, isFalse);
+
+        final nameField = schema.fields.firstWhere((f) => f.name == 'name');
+        expect(nameField.readOnly, isFalse);
+        expect(nameField.writeOnly, isFalse);
+      });
+
+      test('reads writeOnly flag on field', () {
+        final woSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Account:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          writeOnly: true
+''');
+        final woAnalyzer = SchemaAnalyzer(RefResolver(woSpec));
+        final result = woAnalyzer.analyze(
+          'Account',
+          woSpec.components!.schemas!['Account']!,
+        );
+        final schema = result.schema;
+
+        final passwordField = schema.fields.firstWhere((f) => f.name == 'password');
+        expect(passwordField.writeOnly, isTrue);
+        expect(passwordField.readOnly, isFalse);
+
+        final usernameField = schema.fields.firstWhere((f) => f.name == 'username');
+        expect(usernameField.writeOnly, isFalse);
+      });
+
+      test('readOnly and writeOnly in allOf are preserved', () {
+        final allOfSpec = SpecReader().parse('''
+openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Base:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: integer
+          readOnly: true
+    Extended:
+      allOf:
+        - \$ref: '#/components/schemas/Base'
+        - type: object
+          properties:
+            secret:
+              type: string
+              writeOnly: true
+''');
+        final allOfAnalyzer = SchemaAnalyzer(RefResolver(allOfSpec));
+        final result = allOfAnalyzer.analyze(
+          'Extended',
+          allOfSpec.components!.schemas!['Extended']!,
+        );
+        final schema = result.schema;
+
+        final idField = schema.fields.firstWhere((f) => f.name == 'id');
+        expect(idField.readOnly, isTrue);
+
+        final secretField = schema.fields.firstWhere((f) => f.name == 'secret');
+        expect(secretField.writeOnly, isTrue);
+      });
     });
   });
 }

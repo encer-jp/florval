@@ -417,10 +417,19 @@ class ModelGenerator {
       buffer.writeln("    @Deprecated('')");
     }
 
-    // Add JsonKey if the Dart name differs from the JSON key
-    final needsJsonKey = field.name != field.jsonKey;
-    if (needsJsonKey) {
-      buffer.writeln("    @JsonKey(name: '${field.jsonKey}')");
+    // Build @JsonKey parameters list
+    final jsonKeyParams = <String>[];
+    if (field.name != field.jsonKey) {
+      jsonKeyParams.add("name: '${field.jsonKey}'");
+    }
+    if (field.readOnly) {
+      jsonKeyParams.add('includeToJson: false');
+    }
+    if (field.writeOnly) {
+      jsonKeyParams.add('includeFromJson: false');
+    }
+    if (jsonKeyParams.isNotEmpty) {
+      buffer.writeln('    @JsonKey(${jsonKeyParams.join(', ')})');
     }
 
     if (field.absentable) {
@@ -450,6 +459,15 @@ class ModelGenerator {
         '  factory ${schema.name}.fromJson(Map<String, dynamic> json) {');
     buffer.writeln('    return ${schema.name}(');
     for (final field in schema.fields) {
+      // writeOnly fields are excluded from fromJson (use default value)
+      if (field.writeOnly) {
+        if (field.absentable) {
+          // absentable writeOnly → leave as absent (the @Default handles it)
+        } else {
+          // non-absentable writeOnly → omit from constructor (uses default/nullable)
+        }
+        continue;
+      }
       if (field.absentable) {
         final innerType = _absentableInnerType(field);
         final castExpr =
@@ -553,6 +571,8 @@ class ModelGenerator {
     buffer.writeln('  Map<String, dynamic> toJson() {');
     buffer.writeln('    final json = <String, dynamic>{};');
     for (final field in schema.fields) {
+      // readOnly fields are excluded from toJson
+      if (field.readOnly) continue;
       if (field.absentable) {
         final innerType = _absentableInnerType(field);
         buffer.writeln(
