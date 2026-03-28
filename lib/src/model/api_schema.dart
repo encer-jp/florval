@@ -74,6 +74,12 @@ class FlorvalField {
   /// Whether this field is deprecated.
   final bool deprecated;
 
+  /// Whether this field is read-only (excluded from toJson).
+  final bool readOnly;
+
+  /// Whether this field is write-only (excluded from fromJson).
+  final bool writeOnly;
+
   /// Description from the OpenAPI spec.
   final String? description;
 
@@ -85,6 +91,8 @@ class FlorvalField {
     this.absentable = false,
     this.defaultValue,
     this.deprecated = false,
+    this.readOnly = false,
+    this.writeOnly = false,
     this.description,
   });
 

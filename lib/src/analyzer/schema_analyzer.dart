@@ -146,6 +146,8 @@ class SchemaAnalyzer {
           isRequired: isRequired,
           defaultValue: defaultValue,
           deprecated: fieldSchema.$deprecated == true,
+          readOnly: fieldSchema.readOnly == true,
+          writeOnly: fieldSchema.writeOnly == true,
           description: fieldSchema.description,
         ));
         index++;

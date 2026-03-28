@@ -1043,5 +1043,169 @@ void main() {
         );
       });
     });
+
+    group('readOnly / writeOnly', () {
+      test('readOnly field generates @JsonKey(includeToJson: false)', () {
+        final schema = FlorvalSchema(
+          name: 'Resource',
+          fields: [
+            FlorvalField(
+              name: 'id',
+              jsonKey: 'id',
+              type: FlorvalType(name: 'int', dartType: 'int'),
+              isRequired: true,
+              readOnly: true,
+            ),
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains('@JsonKey(includeToJson: false)'));
+        expect(code, contains('required int id,'));
+        // includeFromJson should NOT be present for readOnly
+        expect(code, isNot(contains('includeFromJson')));
+      });
+
+      test('writeOnly field generates @JsonKey(includeFromJson: false)', () {
+        final schema = FlorvalSchema(
+          name: 'Account',
+          fields: [
+            FlorvalField(
+              name: 'password',
+              jsonKey: 'password',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: true,
+              writeOnly: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains('@JsonKey(includeFromJson: false)'));
+        expect(code, isNot(contains('includeToJson')));
+      });
+
+      test('readOnly field with name mapping combines in single @JsonKey', () {
+        final schema = FlorvalSchema(
+          name: 'Resource',
+          fields: [
+            FlorvalField(
+              name: 'createdAt',
+              jsonKey: 'created_at',
+              type: FlorvalType(name: 'DateTime', dartType: 'DateTime'),
+              isRequired: true,
+              readOnly: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(
+          code,
+          contains("@JsonKey(name: 'created_at', includeToJson: false)"),
+        );
+        // Should NOT have a separate @JsonKey line
+        final jsonKeyCount =
+            '@JsonKey('.allMatches(code).length;
+        expect(jsonKeyCount, 1);
+      });
+
+      test('non-readOnly non-writeOnly field does not include includeToJson/includeFromJson', () {
+        final schema = FlorvalSchema(
+          name: 'Simple',
+          fields: [
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, isNot(contains('includeToJson')));
+        expect(code, isNot(contains('includeFromJson')));
+        expect(code, isNot(contains('@JsonKey')));
+      });
+
+      test('readOnly field in absentable schema is excluded from custom toJson', () {
+        final schema = FlorvalSchema(
+          name: 'UpdateResource',
+          fields: [
+            FlorvalField(
+              name: 'id',
+              jsonKey: 'id',
+              type: FlorvalType(name: 'int', dartType: 'int'),
+              isRequired: true,
+              readOnly: true,
+            ),
+            FlorvalField(
+              name: 'name',
+              jsonKey: 'name',
+              type: FlorvalType(
+                name: 'String',
+                dartType: 'String?',
+                isNullable: true,
+              ),
+              isRequired: false,
+              absentable: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        // toJson should NOT contain the readOnly field 'id'
+        expect(code, contains('Map<String, dynamic> toJson()'));
+        expect(code, isNot(contains("json['id']")));
+        // toJson should contain the absentable field 'name'
+        expect(code, contains("json['name']"));
+      });
+
+      test('writeOnly field in absentable schema is excluded from custom fromJson', () {
+        final schema = FlorvalSchema(
+          name: 'UpdateAccount',
+          fields: [
+            FlorvalField(
+              name: 'username',
+              jsonKey: 'username',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: true,
+            ),
+            FlorvalField(
+              name: 'secret',
+              jsonKey: 'secret',
+              type: FlorvalType(
+                name: 'String',
+                dartType: 'String?',
+                isNullable: true,
+              ),
+              isRequired: false,
+              absentable: true,
+              writeOnly: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        // fromJson should contain username but NOT secret
+        expect(code, contains("json['username']"));
+        expect(code, isNot(contains("json['secret']")));
+        // toJson should still contain secret (it's writeOnly, not readOnly)
+        expect(code, contains("json['secret']"));
+      });
+    });
   });
 }

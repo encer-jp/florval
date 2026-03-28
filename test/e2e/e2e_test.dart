@@ -130,6 +130,10 @@ void main() {
       expect(petCode, contains('DateTime? createdAt,'));
       expect(petCode, contains(') = _Pet;'));
       expect(petCode, contains('factory Pet.fromJson'));
+      // readOnly field → includeToJson: false
+      expect(petCode, contains('includeToJson: false'));
+      // writeOnly field → includeFromJson: false
+      expect(petCode, contains('includeFromJson: false'));
     });
 
     test('generated responses contain sealed class syntax', () {
