@@ -2,6 +2,7 @@ import 'package:recase/recase.dart';
 
 import '../config/template_config.dart';
 import '../model/api_schema.dart';
+import '../model/api_type.dart';
 import '../utils/dart_identifier.dart';
 
 /// Generates Dart model classes from FlorvalSchemas.
