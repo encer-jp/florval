@@ -8,6 +8,201 @@
 
 Inspired by [orval](https://orval.dev) for React. florval brings the same level of automation to Flutter: one command turns your OpenAPI spec into production-ready Dart code.
 
+---
+
+## OpenAPI in, type-safe Dart out
+
+### Endpoint → Status-code Union type + Client + Riverpod provider
+
+**Your OpenAPI spec:**
+
+```yaml
+/tasks/{id}:
+  get:
+    operationId: getTask
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    responses:
+      "200":
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Task"
+      "401":
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnauthorizedError"
+      "404":
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotFoundError"
+```
+
+**florval generates:**
+
+```dart
+// responses/get_task_response.dart — sealed class, one variant per status code
+sealed class GetTaskResponse {
+  const GetTaskResponse();
+  const factory GetTaskResponse.success(Task data) = GetTaskResponseSuccess;
+  const factory GetTaskResponse.unauthorized(UnauthorizedError data) = GetTaskResponseUnauthorized;
+  const factory GetTaskResponse.notFound(NotFoundError data) = GetTaskResponseNotFound;
+  const factory GetTaskResponse.unknown(int statusCode, dynamic body) = GetTaskResponseUnknown;
+}
+
+// clients/tasks_api_client.dart — dio client with status-code routing
+class TasksApiClient {
+  final Dio _dio;
+  TasksApiClient(this._dio);
+
+  Future<GetTaskResponse> getTask({required String id}) async {
+    try {
+      final response = await _dio.get('/tasks/$id');
+      return switch (response.statusCode) {
+        200 => GetTaskResponse.success(Task.fromJson(response.data)),
+        401 => GetTaskResponse.unauthorized(UnauthorizedError.fromJson(response.data)),
+        404 => GetTaskResponse.notFound(NotFoundError.fromJson(response.data)),
+        _ => GetTaskResponse.unknown(response.statusCode ?? 0, response.data),
+      };
+    } on DioException catch (e) { /* same routing for error responses */ }
+  }
+}
+
+// providers/tasks_providers.dart — Riverpod Notifier with retry
+@Riverpod(retry: retry)
+class GetTask extends _$GetTask {
+  @override
+  FutureOr<GetTaskResponse> build({required String id}) async {
+    final client = ref.watch(tasksApiClientProvider);
+    return client.getTask(id: id);
+  }
+}
+```
+
+**You write:**
+
+```dart
+final response = await client.getTask(id: taskId);
+
+switch (response) {
+  case GetTaskResponseSuccess(:final data)        => showTask(data),
+  case GetTaskResponseNotFound(:final data)       => showError(data.message),
+  case GetTaskResponseUnauthorized(:final data)   => handleAuth(data),
+  case GetTaskResponseUnknown(:final statusCode)  => showError('Error: $statusCode'),
+}
+```
+
+### Schema → freezed model
+
+**Your OpenAPI spec:**
+
+```yaml
+Task:
+  type: object
+  required: [id, title, description, status, priority, assignee_id, tags, due_date, created_at, updated_at]
+  properties:
+    id:          { type: string, format: uuid }
+    title:       { type: string }
+    description: { type: string, nullable: true }
+    status:      { type: string, enum: [todo, in_progress, done] }
+    priority:    { type: string, enum: [low, medium, high, urgent] }
+    assignee_id: { type: string, nullable: true, format: uuid }
+    tags:        { type: array, items: { type: string } }
+    due_date:    { type: string, nullable: true, format: date-time }
+    created_at:  { type: string, format: date-time }
+    updated_at:  { type: string, format: date-time }
+```
+
+**florval generates:**
+
+```dart
+// models/task.dart
+@freezed
+abstract class Task with _$Task {
+  const factory Task({
+    required String id,
+    required String title,
+    required String? description,
+    required String status,
+    required String priority,
+    @JsonKey(name: 'assignee_id') required String? assigneeId,
+    required List<String> tags,
+    @JsonKey(name: 'due_date') required DateTime? dueDate,
+    @JsonKey(name: 'created_at') required DateTime createdAt,
+    @JsonKey(name: 'updated_at') required DateTime updatedAt,
+  }) = _Task;
+
+  factory Task.fromJson(Map<String, dynamic> json) => _$TaskFromJson(json);
+}
+```
+
+### PUT request body → JsonOptional\<T\> for partial updates
+
+**Your OpenAPI spec:**
+
+```yaml
+/tasks/{id}:
+  put:
+    operationId: updateTask
+    # ...
+UpdateTaskRequest:
+  type: object
+  required: [title, status, priority]     # only 3 fields required
+  properties:
+    title:       { type: string }
+    description: { type: string, nullable: true }
+    assignee_id: { type: string, nullable: true }
+    due_date:    { type: string, nullable: true, format: date-time }
+    tags:        { type: array, items: { type: string } }
+```
+
+**florval generates** — optional fields wrapped in `JsonOptional<T>` to distinguish "not sent" from "null":
+
+```dart
+// models/update_task_request.dart
+@Freezed(fromJson: false, toJson: false)
+abstract class UpdateTaskRequest with _$UpdateTaskRequest {
+  const UpdateTaskRequest._();
+
+  const factory UpdateTaskRequest({
+    required String title,
+    @Default(JsonOptional<String>.absent()) JsonOptional<String> description,
+    required String status,
+    required String priority,
+    @JsonKey(name: 'assignee_id')
+    @Default(JsonOptional<String>.absent()) JsonOptional<String> assigneeId,
+    @JsonKey(name: 'due_date')
+    @Default(JsonOptional<DateTime>.absent()) JsonOptional<DateTime> dueDate,
+    @Default(JsonOptional<List<String>>.absent()) JsonOptional<List<String>> tags,
+  }) = _UpdateTaskRequest;
+
+  factory UpdateTaskRequest.fromJson(Map<String, dynamic> json) { /* ... */ }
+  Map<String, dynamic> toJson() { /* ... */ }
+}
+```
+
+**You write:**
+
+```dart
+// Only update title — optional fields stay untouched on the server
+final body = UpdateTaskRequest(title: 'New title', status: 'done', priority: 'high');
+// → {"title": "New title", "status": "done", "priority": "high"}
+
+// Explicitly clear the due date
+final body = UpdateTaskRequest(
+  title: 'New title', status: 'done', priority: 'high',
+  dueDate: JsonOptional.value(null),
+);
+// → {"title": "New title", "status": "done", "priority": "high", "due_date": null}
+```
+
+---
+
 ## Why florval?
 
 ### The problem with other generators
