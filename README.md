@@ -10,46 +10,70 @@ Inspired by [orval](https://orval.dev) for React. florval brings the same level 
 
 ## Why florval?
 
-Most OpenAPI code generators for Flutter treat every response as a single success type. Real APIs return **different shapes for different status codes** — 200 returns a `User`, 404 returns nothing, 422 returns `ValidationError`.
+### The problem with other generators
 
-florval generates **freezed sealed classes** so you can pattern-match on every status code with Dart 3 switch expressions:
+Most Flutter OpenAPI generators treat every response as a single type:
 
 ```dart
-final response = await client.getUser(id: 42);
-
-switch (response) {
-  case GetUserResponseSuccess(:final data) => Text(data.name),
-  case GetUserResponseNotFound()           => Text('User not found'),
-  case GetUserResponseServerError(:final data) => Text(data.message),
-  case GetUserResponseUnknown(:final statusCode) => Text('Unexpected: $statusCode'),
+// ❌ What other generators produce — you're on your own for error handling
+try {
+  final user = await client.getUser(id: 42);
+  // What if the server returned 404? 422? 500?
+  // You don't know until it throws.
+} on DioException catch (e) {
+  if (e.response?.statusCode == 404) { ... }
+  else if (e.response?.statusCode == 422) { ... }
+  // Manual, error-prone, no type safety
 }
 ```
 
-No more `try/catch` guessing. No more `response.statusCode == 200` checks.
+### What florval generates
+
+```dart
+// ✅ florval — every status code is a typed variant
+final response = await client.getTask(id: taskId);
+
+switch (response) {
+  case GetTaskResponseSuccess(:final data)        => showTask(data),
+  case GetTaskResponseNotFound(:final data)       => showError(data.message),
+  case GetTaskResponseUnauthorized(:final data)   => handleAuth(data),
+  case GetTaskResponseUnknown(:final statusCode)  => showError('Error: $statusCode'),
+}
+```
+
+No exceptions. No `statusCode == 200` checks. Every response path is exhaustive and compiler-checked.
 
 ## Features
 
-- **Status-code Union types** — freezed sealed classes for every endpoint response
+**Core — what sets florval apart:**
+
+- **Status-code Union types** — plain Dart sealed classes for every endpoint response
+- **JsonOptional\<T\> for PATCH/PUT** — distinguishes "don't send this key" from "send null"
+- **Riverpod 3.x integration** — Notifiers for GET, Mutation API for POST/PUT/DELETE
+- **Auto-invalidation** — mutations automatically refresh related GET providers
+
+**Generation:**
+
 - **freezed 3.x models** — immutable data classes with `copyWith`, JSON serialization
 - **dio clients** — clean HTTP clients, no Retrofit, full control over your Dio instance
-- **Riverpod 3.x integration** — Notifiers for GET, Mutation API for POST/PUT/DELETE
 - **Cursor-based pagination** — `fetchMore()` with automatic data accumulation
-- **Auto-invalidation** — mutations automatically refresh related GET providers
-- **Retry** — `@Riverpod(retry:)` generation from config
-- **OpenAPI 3.0 & 3.1** — v3.0 specs are normalized to v3.1 automatically
+- **Discriminator Union types** — `@Freezed(unionKey: ...)` with `@FreezedUnionValue`
 - **multipart/form-data** — file uploads with `MultipartFile` support
+
+**DX:**
+
 - **Watch mode** — auto-regenerate on spec file changes
+- **OpenAPI 3.0 & 3.1** — v3.0 specs are normalized to v3.1 automatically
+- **Swagger 2.0** — partial support (auto-normalized to v3.1)
 - **Zero runtime dependency** — generated code depends only on dio, freezed, and optionally Riverpod
 
 ## Quick Start
 
 ### 1. Install
 
-Add florval as a dev dependency:
-
 ```yaml
 dev_dependencies:
-  florval: ^0.1.0
+  florval: ^0.2.0
 ```
 
 ### 2. Initialize
@@ -74,132 +98,222 @@ dart run build_runner build --delete-conflicting-outputs
 
 This runs freezed, json_serializable, and riverpod_generator on the generated code.
 
-### Generated output
+## Generated Code Examples
 
-```
-lib/api/generated/
-├── models/           # freezed data classes
-├── responses/        # status-code Union types (sealed classes)
-├── clients/          # dio API clients (grouped by tag)
-├── providers/        # Riverpod Notifiers & Mutations (optional)
-└── api.dart          # barrel file
-```
+All examples below are from actual florval output ([example/lib/api/generated/](example/lib/api/generated/)).
 
-## Generated Code
-
-### Models
+### Data Models (freezed 3.x)
 
 ```dart
 @freezed
-abstract class Pet with _$Pet {
-  const factory Pet({
-    required int id,
-    required String name,
-    String? tag,
-    Category? category,
-  }) = _Pet;
+abstract class Task with _$Task {
+  const factory Task({
+    required String id,
+    required String title,
+    required String? description,
+    required String status,
+    required String priority,
+    @JsonKey(name: 'assignee_id')
+    required String? assigneeId,
+    required User? assignee,
+    required List<String> tags,
+    @JsonKey(name: 'due_date')
+    required DateTime? dueDate,
+    @JsonKey(name: 'created_at')
+    required DateTime createdAt,
+    @JsonKey(name: 'updated_at')
+    required DateTime updatedAt,
+  }) = _Task;
 
-  factory Pet.fromJson(Map<String, dynamic> json) => _$PetFromJson(json);
+  factory Task.fromJson(Map<String, dynamic> json) => _$TaskFromJson(json);
 }
 ```
 
-### Status-Code Union Types
+### Status-Code Response Types (sealed class)
+
+Every endpoint gets a sealed class with typed variants for each status code — no freezed needed:
 
 ```dart
-@freezed
-sealed class GetPetResponse with _$GetPetResponse {
-  const factory GetPetResponse.success(Pet data) = GetPetResponseSuccess;
-  const factory GetPetResponse.notFound() = GetPetResponseNotFound;
-  const factory GetPetResponse.serverError(Error data) = GetPetResponseServerError;
-  const factory GetPetResponse.unknown(int statusCode, dynamic body) = GetPetResponseUnknown;
+sealed class GetTaskResponse {
+  const GetTaskResponse();
+
+  const factory GetTaskResponse.success(Task data) = GetTaskResponseSuccess;
+  const factory GetTaskResponse.unauthorized(UnauthorizedError data) = GetTaskResponseUnauthorized;
+  const factory GetTaskResponse.notFound(NotFoundError data) = GetTaskResponseNotFound;
+  const factory GetTaskResponse.unknown(int statusCode, dynamic body) = GetTaskResponseUnknown;
+}
+
+class GetTaskResponseSuccess extends GetTaskResponse {
+  final Task data;
+  const GetTaskResponseSuccess(this.data);
+}
+// ... subclass per status code
+```
+
+Use Dart 3 switch expressions for exhaustive pattern matching:
+
+```dart
+final response = await client.getTask(id: taskId);
+switch (response) {
+  case GetTaskResponseSuccess(:final data):
+    print('Task: ${data.title}');
+  case GetTaskResponseNotFound(:final data):
+    print('Not found: ${data.message}');
+  case GetTaskResponseUnauthorized(:final data):
+    redirectToLogin();
+  case GetTaskResponseUnknown(:final statusCode, :final body):
+    print('Unexpected $statusCode');
 }
 ```
 
-### Dio Client
+### API Client (dio)
 
 ```dart
-class PetsApiClient {
+class TasksApiClient {
   final Dio _dio;
 
-  PetsApiClient(this._dio);
+  TasksApiClient(this._dio);
 
-  Future<GetPetResponse> getPet({required int petId}) async {
+  Future<GetTaskResponse> getTask({required String id}) async {
     try {
-      final response = await _dio.get('/pets/$petId');
-      return switch (response.statusCode) {
-        200 => GetPetResponse.success(Pet.fromJson(response.data)),
-        404 => GetPetResponse.notFound(),
-        500 => GetPetResponse.serverError(Error.fromJson(response.data)),
-        _ => GetPetResponse.unknown(response.statusCode!, response.data),
-      };
+      final response = await _dio.get('/tasks/$id');
+      switch (response.statusCode) {
+        case 200:
+          return GetTaskResponse.success(
+            Task.fromJson(response.data as Map<String, dynamic>));
+        case 401:
+          return GetTaskResponse.unauthorized(
+            UnauthorizedError.fromJson(response.data as Map<String, dynamic>));
+        case 404:
+          return GetTaskResponse.notFound(
+            NotFoundError.fromJson(response.data as Map<String, dynamic>));
+        default:
+          return GetTaskResponse.unknown(
+            response.statusCode ?? 0, response.data);
+      }
     } on DioException catch (e) {
-      if (e.response != null) { /* error status code handling */ }
+      if (e.response != null) {
+        // Same status-code routing for error responses
+        // ...
+      }
       rethrow;
     }
   }
+
+  // createTask, updateTask, deleteTask, listTasks — all follow the same pattern
 }
 ```
 
-You provide your own `Dio` instance — configure base URL, interceptors, retry, and auth however you like.
+You provide your own `Dio` instance — configure base URL, interceptors, and auth however you like.
+
+### JsonOptional for partial updates (PATCH/PUT)
+
+PATCH and PUT requests need to distinguish between "don't change this field" and "set this field to null". Most generators can't do this. florval can:
+
+```dart
+@Freezed(fromJson: false, toJson: false)
+abstract class UpdateTaskRequest with _$UpdateTaskRequest {
+  const UpdateTaskRequest._();
+
+  const factory UpdateTaskRequest({
+    required String title,
+    @Default(JsonOptional<String>.absent()) JsonOptional<String> description,
+    required String status,
+    required String priority,
+    @JsonKey(name: 'assignee_id')
+    @Default(JsonOptional<String>.absent()) JsonOptional<String> assigneeId,
+    @JsonKey(name: 'due_date')
+    @Default(JsonOptional<DateTime>.absent()) JsonOptional<DateTime> dueDate,
+    // ...
+  }) = _UpdateTaskRequest;
+
+  // Custom fromJson/toJson generated by florval (json_serializable bypassed)
+  factory UpdateTaskRequest.fromJson(Map<String, dynamic> json) { ... }
+  Map<String, dynamic> toJson() { ... }
+}
+```
+
+Usage:
+
+```dart
+// Only update the title — other optional fields are untouched
+final body = UpdateTaskRequest(
+  title: 'New title',
+  status: 'in_progress',
+  priority: 'high',
+  // description: not specified → absent → key omitted from JSON
+);
+// → {"title": "New title", "status": "in_progress", "priority": "high"}
+
+// Explicitly clear the due date
+final body = UpdateTaskRequest(
+  title: 'New title',
+  status: 'in_progress',
+  priority: 'high',
+  dueDate: JsonOptional.value(null),
+);
+// → {"title": "New title", "status": "in_progress", "priority": "high", "due_date": null}
+```
 
 ### Riverpod Providers (optional)
 
-**GET → Notifier:**
+**GET endpoints → Notifier with built-in retry:**
 
 ```dart
-@Riverpod(retry: _retry)
-class GetPet extends _$GetPet {
+@Riverpod(retry: retry)
+class GetTask extends _$GetTask {
   @override
-  FutureOr<GetPetResponse> build({required int petId}) async {
-    final client = ref.watch(petsApiClientProvider);
-    return client.getPet(petId: petId);
+  FutureOr<GetTaskResponse> build({required String id}) async {
+    final client = ref.watch(tasksApiClientProvider);
+    return client.getTask(id: id);
   }
 }
 ```
 
-**POST/PUT/DELETE → Mutation:**
+**POST/PUT/DELETE → Mutation API with auto-invalidation:**
 
 ```dart
-final createPetMutation = Mutation<CreatePetResponse>();
-```
+final createTaskMutation = Mutation<CreateTaskResponse>();
 
-**Auto-invalidation helper (opt-in):**
-
-```dart
-Future<CreatePetResponse> createPet(
-  MutationTarget ref, {required CreatePetRequest body}
-) async {
-  return createPetMutation.run(ref, (tsx) async {
-    final client = tsx.get(petsApiClientProvider);
-    final result = await client.createPet(body: body);
-    ref.container.invalidate(listPetsProvider);
+Future<CreateTaskResponse> createTask(
+  MutationTarget ref, {
+  required CreateTaskRequest body,
+}) async {
+  return createTaskMutation.run(ref, (tsx) async {
+    final client = tsx.get(tasksApiClientProvider);
+    final result = await client.createTask(body: body);
+    ref.container.invalidate(listTasksProvider);  // auto-invalidate
+    ref.container.invalidate(getTaskProvider);
     return result;
   });
 }
 ```
 
-### Cursor-Based Pagination
+### Discriminator Union Types (oneOf/anyOf)
 
-Configure in `florval.yaml`:
-
-```yaml
-riverpod:
-  pagination:
-    - operation_id: listPets
-      cursor_param: after
-      next_cursor_field: nextCursor
-      items_field: items
-```
-
-Generated Notifier with `fetchMore()`:
+OpenAPI discriminator mappings generate freezed sealed classes with `unionKey`:
 
 ```dart
-@Riverpod(retry: _retry)
-class ListPets extends _$ListPets {
-  @override
-  FutureOr<PaginatedData<Pet>> build() async { /* initial fetch */ }
+@Freezed(unionKey: 'type')
+sealed class NotificationPayload with _$NotificationPayload {
+  @FreezedUnionValue('task_assigned')
+  const factory NotificationPayload.taskAssigned({
+    @JsonKey(name: 'task_id') required String taskId,
+    @JsonKey(name: 'task_title') required String taskTitle,
+    @JsonKey(name: 'assigned_by') required String assignedBy,
+  }) = NotificationPayloadTaskAssigned;
 
-  Future<void> fetchMore() async { /* loads next page, appends to list */ }
+  @FreezedUnionValue('comment_added')
+  const factory NotificationPayload.commentAdded({
+    @JsonKey(name: 'task_id') required String taskId,
+    @JsonKey(name: 'comment_text') required String commentText,
+    @JsonKey(name: 'commented_by') required String commentedBy,
+  }) = NotificationPayloadCommentAdded;
+
+  // ...
+
+  factory NotificationPayload.fromJson(Map<String, dynamic> json) =>
+      _$NotificationPayloadFromJson(json);
 }
 ```
 
@@ -229,19 +343,43 @@ florval:
         items_field: items
 ```
 
+## Comparison
+
+| Feature | florval | swagger_parser | openapi_generator |
+|---------|:-------:|:--------------:|:-----------------:|
+| Status-code Union types | ✅ | ❌ | ❌ |
+| JsonOptional (undefined vs null) | ✅ | ❌ | ❌ |
+| Riverpod integration | ✅ | ❌ | ❌ |
+| Auto-invalidation after mutations | ✅ | ❌ | ❌ |
+| Cursor-based pagination | ✅ | ❌ | ❌ |
+| freezed 3.x | ✅ | ✅ | ❌ |
+| No Retrofit dependency | ✅ | ❌ | N/A |
+| OpenAPI 3.0 + 3.1 | ✅ | ✅ | ✅ |
+| Swagger 2.0 | ✅ | ✅ | ✅ |
+| multipart/form-data | ✅ | ✅ | ✅ |
+
+## Generated Output Structure
+
+```
+lib/api/generated/
+├── core/
+│   └── json_optional.dart       # Runtime type for PATCH/PUT
+├── models/                      # freezed data classes
+├── responses/                   # Status-code sealed classes
+├── clients/                     # dio API clients
+├── providers/                   # Riverpod Notifiers + Mutations
+└── api.dart                     # Barrel file
+```
+
 ## CLI
 
 ```bash
-# Generate config template
-dart run florval init
-dart run florval init --config custom.yaml --force
-
-# Generate code
-dart run florval generate
-dart run florval generate --config custom.yaml
+dart run florval init                              # Create florval.yaml template
+dart run florval init --config custom.yaml --force  # Custom config path
+dart run florval generate                          # Generate from florval.yaml
+dart run florval generate --watch                  # Watch mode
 dart run florval generate --schema api.yaml --output lib/api/
-dart run florval generate --watch
-dart run florval generate --verbose
+dart run florval generate --verbose                # Debug output
 ```
 
 ## Requirements
@@ -263,7 +401,7 @@ dev_dependencies:
   json_serializable: ^6.0.0
   # Only if riverpod.enabled: true
   riverpod_generator: ^3.0.0
-  florval: ^0.1.0
+  florval: ^0.2.0
 ```
 
 ## OpenAPI Version Support
