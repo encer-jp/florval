@@ -548,3 +548,7 @@ dev_dependencies:
 ## License
 
 MIT
+
+---
+
+<p align="center"><b>encer.co.jp is committed to shaping the future of Flutter.</b></p>
