@@ -297,6 +297,58 @@ final body = UpdateTaskRequest(
 // → {"title": "New title", "status": "done", "priority": "high", "due_date": null}
 ```
 
+### Discriminator Union Types (oneOf/anyOf)
+
+**Your OpenAPI spec:**
+
+```yaml
+NotificationPayload:
+  oneOf:
+    - $ref: "#/components/schemas/TaskAssignedPayload"
+    - $ref: "#/components/schemas/CommentAddedPayload"
+  discriminator:
+    propertyName: type
+    mapping:
+      task_assigned: "#/components/schemas/TaskAssignedPayload"
+      comment_added: "#/components/schemas/CommentAddedPayload"
+```
+
+**florval generates** — freezed sealed classes with `unionKey` and `@FreezedUnionValue`:
+
+```dart
+@Freezed(unionKey: 'type')
+sealed class NotificationPayload with _$NotificationPayload {
+  @FreezedUnionValue('task_assigned')
+  const factory NotificationPayload.taskAssigned({
+    @JsonKey(name: 'task_id') required String taskId,
+    @JsonKey(name: 'task_title') required String taskTitle,
+    @JsonKey(name: 'assigned_by') required String assignedBy,
+  }) = NotificationPayloadTaskAssigned;
+
+  @FreezedUnionValue('comment_added')
+  const factory NotificationPayload.commentAdded({
+    @JsonKey(name: 'task_id') required String taskId,
+    @JsonKey(name: 'comment_text') required String commentText,
+    @JsonKey(name: 'commented_by') required String commentedBy,
+  }) = NotificationPayloadCommentAdded;
+
+  factory NotificationPayload.fromJson(Map<String, dynamic> json) =>
+      _$NotificationPayloadFromJson(json);
+}
+```
+
+**You write:**
+
+```dart
+final payload = NotificationPayload.fromJson(json);
+switch (payload) {
+  case NotificationPayloadTaskAssigned(:final taskId, :final taskTitle):
+    showAssignment(taskId, taskTitle);
+  case NotificationPayloadCommentAdded(:final commentText):
+    showComment(commentText);
+}
+```
+
 ---
 
 ## Why florval?
@@ -393,241 +445,6 @@ dart run build_runner build --delete-conflicting-outputs
 ```
 
 This runs freezed, json_serializable, and riverpod_generator on the generated code.
-
-## Generated Code Examples
-
-All examples below are from actual florval output ([example/lib/api/generated/](example/lib/api/generated/)).
-
-### Data Models (freezed 3.x) + Inline Enums
-
-Inline `enum` properties are extracted into dedicated Dart enums with `@JsonValue` annotations:
-
-```dart
-// models/task.dart
-@freezed
-abstract class Task with _$Task {
-  const factory Task({
-    required String id,
-    required String title,
-    required String? description,
-    required TaskStatus status,
-    required TaskPriority priority,
-    @JsonKey(name: 'assignee_id')
-    required String? assigneeId,
-    required User? assignee,
-    required List<String> tags,
-    @JsonKey(name: 'due_date')
-    required DateTime? dueDate,
-    @JsonKey(name: 'created_at')
-    required DateTime createdAt,
-    @JsonKey(name: 'updated_at')
-    required DateTime updatedAt,
-  }) = _Task;
-
-  factory Task.fromJson(Map<String, dynamic> json) => _$TaskFromJson(json);
-}
-
-// models/task_status.dart
-enum TaskStatus {
-  @JsonValue('todo')
-  todo,
-  @JsonValue('in_progress')
-  inProgress,
-  @JsonValue('done')
-  done;
-
-  String get jsonValue => switch (this) { ... };
-  static TaskStatus fromJsonValue(String value) => ...;
-}
-```
-
-### Status-Code Response Types (sealed class)
-
-Every endpoint gets a sealed class with typed variants for each status code — no freezed needed:
-
-```dart
-sealed class GetTaskResponse {
-  const GetTaskResponse();
-
-  const factory GetTaskResponse.success(Task data) = GetTaskResponseSuccess;
-  const factory GetTaskResponse.unauthorized(UnauthorizedError data) = GetTaskResponseUnauthorized;
-  const factory GetTaskResponse.notFound(NotFoundError data) = GetTaskResponseNotFound;
-  const factory GetTaskResponse.unknown(int statusCode, dynamic body) = GetTaskResponseUnknown;
-}
-
-class GetTaskResponseSuccess extends GetTaskResponse {
-  final Task data;
-  const GetTaskResponseSuccess(this.data);
-}
-// ... subclass per status code
-```
-
-Use Dart 3 switch expressions for exhaustive pattern matching:
-
-```dart
-final response = await client.getTask(id: taskId);
-switch (response) {
-  case GetTaskResponseSuccess(:final data):
-    print('Task: ${data.title}');
-  case GetTaskResponseNotFound(:final data):
-    print('Not found: ${data.message}');
-  case GetTaskResponseUnauthorized(:final data):
-    redirectToLogin();
-  case GetTaskResponseUnknown(:final statusCode, :final body):
-    print('Unexpected $statusCode');
-}
-```
-
-### API Client (dio)
-
-```dart
-class TasksApiClient {
-  final Dio _dio;
-
-  TasksApiClient(this._dio);
-
-  Future<GetTaskResponse> getTask({required String id}) async {
-    try {
-      final response = await _dio.get('/tasks/$id');
-      switch (response.statusCode) {
-        case 200:
-          return GetTaskResponse.success(
-            Task.fromJson(response.data as Map<String, dynamic>));
-        case 401:
-          return GetTaskResponse.unauthorized(
-            UnauthorizedError.fromJson(response.data as Map<String, dynamic>));
-        case 404:
-          return GetTaskResponse.notFound(
-            NotFoundError.fromJson(response.data as Map<String, dynamic>));
-        default:
-          return GetTaskResponse.unknown(
-            response.statusCode ?? 0, response.data);
-      }
-    } on DioException catch (e) {
-      if (e.response != null) {
-        // Same status-code routing for error responses
-        // ...
-      }
-      rethrow;
-    }
-  }
-
-  // createTask, updateTask, deleteTask, listTasks — all follow the same pattern
-}
-```
-
-You provide your own `Dio` instance — configure base URL, interceptors, and auth however you like.
-
-### JsonOptional for partial updates (PATCH/PUT)
-
-PATCH and PUT requests need to distinguish between "don't change this field" and "set this field to null". Most generators can't do this. florval can:
-
-```dart
-@Freezed(fromJson: false, toJson: false)
-abstract class UpdateTaskRequest with _$UpdateTaskRequest {
-  const UpdateTaskRequest._();
-
-  const factory UpdateTaskRequest({
-    required String title,
-    @Default(JsonOptional<String>.absent()) JsonOptional<String> description,
-    required UpdateTaskRequestStatus status,
-    required UpdateTaskRequestPriority priority,
-    @JsonKey(name: 'assignee_id')
-    @Default(JsonOptional<String>.absent()) JsonOptional<String> assigneeId,
-    @JsonKey(name: 'due_date')
-    @Default(JsonOptional<DateTime>.absent()) JsonOptional<DateTime> dueDate,
-    // ...
-  }) = _UpdateTaskRequest;
-
-  // Custom fromJson/toJson generated by florval (json_serializable bypassed)
-  factory UpdateTaskRequest.fromJson(Map<String, dynamic> json) { ... }
-  Map<String, dynamic> toJson() { ... }
-}
-```
-
-Usage:
-
-```dart
-// Only update the title — other optional fields are untouched
-final body = UpdateTaskRequest(
-  title: 'New title',
-  status: UpdateTaskRequestStatus.inProgress,
-  priority: UpdateTaskRequestPriority.high,
-  // description: not specified → absent → key omitted from JSON
-);
-// → {"title": "New title", "status": "in_progress", "priority": "high"}
-
-// Explicitly clear the due date
-final body = UpdateTaskRequest(
-  title: 'New title',
-  status: UpdateTaskRequestStatus.inProgress,
-  priority: UpdateTaskRequestPriority.high,
-  dueDate: JsonOptional.value(null),
-);
-// → {"title": "New title", "status": "in_progress", "priority": "high", "due_date": null}
-```
-
-### Riverpod Providers (optional)
-
-**GET endpoints → Notifier with built-in retry:**
-
-```dart
-@Riverpod(retry: retry)
-class GetTask extends _$GetTask {
-  @override
-  FutureOr<GetTaskResponse> build({required String id}) async {
-    final client = ref.watch(tasksApiClientProvider);
-    return client.getTask(id: id);
-  }
-}
-```
-
-**POST/PUT/DELETE → Mutation API with auto-invalidation:**
-
-```dart
-final createTaskMutation = Mutation<CreateTaskResponse>();
-
-Future<CreateTaskResponse> createTask(
-  MutationTarget ref, {
-  required CreateTaskRequest body,
-}) async {
-  return createTaskMutation.run(ref, (tsx) async {
-    final client = tsx.get(tasksApiClientProvider);
-    final result = await client.createTask(body: body);
-    ref.container.invalidate(listTasksProvider);  // auto-invalidate
-    ref.container.invalidate(getTaskProvider);
-    return result;
-  });
-}
-```
-
-### Discriminator Union Types (oneOf/anyOf)
-
-OpenAPI discriminator mappings generate freezed sealed classes with `unionKey`:
-
-```dart
-@Freezed(unionKey: 'type')
-sealed class NotificationPayload with _$NotificationPayload {
-  @FreezedUnionValue('task_assigned')
-  const factory NotificationPayload.taskAssigned({
-    @JsonKey(name: 'task_id') required String taskId,
-    @JsonKey(name: 'task_title') required String taskTitle,
-    @JsonKey(name: 'assigned_by') required String assignedBy,
-  }) = NotificationPayloadTaskAssigned;
-
-  @FreezedUnionValue('comment_added')
-  const factory NotificationPayload.commentAdded({
-    @JsonKey(name: 'task_id') required String taskId,
-    @JsonKey(name: 'comment_text') required String commentText,
-    @JsonKey(name: 'commented_by') required String commentedBy,
-  }) = NotificationPayloadCommentAdded;
-
-  // ...
-
-  factory NotificationPayload.fromJson(Map<String, dynamic> json) =>
-      _$NotificationPayloadFromJson(json);
-}
-```
 
 ## Configuration
 
