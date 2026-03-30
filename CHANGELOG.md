@@ -1,3 +1,9 @@
+## 0.2.2
+
+### Improvements
+- Update package description to be more concise and highlight core features (Freezed models, status-code Union types, Riverpod 3.x)
+- Add encer.co.jp vision statement to README
+
 ## 0.2.1
 
 ### Features
