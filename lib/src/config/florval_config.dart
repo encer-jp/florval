@@ -22,12 +22,16 @@ class FlorvalConfig {
   /// Template customization configuration.
   final TemplateConfig templates;
 
+  /// Lint configuration (post-generation commands).
+  final LintConfig lint;
+
   const FlorvalConfig({
     required this.schemaPath,
     required this.outputDirectory,
     this.client = const ClientConfig(),
     this.riverpod = const RiverpodConfig(),
     this.templates = const TemplateConfig(),
+    this.lint = const LintConfig(),
   });
 
   /// Loads config from a YAML file.
@@ -85,6 +89,9 @@ class FlorvalConfig {
       templates: florval['templates'] != null
           ? TemplateConfig.fromYaml(florval['templates'] as YamlMap)
           : const TemplateConfig(),
+      lint: florval['lint'] != null
+          ? LintConfig.fromYaml(florval['lint'] as YamlMap)
+          : const LintConfig(),
     );
   }
 
@@ -265,6 +272,33 @@ class PaginationConfig {
       nextCursorField: yaml['next_cursor_field'] as String,
       itemsField: yaml['items_field'] as String,
     );
+  }
+}
+
+/// Lint configuration for running commands after code generation.
+class LintConfig {
+  /// Shell commands to run after code generation.
+  /// Each command is executed sequentially in the output directory.
+  final List<String> commands;
+
+  const LintConfig({
+    this.commands = const [],
+  });
+
+  /// Whether any lint commands are configured.
+  bool get enabled => commands.isNotEmpty;
+
+  factory LintConfig.fromYaml(YamlMap yaml) {
+    final commandsYaml = yaml['commands'];
+    final commands = <String>[];
+    if (commandsYaml is YamlList) {
+      for (final cmd in commandsYaml) {
+        if (cmd is String) {
+          commands.add(cmd);
+        }
+      }
+    }
+    return LintConfig(commands: commands);
   }
 }
 

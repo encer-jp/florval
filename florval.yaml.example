@@ -9,6 +9,12 @@ florval:
     base_url_env: API_BASE_URL
     timeout: 30000
 
+  # Lint commands to run after code generation
+  # lint:
+  #   commands:
+  #     - dart format .
+  #     - dart fix --apply
+
   riverpod:
     enabled: true
     auto_invalidate: false

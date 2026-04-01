@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:recase/recase.dart';
 
 import 'analyzer/endpoint_analyzer.dart';
@@ -47,6 +49,10 @@ class FlorvalRunner {
         'Found ${analysis.schemas.length} schemas and ${analysis.endpoints.length} endpoints');
 
     _generate(config, analysis);
+
+    if (config.lint.enabled) {
+      _runLintCommands(config);
+    }
   }
 
   /// Marks non-required fields in PATCH/PUT request body schemas as absentable.
@@ -188,6 +194,34 @@ class FlorvalRunner {
       inlineObjectSchemas: allInlineObjects.values.toList(),
       inlineEnumSchemas: allInlineEnums.values.toList(),
     );
+  }
+
+  /// Runs configured lint commands after code generation.
+  void _runLintCommands(FlorvalConfig config) {
+    logger.info('Running lint commands...');
+    final outputDir = config.outputDirectory;
+
+    for (final command in config.lint.commands) {
+      logger.debug('Running: $command');
+      try {
+        final result = Process.runSync(
+          'sh',
+          ['-c', command],
+          workingDirectory: outputDir,
+        );
+        if (result.exitCode != 0) {
+          final stderr = (result.stderr as String).trim();
+          logger.warn(
+            'Lint command failed (exit ${result.exitCode}): $command'
+            '${stderr.isNotEmpty ? '\n$stderr' : ''}',
+          );
+        } else {
+          logger.debug('Lint command succeeded: $command');
+        }
+      } on ProcessException catch (e) {
+        logger.warn('Failed to execute lint command: $command\n${e.message}');
+      }
+    }
   }
 
   /// Generate code and write files from analysis results.
