@@ -213,10 +213,7 @@ class FlorvalRunner {
     // Identify variant schemas and generated subclass names that are inlined
     // into union types (these should not be generated as standalone model files
     // to avoid ambiguous exports in the barrel file)
-    final variantNames = ModelGenerator.variantSchemaNames([
-      ...analysis.schemas,
-      ...analysis.inlineUnionSchemas,
-    ]);
+    final variantNames = ModelGenerator.variantSchemaNames(analysis.schemas);
     if (variantNames.isNotEmpty) {
       logger.debug(
           'Skipping ${variantNames.length} variant schemas inlined into unions: $variantNames');
