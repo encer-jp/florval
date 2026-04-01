@@ -1,3 +1,12 @@
+## 0.2.3
+
+### Bug Fixes
+- **Fix ambiguous exports for union type subclass names**: Resolve `dart analyze` errors caused by union variant subclass names (e.g., `RequestDataRoomInvitation`) being exported from both the union type file and a standalone model file. Implemented 3-layer defense:
+  1. Clean output directory before generation to remove stale files from previous runs
+  2. Pre-filter `variantSchemaNames()` to exclude discriminator union variants from standalone model generation
+  3. Barrel-level deduplication via `unionSubclassNames()` as a safety net to remove colliding names from exports
+- **Fix variant schema filtering for inline unions**: Only use component schemas (not inline union schemas from response bodies) for variant filtering, preventing independent component schemas like `EventNotFoundErrorDto` from being incorrectly excluded
+
 ## 0.2.2
 
 ### Improvements
