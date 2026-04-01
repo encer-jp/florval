@@ -198,7 +198,7 @@ class FlorvalRunner {
     final clientGenerator = ClientGenerator(templateConfig: tc);
 
     final writer = FileWriter(config.outputDirectory);
-    writer.ensureDirectories();
+    writer.cleanAndEnsureDirectories();
 
     // Core runtime files (e.g. JsonOptional for PATCH/PUT)
     final coreFileNames = <String>[];
@@ -329,6 +329,26 @@ class FlorvalRunner {
         writer.writeProvider(entry.key, code);
         providerNames.add(entry.key);
         logger.debug('Generated provider: ${entry.key}');
+      }
+    }
+
+    // Remove any model whose name collides with a subclass defined inside
+    // a union type file. This prevents Dart's ambiguous_export error when
+    // the barrel file exports both the union file and the standalone model.
+    // Scans ALL union schemas (component + inline) to catch every subclass.
+    final allUnionSchemas = <FlorvalSchema>[
+      ...analysis.schemas.where((s) =>
+          (s.oneOf != null && s.oneOf!.isNotEmpty) ||
+          (s.anyOf != null && s.anyOf!.isNotEmpty)),
+      ...analysis.inlineUnionSchemas,
+    ];
+    final subclassNames = ModelGenerator.unionSubclassNames(allUnionSchemas);
+    if (subclassNames.isNotEmpty) {
+      final removed = modelNames.where((n) => subclassNames.contains(n)).toList();
+      if (removed.isNotEmpty) {
+        modelNames.removeWhere((n) => subclassNames.contains(n));
+        logger.debug(
+            'Excluded ${removed.length} models from barrel to avoid ambiguous exports: $removed');
       }
     }
 

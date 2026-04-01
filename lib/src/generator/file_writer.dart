@@ -9,10 +9,22 @@ class FileWriter {
 
   FileWriter(this.outputDirectory);
 
-  /// Ensures the output directory structure exists.
-  void ensureDirectories() {
+  /// Cleans generated .dart files from subdirectories and ensures the
+  /// directory structure exists.
+  ///
+  /// This prevents stale files from previous runs from causing ambiguous
+  /// exports or other conflicts.
+  void cleanAndEnsureDirectories() {
     for (final subDir in ['core', 'models', 'responses', 'clients', 'providers']) {
-      Directory(p.join(outputDirectory, subDir)).createSync(recursive: true);
+      final dir = Directory(p.join(outputDirectory, subDir));
+      if (dir.existsSync()) {
+        for (final file in dir.listSync().whereType<File>()) {
+          if (file.path.endsWith('.dart')) {
+            file.deleteSync();
+          }
+        }
+      }
+      dir.createSync(recursive: true);
     }
   }
 
