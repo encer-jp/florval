@@ -210,9 +210,13 @@ class FlorvalRunner {
       logger.debug('Generated core: json_optional');
     }
 
-    // Identify variant schemas that are inlined into discriminator unions
-    // (these should not be generated as standalone model files)
-    final variantNames = ModelGenerator.variantSchemaNames(analysis.schemas);
+    // Identify variant schemas and generated subclass names that are inlined
+    // into union types (these should not be generated as standalone model files
+    // to avoid ambiguous exports in the barrel file)
+    final variantNames = ModelGenerator.variantSchemaNames([
+      ...analysis.schemas,
+      ...analysis.inlineUnionSchemas,
+    ]);
     if (variantNames.isNotEmpty) {
       logger.debug(
           'Skipping ${variantNames.length} variant schemas inlined into unions: $variantNames');
@@ -230,6 +234,7 @@ class FlorvalRunner {
 
     // Inline union schemas (oneOf/anyOf with discriminator in response bodies)
     for (final schema in analysis.inlineUnionSchemas) {
+      if (variantNames.contains(schema.name)) continue;
       final code = modelGenerator.generate(schema);
       writer.writeModel(schema.name, code);
       modelNames.add(schema.name);
@@ -238,6 +243,7 @@ class FlorvalRunner {
 
     // Inline object schemas (properties-bearing objects nested inside other schemas)
     for (final schema in analysis.inlineObjectSchemas) {
+      if (variantNames.contains(schema.name)) continue;
       final code = modelGenerator.generate(schema);
       writer.writeModel(schema.name, code);
       modelNames.add(schema.name);
@@ -246,6 +252,7 @@ class FlorvalRunner {
 
     // Inline enum schemas (enum values defined inline in properties)
     for (final schema in analysis.inlineEnumSchemas) {
+      if (variantNames.contains(schema.name)) continue;
       final code = modelGenerator.generate(schema);
       writer.writeModel(schema.name, code);
       modelNames.add(schema.name);

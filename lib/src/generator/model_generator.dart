@@ -401,16 +401,48 @@ class ModelGenerator {
   }
 
   /// Returns the set of schema names that are inlined as variants
-  /// in discriminator-based union types and should not be generated
-  /// as standalone model files.
+  /// in union types and should not be generated as standalone model files.
+  ///
+  /// For discriminator unions: collects both original variant names and
+  /// generated subclass names (e.g., both `RoomInvitation` and
+  /// `RequestDataRoomInvitation`).
+  ///
+  /// For non-discriminator unions: collects only generated subclass names
+  /// (e.g., `TaskOwnerUser`), NOT the variant type names themselves since
+  /// those are referenced by type and still need standalone files.
   static Set<String> variantSchemaNames(List<FlorvalSchema> schemas) {
     final names = <String>{};
     for (final schema in schemas) {
-      if (schema.discriminator == null) continue;
       final variants = schema.oneOf ?? schema.anyOf;
-      if (variants == null) continue;
-      for (final variant in variants) {
-        names.add(variant.name);
+      if (variants == null || variants.isEmpty) continue;
+
+      if (schema.discriminator != null) {
+        // Discriminator-based union: collect both variant names and
+        // generated subclass names to prevent ambiguous exports.
+        final disc = schema.discriminator!;
+        for (final variant in variants) {
+          names.add(variant.name);
+          // Compute generated subclass name (same logic as _generateFreezedSealedClass)
+          final discriminatorValue = disc.mapping?.entries
+              .where((e) =>
+                  e.value == variant.name ||
+                  e.value.endsWith('/${variant.name}'))
+              .map((e) => e.key)
+              .firstOrNull;
+          final value =
+              discriminatorValue ?? ReCase(variant.name).snakeCase;
+          final subclassName =
+              '${schema.name}${ReCase(value).pascalCase}';
+          names.add(subclassName);
+        }
+      } else {
+        // Non-discriminator union: collect only generated subclass names.
+        // Variant types themselves are NOT added — they need standalone files
+        // since _generatePlainSealedClass references them by type.
+        for (final variant in variants) {
+          final subclassName = '${schema.name}${variant.name}';
+          names.add(subclassName);
+        }
       }
     }
     return names;
