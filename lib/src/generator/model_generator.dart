@@ -403,17 +403,82 @@ class ModelGenerator {
   /// Returns the set of schema names that are inlined as variants
   /// in discriminator-based union types and should not be generated
   /// as standalone model files.
+  ///
+  /// For discriminator unions: collects both original variant names and
+  /// generated subclass names (e.g., both `RoomInvitation` and
+  /// `RequestDataRoomInvitation`).
+  ///
+  /// Only processes discriminator unions because their variant fields are
+  /// inlined into the parent sealed class (the standalone file is redundant).
+  /// Non-discriminator unions reference variant types externally, so their
+  /// variant names must NOT be filtered.
   static Set<String> variantSchemaNames(List<FlorvalSchema> schemas) {
     final names = <String>{};
     for (final schema in schemas) {
       if (schema.discriminator == null) continue;
       final variants = schema.oneOf ?? schema.anyOf;
-      if (variants == null) continue;
+      if (variants == null || variants.isEmpty) continue;
+
+      final disc = schema.discriminator!;
       for (final variant in variants) {
         names.add(variant.name);
+        // Also add generated subclass name to prevent ambiguous exports
+        // when the subclass name matches a component schema name.
+        final subclassName = _computeSubclassName(schema.name, variant.name, disc);
+        names.add(subclassName);
       }
     }
     return names;
+  }
+
+  /// Returns the set of subclass names that union types define inline.
+  ///
+  /// These names are exported from the parent union file (e.g.,
+  /// `PostContentText` is defined inside `post_content.dart`). If a
+  /// standalone model with the same name exists, exporting both from the
+  /// barrel file would cause Dart's `ambiguous_export` error.
+  ///
+  /// Unlike [variantSchemaNames], this method:
+  /// - Accepts ALL schemas (component + inline) as input
+  /// - Only returns generated subclass names, NOT variant schema names
+  /// - Covers both discriminator and non-discriminator unions
+  static Set<String> unionSubclassNames(List<FlorvalSchema> schemas) {
+    final names = <String>{};
+    for (final schema in schemas) {
+      final variants = schema.oneOf ?? schema.anyOf;
+      if (variants == null || variants.isEmpty) continue;
+
+      if (schema.discriminator != null) {
+        final disc = schema.discriminator!;
+        for (final variant in variants) {
+          names.add(_computeSubclassName(schema.name, variant.name, disc));
+        }
+      } else {
+        for (final variant in variants) {
+          names.add('${schema.name}${variant.name}');
+        }
+      }
+    }
+    return names;
+  }
+
+  /// Computes the subclass name for a discriminator union variant.
+  ///
+  /// Mirrors the logic in [_generateFreezedSealedClass] to ensure
+  /// the computed name matches the actually generated class name.
+  static String _computeSubclassName(
+    String parentName,
+    String variantName,
+    FlorvalDiscriminator disc,
+  ) {
+    final discriminatorValue = disc.mapping?.entries
+        .where((e) =>
+            e.value == variantName ||
+            e.value.endsWith('/$variantName'))
+        .map((e) => e.key)
+        .firstOrNull;
+    final value = discriminatorValue ?? ReCase(variantName).snakeCase;
+    return '$parentName${ReCase(value).pascalCase}';
   }
 
   void _writeField(StringBuffer buffer, FlorvalField field) {

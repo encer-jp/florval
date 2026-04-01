@@ -198,7 +198,7 @@ class FlorvalRunner {
     final clientGenerator = ClientGenerator(templateConfig: tc);
 
     final writer = FileWriter(config.outputDirectory);
-    writer.ensureDirectories();
+    writer.cleanAndEnsureDirectories();
 
     // Core runtime files (e.g. JsonOptional for PATCH/PUT)
     final coreFileNames = <String>[];
@@ -210,8 +210,9 @@ class FlorvalRunner {
       logger.debug('Generated core: json_optional');
     }
 
-    // Identify variant schemas that are inlined into discriminator unions
-    // (these should not be generated as standalone model files)
+    // Identify variant schemas and generated subclass names that are inlined
+    // into union types (these should not be generated as standalone model files
+    // to avoid ambiguous exports in the barrel file)
     final variantNames = ModelGenerator.variantSchemaNames(analysis.schemas);
     if (variantNames.isNotEmpty) {
       logger.debug(
@@ -230,6 +231,7 @@ class FlorvalRunner {
 
     // Inline union schemas (oneOf/anyOf with discriminator in response bodies)
     for (final schema in analysis.inlineUnionSchemas) {
+      if (variantNames.contains(schema.name)) continue;
       final code = modelGenerator.generate(schema);
       writer.writeModel(schema.name, code);
       modelNames.add(schema.name);
@@ -238,6 +240,7 @@ class FlorvalRunner {
 
     // Inline object schemas (properties-bearing objects nested inside other schemas)
     for (final schema in analysis.inlineObjectSchemas) {
+      if (variantNames.contains(schema.name)) continue;
       final code = modelGenerator.generate(schema);
       writer.writeModel(schema.name, code);
       modelNames.add(schema.name);
@@ -246,6 +249,7 @@ class FlorvalRunner {
 
     // Inline enum schemas (enum values defined inline in properties)
     for (final schema in analysis.inlineEnumSchemas) {
+      if (variantNames.contains(schema.name)) continue;
       final code = modelGenerator.generate(schema);
       writer.writeModel(schema.name, code);
       modelNames.add(schema.name);
@@ -325,6 +329,26 @@ class FlorvalRunner {
         writer.writeProvider(entry.key, code);
         providerNames.add(entry.key);
         logger.debug('Generated provider: ${entry.key}');
+      }
+    }
+
+    // Remove any model whose name collides with a subclass defined inside
+    // a union type file. This prevents Dart's ambiguous_export error when
+    // the barrel file exports both the union file and the standalone model.
+    // Scans ALL union schemas (component + inline) to catch every subclass.
+    final allUnionSchemas = <FlorvalSchema>[
+      ...analysis.schemas.where((s) =>
+          (s.oneOf != null && s.oneOf!.isNotEmpty) ||
+          (s.anyOf != null && s.anyOf!.isNotEmpty)),
+      ...analysis.inlineUnionSchemas,
+    ];
+    final subclassNames = ModelGenerator.unionSubclassNames(allUnionSchemas);
+    if (subclassNames.isNotEmpty) {
+      final removed = modelNames.where((n) => subclassNames.contains(n)).toList();
+      if (removed.isNotEmpty) {
+        modelNames.removeWhere((n) => subclassNames.contains(n));
+        logger.debug(
+            'Excluded ${removed.length} models from barrel to avoid ambiguous exports: $removed');
       }
     }
 

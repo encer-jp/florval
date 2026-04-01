@@ -448,7 +448,7 @@ void main() {
     });
 
     test(
-      'variantSchemaNames collects variant names from discriminator unions',
+      'variantSchemaNames collects variant names and subclass names from discriminator unions',
       () {
         final schemas = [
           FlorvalSchema(
@@ -468,18 +468,151 @@ void main() {
             name: 'Shape',
             fields: [],
             oneOf: [FlorvalSchema(name: 'Circle', fields: [])],
-            // No discriminator → not a freezed union
+            // No discriminator → not processed by variantSchemaNames
           ),
         ];
 
         final names = ModelGenerator.variantSchemaNames(schemas);
 
+        // Original variant names from discriminator unions
         expect(names, contains('TypeA'));
         expect(names, contains('TypeB'));
+        // Generated subclass names from discriminator unions
+        expect(names, contains('PayloadA'));
+        expect(names, contains('PayloadB'));
         // Non-discriminator union variants should NOT be included
         expect(names, isNot(contains('Circle')));
+        expect(names, isNot(contains('ShapeCircle')));
         // Regular schemas should NOT be included
         expect(names, isNot(contains('User')));
+      },
+    );
+
+    test(
+      'variantSchemaNames with ref-style mapping values',
+      () {
+        final schemas = [
+          FlorvalSchema(
+            name: 'RequestData',
+            fields: [],
+            oneOf: [
+              FlorvalSchema(name: 'RoomInvitation', fields: []),
+              FlorvalSchema(name: 'DirectMessage', fields: []),
+            ],
+            discriminator: FlorvalDiscriminator(
+              propertyName: 'type',
+              mapping: {
+                'room_invitation': '#/components/schemas/RoomInvitation',
+                'direct_message': '#/components/schemas/DirectMessage',
+              },
+            ),
+          ),
+        ];
+
+        final names = ModelGenerator.variantSchemaNames(schemas);
+
+        expect(names, contains('RoomInvitation'));
+        expect(names, contains('DirectMessage'));
+        expect(names, contains('RequestDataRoomInvitation'));
+        expect(names, contains('RequestDataDirectMessage'));
+      },
+    );
+
+    test(
+      'variantSchemaNames without explicit mapping uses snake_case default',
+      () {
+        final schemas = [
+          FlorvalSchema(
+            name: 'PostContent',
+            fields: [],
+            oneOf: [
+              FlorvalSchema(name: 'TextBlock', fields: []),
+              FlorvalSchema(name: 'ImageBlock', fields: []),
+            ],
+            discriminator: FlorvalDiscriminator(
+              propertyName: 'kind',
+            ),
+          ),
+        ];
+
+        final names = ModelGenerator.variantSchemaNames(schemas);
+
+        expect(names, contains('TextBlock'));
+        expect(names, contains('ImageBlock'));
+        // Default: ReCase(variant.name).snakeCase → 'text_block'
+        // Subclass: PostContent + ReCase('text_block').pascalCase = PostContentTextBlock
+        expect(names, contains('PostContentTextBlock'));
+        expect(names, contains('PostContentImageBlock'));
+      },
+    );
+
+    test(
+      'unionSubclassNames collects subclass names from discriminator unions',
+      () {
+        final schemas = [
+          FlorvalSchema(
+            name: 'RequestData',
+            fields: [],
+            oneOf: [
+              FlorvalSchema(name: 'RoomInvitation', fields: []),
+              FlorvalSchema(name: 'DirectMessage', fields: []),
+            ],
+            discriminator: FlorvalDiscriminator(
+              propertyName: 'type',
+              mapping: {
+                'room_invitation': 'RoomInvitation',
+                'direct_message': 'DirectMessage',
+              },
+            ),
+          ),
+        ];
+
+        final names = ModelGenerator.unionSubclassNames(schemas);
+
+        // Only subclass names, NOT original variant names
+        expect(names, contains('RequestDataRoomInvitation'));
+        expect(names, contains('RequestDataDirectMessage'));
+        expect(names, isNot(contains('RoomInvitation')));
+        expect(names, isNot(contains('DirectMessage')));
+      },
+    );
+
+    test(
+      'unionSubclassNames collects subclass names from non-discriminator unions',
+      () {
+        final schemas = [
+          FlorvalSchema(
+            name: 'TaskOwner',
+            fields: [],
+            anyOf: [
+              FlorvalSchema(name: 'User', fields: []),
+              FlorvalSchema(name: 'Group', fields: []),
+            ],
+          ),
+        ];
+
+        final names = ModelGenerator.unionSubclassNames(schemas);
+
+        // Subclass names from non-discriminator union
+        expect(names, contains('TaskOwnerUser'));
+        expect(names, contains('TaskOwnerGroup'));
+        // Variant type names must NOT be included
+        expect(names, isNot(contains('User')));
+        expect(names, isNot(contains('Group')));
+      },
+    );
+
+    test(
+      'unionSubclassNames skips non-union schemas',
+      () {
+        final schemas = [
+          FlorvalSchema(name: 'User', fields: []),
+          FlorvalSchema(name: 'Task', fields: []),
+        ];
+
+        final names = ModelGenerator.unionSubclassNames(schemas);
+
+        expect(names, isEmpty);
       },
     );
 
