@@ -1,3 +1,7 @@
+// coverage:ignore-file
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'retry.dart';

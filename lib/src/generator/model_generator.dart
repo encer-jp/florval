@@ -5,6 +5,7 @@ import '../model/api_schema.dart';
 import '../model/api_type.dart';
 import '../utils/dart_identifier.dart';
 import '../utils/doc_comment.dart';
+import '../utils/generated_header.dart';
 
 /// Generates Dart model classes from FlorvalSchemas.
 ///
@@ -36,11 +37,13 @@ class ModelGenerator {
     final hasAbsentable = schema.fields.any((f) => f.absentable);
     final buffer = StringBuffer();
 
+    // Generated file header (lint suppression)
+    buffer.writeln(generatedFileHeader);
     // Custom header
     if (templateConfig?.header != null) {
       buffer.writeln(templateConfig!.header);
-      buffer.writeln();
     }
+    buffer.writeln();
 
     // Imports
     buffer.writeln(
@@ -119,11 +122,13 @@ class ModelGenerator {
   String _generateEnum(FlorvalSchema schema) {
     final buffer = StringBuffer();
 
+    // Generated file header (lint suppression)
+    buffer.writeln(generatedFileHeader);
     // Custom header
     if (templateConfig?.header != null) {
       buffer.writeln(templateConfig!.header);
-      buffer.writeln();
     }
+    buffer.writeln();
 
     // Imports
     buffer.writeln("import 'package:json_annotation/json_annotation.dart';");
@@ -236,11 +241,13 @@ class ModelGenerator {
     final fileName = ReCase(schema.name).snakeCase;
     final buffer = StringBuffer();
 
+    // Generated file header (lint suppression)
+    buffer.writeln(generatedFileHeader);
     // Custom header
     if (templateConfig?.header != null) {
       buffer.writeln(templateConfig!.header);
-      buffer.writeln();
     }
+    buffer.writeln();
 
     // Imports
     buffer.writeln(
@@ -321,11 +328,13 @@ class ModelGenerator {
     final variants = schema.oneOf ?? schema.anyOf ?? [];
     final buffer = StringBuffer();
 
+    // Generated file header (lint suppression)
+    buffer.writeln(generatedFileHeader);
     // Custom header
     if (templateConfig?.header != null) {
       buffer.writeln(templateConfig!.header);
-      buffer.writeln();
     }
+    buffer.writeln();
 
     // Custom model imports
     if (templateConfig != null) {
@@ -701,10 +710,12 @@ class ModelGenerator {
   String generatePaginatedData() {
     final buffer = StringBuffer();
 
+    // Generated file header (lint suppression)
+    buffer.writeln(generatedFileHeader);
     if (templateConfig?.header != null) {
       buffer.writeln(templateConfig!.header);
-      buffer.writeln();
     }
+    buffer.writeln();
 
     buffer.writeln('/// Paginated data container for cursor-based pagination.');
     buffer.writeln('///');
@@ -739,10 +750,12 @@ class ModelGenerator {
   String generateApiException() {
     final buffer = StringBuffer();
 
+    // Generated file header (lint suppression)
+    buffer.writeln(generatedFileHeader);
     if (templateConfig?.header != null) {
       buffer.writeln(templateConfig!.header);
-      buffer.writeln();
     }
+    buffer.writeln();
 
     buffer.writeln('/// Exception wrapping a non-success API response.');
     buffer.writeln('class ApiException implements Exception {');

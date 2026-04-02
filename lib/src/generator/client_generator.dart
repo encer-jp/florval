@@ -5,6 +5,7 @@ import '../model/api_endpoint.dart';
 import '../model/api_response.dart';
 import '../utils/doc_comment.dart';
 import '../utils/import_collector.dart';
+import '../utils/generated_header.dart';
 import '../utils/status_code.dart';
 
 /// Generates dio API client classes grouped by tag.
@@ -18,11 +19,13 @@ class ClientGenerator {
     final className = '${ReCase(tag).pascalCase}ApiClient';
     final buffer = StringBuffer();
 
+    // Generated file header (lint suppression)
+    buffer.writeln(generatedFileHeader);
     // Custom header
     if (templateConfig?.header != null) {
       buffer.writeln(templateConfig!.header);
-      buffer.writeln();
     }
+    buffer.writeln();
 
     // Imports
     buffer.writeln("import 'package:dio/dio.dart';");

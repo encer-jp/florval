@@ -5,6 +5,7 @@ import '../model/api_endpoint.dart';
 import '../model/api_response.dart';
 import '../model/api_type.dart';
 import '../utils/import_collector.dart';
+import '../utils/generated_header.dart';
 import '../utils/status_code.dart';
 
 /// Generates plain Dart sealed classes for status-code-based response Union types.
@@ -22,11 +23,13 @@ class ResponseGenerator {
         '${ReCase(endpoint.operationId).pascalCase}Response';
     final buffer = StringBuffer();
 
+    // Generated file header (lint suppression)
+    buffer.writeln(generatedFileHeader);
     // Custom header
     if (templateConfig?.header != null) {
       buffer.writeln(templateConfig!.header);
-      buffer.writeln();
     }
+    buffer.writeln();
 
     // Import model types with m prefix to avoid collision with response class name
     final imports = _collectImports(endpoint);

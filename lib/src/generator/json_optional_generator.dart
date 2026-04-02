@@ -1,4 +1,5 @@
 import '../config/template_config.dart';
+import '../utils/generated_header.dart';
 
 /// Generates the `core/json_optional.dart` runtime type file.
 ///
@@ -14,11 +15,13 @@ class JsonOptionalGenerator {
   String generate() {
     final buffer = StringBuffer();
 
+    // Generated file header (lint suppression)
+    buffer.writeln(generatedFileHeader);
     // Custom header
     if (templateConfig?.header != null) {
       buffer.writeln(templateConfig!.header);
-      buffer.writeln();
     }
+    buffer.writeln();
 
     buffer.writeln("import 'package:freezed_annotation/freezed_annotation.dart';");
     buffer.writeln();

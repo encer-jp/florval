@@ -1,3 +1,7 @@
+// coverage:ignore-file
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint
+
 import '../models/login_response.dart' as m;
 import '../models/unauthorized_error.dart' as m;
 
