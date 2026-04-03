@@ -362,6 +362,10 @@ class FlorvalRunner {
       coreFileNames: coreFileNames,
     );
 
+    // Post-process: apply lint fixes and formatting
+    logger.info('Formatting generated code...');
+    writer.formatOutput(log: (msg) => logger.warn(msg));
+
     logger.success(
         'Generated ${modelNames.length} models, ${responseNames.length} responses, ${clientNames.length} clients${providerNames.isNotEmpty ? ', ${providerNames.length} providers' : ''}');
     logger.info('Output written to ${config.outputDirectory}');
