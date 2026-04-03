@@ -51,6 +51,7 @@ class ProviderGenerator {
     for (final endpoint in endpoints) {
       if (endpoint.method == 'GET' && endpoint.pagination != null) {
         _writePaginatedProvider(buffer, tag, endpoint);
+        _writePaginatedMutation(buffer, tag, endpoint);
       } else if (endpoint.method == 'GET') {
         _writeGetProvider(buffer, tag, endpoint);
       } else {
@@ -77,7 +78,8 @@ class ProviderGenerator {
     if (hasMultipart) {
       buffer.writeln("import 'package:dio/dio.dart';");
     }
-    if (hasMutationEndpoints) {
+    final hasPagination = endpoints.any((e) => e.pagination != null);
+    if (hasMutationEndpoints || hasPagination) {
       buffer.writeln(
           "import 'package:riverpod/experimental/mutation.dart';");
     }
@@ -94,7 +96,6 @@ class ProviderGenerator {
     buffer.writeln();
 
     // Import pagination utilities if needed
-    final hasPagination = endpoints.any((e) => e.pagination != null);
     if (hasPagination) {
       buffer.writeln("import '../models/api_exception.dart';");
       buffer.writeln("import '../models/paginated_data.dart';");
@@ -271,9 +272,9 @@ class ProviderGenerator {
     buffer.writeln('  }');
     buffer.writeln();
 
-    // fetchMore() method
-    buffer.writeln('  Future<void> fetchMore() async {');
-    buffer.writeln('    if (!_hasMore || _nextCursor == null) return;');
+    // loadNextPage() method — called by external Mutation helper
+    buffer.writeln('  Future<$paginatedType> loadNextPage() async {');
+    buffer.writeln('    if (!_hasMore || _nextCursor == null) return state.requireValue;');
     buffer.writeln();
     buffer.writeln('    final client = ref.read($clientProvider);');
 
@@ -291,17 +292,48 @@ class ProviderGenerator {
         '        _nextCursor = data.${ReCase(pagination.nextCursorField).camelCase};');
     buffer.writeln(
         '        _hasMore = data.${ReCase(pagination.nextCursorField).camelCase} != null;');
-    buffer.writeln('        state = AsyncData(PaginatedData(');
+    buffer.writeln('        final result = PaginatedData(');
     buffer.writeln('          items: List.unmodifiable(_allItems),');
     buffer.writeln('          nextCursor: _nextCursor,');
     buffer.writeln('          hasMore: _hasMore,');
     buffer.writeln('          lastPage: data,');
-    buffer.writeln('        ));');
+    buffer.writeln('        );');
+    buffer.writeln('        state = AsyncData(result);');
+    buffer.writeln('        return result;');
     buffer.writeln('      default:');
     buffer.writeln(
-        '        state = AsyncError(ApiException(response), StackTrace.current);');
+        '        throw ApiException(response);');
     buffer.writeln('    }');
     buffer.writeln('  }');
+    buffer.writeln('}');
+  }
+
+  void _writePaginatedMutation(
+      StringBuffer buffer, String tag, FlorvalEndpoint endpoint) {
+    final className = ReCase(endpoint.operationId).pascalCase;
+    final pagination = endpoint.pagination!;
+    final itemDartType = pagination.itemType.dartType;
+    final pageDartType = endpoint.responses[200]?.type?.dartType ?? 'dynamic';
+    final paginatedType = 'PaginatedData<$itemDartType, $pageDartType>';
+    final providerName = '${ReCase(endpoint.operationId).camelCase}Provider';
+    final mutationName = 'fetchMore${className}Mutation';
+    final helperName = 'fetchMore${className}';
+
+    // Mutation constant
+    buffer.writeln();
+    buffer.writeln('/// Mutation for fetching more pages of ${endpoint.operationId}.');
+    buffer.writeln('final $mutationName = Mutation<$paginatedType>();');
+
+    // Helper function
+    buffer.writeln();
+    buffer.writeln('/// Executes fetchMore mutation for ${endpoint.operationId}.');
+    buffer.writeln('Future<$paginatedType> $helperName(');
+    buffer.writeln('  MutationTarget ref,');
+    buffer.writeln(') async {');
+    buffer.writeln('  return $mutationName.run(ref, (tsx) async {');
+    buffer.writeln('    final notifier = tsx.get($providerName.notifier);');
+    buffer.writeln('    return notifier.loadNextPage();');
+    buffer.writeln('  });');
     buffer.writeln('}');
   }
 

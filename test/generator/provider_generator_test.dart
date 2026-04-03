@@ -546,12 +546,12 @@ void main() {
             ),
           );
 
-      test('generates paginated provider with fetchMore', () {
+      test('generates paginated provider with loadNextPage', () {
         final code = generator.generate('pets', [makePaginatedEndpoint()]);
 
         expect(code, contains('class ListPetsPaginated extends _\$ListPetsPaginated'));
         expect(code, contains('FutureOr<PaginatedData<Pet, ListPetsPaginatedPage>> build('));
-        expect(code, contains('Future<void> fetchMore()'));
+        expect(code, contains('Future<PaginatedData<Pet, ListPetsPaginatedPage>> loadNextPage()'));
       });
 
       test('paginated provider contains _allItems and _nextCursor fields', () {
@@ -581,24 +581,45 @@ void main() {
         expect(code, contains('throw ApiException(response)'));
       });
 
-      test('paginated provider fetchMore() uses cursor param', () {
+      test('paginated provider loadNextPage() uses cursor param', () {
         final code = generator.generate('pets', [makePaginatedEndpoint()]);
 
-        expect(code, contains('if (!_hasMore || _nextCursor == null) return;'));
+        expect(code, contains('if (!_hasMore || _nextCursor == null) return state.requireValue;'));
         expect(code, contains('after: _nextCursor'));
       });
 
-      test('paginated provider fetchMore() appends items', () {
+      test('paginated provider loadNextPage() updates state and returns result', () {
         final code = generator.generate('pets', [makePaginatedEndpoint()]);
 
-        // fetchMore should update state with AsyncData
-        expect(code, contains('state = AsyncData(PaginatedData('));
+        expect(code, contains('state = AsyncData(result);'));
+        expect(code, contains('return result;'));
       });
 
-      test('paginated provider fetchMore() handles errors with AsyncError', () {
+      test('paginated provider loadNextPage() throws on error instead of AsyncError', () {
         final code = generator.generate('pets', [makePaginatedEndpoint()]);
 
-        expect(code, contains('state = AsyncError(ApiException(response), StackTrace.current)'));
+        expect(code, isNot(contains('state = AsyncError')));
+        expect(code, contains('throw ApiException(response)'));
+      });
+
+      test('generates external Mutation constant for paginated provider', () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        expect(code, contains('final fetchMoreListPetsPaginatedMutation = Mutation<PaginatedData<Pet, ListPetsPaginatedPage>>();'));
+      });
+
+      test('generates Mutation helper function for paginated provider', () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        expect(code, contains('Future<PaginatedData<Pet, ListPetsPaginatedPage>> fetchMoreListPetsPaginated('));
+        expect(code, contains('MutationTarget ref,'));
+        expect(code, contains('notifier.loadNextPage()'));
+      });
+
+      test('paginated endpoint imports mutation.dart', () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        expect(code, contains("import 'package:riverpod/experimental/mutation.dart';"));
       });
 
       test('paginated provider excludes cursor param from build()', () {
