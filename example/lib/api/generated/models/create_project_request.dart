@@ -8,9 +8,9 @@ abstract class CreateProjectRequest with _$CreateProjectRequest {
   const factory CreateProjectRequest({
     required String name,
     String? description,
-    @JsonKey(name: 'member_ids')
-    required List<String> memberIds,
+    @JsonKey(name: 'member_ids') required List<String> memberIds,
   }) = _CreateProjectRequest;
 
-  factory CreateProjectRequest.fromJson(Map<String, dynamic> json) => _$CreateProjectRequestFromJson(json);
+  factory CreateProjectRequest.fromJson(Map<String, dynamic> json) =>
+      _$CreateProjectRequestFromJson(json);
 }

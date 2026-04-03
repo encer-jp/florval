@@ -6,11 +6,16 @@ import '../models/validation_error.dart' as m;
 sealed class UpdateTaskResponse {
   const UpdateTaskResponse();
 
-  const factory UpdateTaskResponse.success(m.Task data) = UpdateTaskResponseSuccess;
-  const factory UpdateTaskResponse.unauthorized(m.UnauthorizedError data) = UpdateTaskResponseUnauthorized;
-  const factory UpdateTaskResponse.notFound(m.NotFoundError data) = UpdateTaskResponseNotFound;
-  const factory UpdateTaskResponse.unprocessableEntity(m.ValidationError data) = UpdateTaskResponseUnprocessableEntity;
-  const factory UpdateTaskResponse.unknown(int statusCode, dynamic body) = UpdateTaskResponseUnknown;
+  const factory UpdateTaskResponse.success(m.Task data) =
+      UpdateTaskResponseSuccess;
+  const factory UpdateTaskResponse.unauthorized(m.UnauthorizedError data) =
+      UpdateTaskResponseUnauthorized;
+  const factory UpdateTaskResponse.notFound(m.NotFoundError data) =
+      UpdateTaskResponseNotFound;
+  const factory UpdateTaskResponse.unprocessableEntity(m.ValidationError data) =
+      UpdateTaskResponseUnprocessableEntity;
+  const factory UpdateTaskResponse.unknown(int statusCode, dynamic body) =
+      UpdateTaskResponseUnknown;
 }
 
 class UpdateTaskResponseSuccess extends UpdateTaskResponse {

@@ -5,9 +5,12 @@ sealed class DeleteTaskResponse {
   const DeleteTaskResponse();
 
   const factory DeleteTaskResponse.noContent() = DeleteTaskResponseNoContent;
-  const factory DeleteTaskResponse.unauthorized(m.UnauthorizedError data) = DeleteTaskResponseUnauthorized;
-  const factory DeleteTaskResponse.notFound(m.NotFoundError data) = DeleteTaskResponseNotFound;
-  const factory DeleteTaskResponse.unknown(int statusCode, dynamic body) = DeleteTaskResponseUnknown;
+  const factory DeleteTaskResponse.unauthorized(m.UnauthorizedError data) =
+      DeleteTaskResponseUnauthorized;
+  const factory DeleteTaskResponse.notFound(m.NotFoundError data) =
+      DeleteTaskResponseNotFound;
+  const factory DeleteTaskResponse.unknown(int statusCode, dynamic body) =
+      DeleteTaskResponseUnknown;
 }
 
 class DeleteTaskResponseNoContent extends DeleteTaskResponse {

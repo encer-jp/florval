@@ -9,5 +9,6 @@ abstract class NotFoundError with _$NotFoundError {
     required String message,
   }) = _NotFoundError;
 
-  factory NotFoundError.fromJson(Map<String, dynamic> json) => _$NotFoundErrorFromJson(json);
+  factory NotFoundError.fromJson(Map<String, dynamic> json) =>
+      _$NotFoundErrorFromJson(json);
 }

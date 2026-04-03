@@ -4,9 +4,12 @@ import '../models/unauthorized_error.dart' as m;
 sealed class ListProjectsResponse {
   const ListProjectsResponse();
 
-  const factory ListProjectsResponse.success(List<m.Project> data) = ListProjectsResponseSuccess;
-  const factory ListProjectsResponse.unauthorized(m.UnauthorizedError data) = ListProjectsResponseUnauthorized;
-  const factory ListProjectsResponse.unknown(int statusCode, dynamic body) = ListProjectsResponseUnknown;
+  const factory ListProjectsResponse.success(List<m.Project> data) =
+      ListProjectsResponseSuccess;
+  const factory ListProjectsResponse.unauthorized(m.UnauthorizedError data) =
+      ListProjectsResponseUnauthorized;
+  const factory ListProjectsResponse.unknown(int statusCode, dynamic body) =
+      ListProjectsResponseUnknown;
 }
 
 class ListProjectsResponseSuccess extends ListProjectsResponse {

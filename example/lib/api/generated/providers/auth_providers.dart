@@ -26,4 +26,3 @@ Future<r.LoginResponse> login(
     return result;
   });
 }
-

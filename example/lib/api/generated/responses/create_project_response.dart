@@ -5,10 +5,14 @@ import '../models/validation_error.dart' as m;
 sealed class CreateProjectResponse {
   const CreateProjectResponse();
 
-  const factory CreateProjectResponse.created(m.Project data) = CreateProjectResponseCreated;
-  const factory CreateProjectResponse.unauthorized(m.UnauthorizedError data) = CreateProjectResponseUnauthorized;
-  const factory CreateProjectResponse.unprocessableEntity(m.ValidationError data) = CreateProjectResponseUnprocessableEntity;
-  const factory CreateProjectResponse.unknown(int statusCode, dynamic body) = CreateProjectResponseUnknown;
+  const factory CreateProjectResponse.created(m.Project data) =
+      CreateProjectResponseCreated;
+  const factory CreateProjectResponse.unauthorized(m.UnauthorizedError data) =
+      CreateProjectResponseUnauthorized;
+  const factory CreateProjectResponse.unprocessableEntity(
+      m.ValidationError data) = CreateProjectResponseUnprocessableEntity;
+  const factory CreateProjectResponse.unknown(int statusCode, dynamic body) =
+      CreateProjectResponseUnknown;
 }
 
 class CreateProjectResponseCreated extends CreateProjectResponse {

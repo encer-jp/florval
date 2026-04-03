@@ -5,10 +5,14 @@ import '../models/not_found_error.dart' as m;
 sealed class GetProjectResponse {
   const GetProjectResponse();
 
-  const factory GetProjectResponse.success(m.Project data) = GetProjectResponseSuccess;
-  const factory GetProjectResponse.unauthorized(m.UnauthorizedError data) = GetProjectResponseUnauthorized;
-  const factory GetProjectResponse.notFound(m.NotFoundError data) = GetProjectResponseNotFound;
-  const factory GetProjectResponse.unknown(int statusCode, dynamic body) = GetProjectResponseUnknown;
+  const factory GetProjectResponse.success(m.Project data) =
+      GetProjectResponseSuccess;
+  const factory GetProjectResponse.unauthorized(m.UnauthorizedError data) =
+      GetProjectResponseUnauthorized;
+  const factory GetProjectResponse.notFound(m.NotFoundError data) =
+      GetProjectResponseNotFound;
+  const factory GetProjectResponse.unknown(int statusCode, dynamic body) =
+      GetProjectResponseUnknown;
 }
 
 class GetProjectResponseSuccess extends GetProjectResponse {

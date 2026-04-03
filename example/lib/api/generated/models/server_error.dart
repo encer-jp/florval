@@ -10,5 +10,6 @@ abstract class ServerError with _$ServerError {
     required String code,
   }) = _ServerError;
 
-  factory ServerError.fromJson(Map<String, dynamic> json) => _$ServerErrorFromJson(json);
+  factory ServerError.fromJson(Map<String, dynamic> json) =>
+      _$ServerErrorFromJson(json);
 }

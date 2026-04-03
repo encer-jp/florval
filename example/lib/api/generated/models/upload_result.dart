@@ -9,12 +9,11 @@ abstract class UploadResult with _$UploadResult {
     required String id,
     required String filename,
     required int size,
-    @JsonKey(name: 'content_type')
-    required String contentType,
+    @JsonKey(name: 'content_type') required String contentType,
     required String url,
-    @JsonKey(name: 'uploaded_at')
-    required DateTime uploadedAt,
+    @JsonKey(name: 'uploaded_at') required DateTime uploadedAt,
   }) = _UploadResult;
 
-  factory UploadResult.fromJson(Map<String, dynamic> json) => _$UploadResultFromJson(json);
+  factory UploadResult.fromJson(Map<String, dynamic> json) =>
+      _$UploadResultFromJson(json);
 }

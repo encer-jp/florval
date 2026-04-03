@@ -12,9 +12,9 @@ abstract class PaginatedUsers with _$PaginatedUsers {
     required int page,
     required int limit,
     required int total,
-    @JsonKey(name: 'total_pages')
-    required int totalPages,
+    @JsonKey(name: 'total_pages') required int totalPages,
   }) = _PaginatedUsers;
 
-  factory PaginatedUsers.fromJson(Map<String, dynamic> json) => _$PaginatedUsersFromJson(json);
+  factory PaginatedUsers.fromJson(Map<String, dynamic> json) =>
+      _$PaginatedUsersFromJson(json);
 }

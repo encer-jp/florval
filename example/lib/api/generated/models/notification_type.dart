@@ -9,10 +9,10 @@ enum NotificationType {
   projectInvited;
 
   String get jsonValue => switch (this) {
-    NotificationType.taskAssigned => 'task_assigned',
-    NotificationType.commentAdded => 'comment_added',
-    NotificationType.projectInvited => 'project_invited',
-  };
+        NotificationType.taskAssigned => 'task_assigned',
+        NotificationType.commentAdded => 'comment_added',
+        NotificationType.projectInvited => 'project_invited',
+      };
 
   static NotificationType fromJsonValue(String value) =>
       values.firstWhere((e) => e.jsonValue == value);

@@ -9,5 +9,6 @@ abstract class UnauthorizedError with _$UnauthorizedError {
     required String message,
   }) = _UnauthorizedError;
 
-  factory UnauthorizedError.fromJson(Map<String, dynamic> json) => _$UnauthorizedErrorFromJson(json);
+  factory UnauthorizedError.fromJson(Map<String, dynamic> json) =>
+      _$UnauthorizedErrorFromJson(json);
 }

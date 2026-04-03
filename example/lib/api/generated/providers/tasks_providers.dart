@@ -24,7 +24,11 @@ class ListTasks extends _$ListTasks {
     String? triggerError,
   }) async {
     final client = ref.watch(tasksApiClientProvider);
-    return client.listTasks(status: status, priority: priority, assigneeId: assigneeId, triggerError: triggerError);
+    return client.listTasks(
+        status: status,
+        priority: priority,
+        assigneeId: assigneeId,
+        triggerError: triggerError);
   }
 }
 
@@ -90,4 +94,3 @@ Future<r.DeleteTaskResponse> deleteTask(
     return result;
   });
 }
-

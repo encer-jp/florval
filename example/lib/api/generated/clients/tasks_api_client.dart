@@ -21,7 +21,8 @@ class TasksApiClient {
     String? triggerError,
   }) async {
     try {
-      final response = await _dio.get('/tasks',
+      final response = await _dio.get(
+        '/tasks',
         queryParameters: {
           if (status != null) 'status': status,
           if (priority != null) 'priority': priority,
@@ -31,23 +32,31 @@ class TasksApiClient {
       );
       switch (response.statusCode) {
         case 200:
-          return r.ListTasksResponse.success((response.data as List).map((e) => Task.fromJson(e as Map<String, dynamic>)).toList());
+          return r.ListTasksResponse.success((response.data as List)
+              .map((e) => Task.fromJson(e as Map<String, dynamic>))
+              .toList());
         case 401:
-          return r.ListTasksResponse.unauthorized(UnauthorizedError.fromJson(response.data as Map<String, dynamic>));
+          return r.ListTasksResponse.unauthorized(UnauthorizedError.fromJson(
+              response.data as Map<String, dynamic>));
         case 500:
-          return r.ListTasksResponse.serverError(ServerError.fromJson(response.data as Map<String, dynamic>));
+          return r.ListTasksResponse.serverError(
+              ServerError.fromJson(response.data as Map<String, dynamic>));
         default:
-          return r.ListTasksResponse.unknown(response.statusCode ?? 0, response.data);
+          return r.ListTasksResponse.unknown(
+              response.statusCode ?? 0, response.data);
       }
     } on DioException catch (e) {
       if (e.response != null) {
         switch (e.response!.statusCode) {
-        case 401:
-          return r.ListTasksResponse.unauthorized(UnauthorizedError.fromJson(e.response!.data as Map<String, dynamic>));
-        case 500:
-          return r.ListTasksResponse.serverError(ServerError.fromJson(e.response!.data as Map<String, dynamic>));
+          case 401:
+            return r.ListTasksResponse.unauthorized(UnauthorizedError.fromJson(
+                e.response!.data as Map<String, dynamic>));
+          case 500:
+            return r.ListTasksResponse.serverError(
+                ServerError.fromJson(e.response!.data as Map<String, dynamic>));
           default:
-            return r.ListTasksResponse.unknown(e.response!.statusCode ?? 0, e.response!.data);
+            return r.ListTasksResponse.unknown(
+                e.response!.statusCode ?? 0, e.response!.data);
         }
       }
       rethrow;
@@ -58,28 +67,37 @@ class TasksApiClient {
     required CreateTaskRequest body,
   }) async {
     try {
-      final response = await _dio.post('/tasks',
+      final response = await _dio.post(
+        '/tasks',
         data: body.toJson(),
       );
       switch (response.statusCode) {
         case 201:
-          return r.CreateTaskResponse.created(Task.fromJson(response.data as Map<String, dynamic>));
+          return r.CreateTaskResponse.created(
+              Task.fromJson(response.data as Map<String, dynamic>));
         case 401:
-          return r.CreateTaskResponse.unauthorized(UnauthorizedError.fromJson(response.data as Map<String, dynamic>));
+          return r.CreateTaskResponse.unauthorized(UnauthorizedError.fromJson(
+              response.data as Map<String, dynamic>));
         case 422:
-          return r.CreateTaskResponse.unprocessableEntity(ValidationError.fromJson(response.data as Map<String, dynamic>));
+          return r.CreateTaskResponse.unprocessableEntity(
+              ValidationError.fromJson(response.data as Map<String, dynamic>));
         default:
-          return r.CreateTaskResponse.unknown(response.statusCode ?? 0, response.data);
+          return r.CreateTaskResponse.unknown(
+              response.statusCode ?? 0, response.data);
       }
     } on DioException catch (e) {
       if (e.response != null) {
         switch (e.response!.statusCode) {
-        case 401:
-          return r.CreateTaskResponse.unauthorized(UnauthorizedError.fromJson(e.response!.data as Map<String, dynamic>));
-        case 422:
-          return r.CreateTaskResponse.unprocessableEntity(ValidationError.fromJson(e.response!.data as Map<String, dynamic>));
+          case 401:
+            return r.CreateTaskResponse.unauthorized(UnauthorizedError.fromJson(
+                e.response!.data as Map<String, dynamic>));
+          case 422:
+            return r.CreateTaskResponse.unprocessableEntity(
+                ValidationError.fromJson(
+                    e.response!.data as Map<String, dynamic>));
           default:
-            return r.CreateTaskResponse.unknown(e.response!.statusCode ?? 0, e.response!.data);
+            return r.CreateTaskResponse.unknown(
+                e.response!.statusCode ?? 0, e.response!.data);
         }
       }
       rethrow;
@@ -90,27 +108,35 @@ class TasksApiClient {
     required String id,
   }) async {
     try {
-      final response = await _dio.get('/tasks/$id',
+      final response = await _dio.get(
+        '/tasks/$id',
       );
       switch (response.statusCode) {
         case 200:
-          return r.GetTaskResponse.success(Task.fromJson(response.data as Map<String, dynamic>));
+          return r.GetTaskResponse.success(
+              Task.fromJson(response.data as Map<String, dynamic>));
         case 401:
-          return r.GetTaskResponse.unauthorized(UnauthorizedError.fromJson(response.data as Map<String, dynamic>));
+          return r.GetTaskResponse.unauthorized(UnauthorizedError.fromJson(
+              response.data as Map<String, dynamic>));
         case 404:
-          return r.GetTaskResponse.notFound(NotFoundError.fromJson(response.data as Map<String, dynamic>));
+          return r.GetTaskResponse.notFound(
+              NotFoundError.fromJson(response.data as Map<String, dynamic>));
         default:
-          return r.GetTaskResponse.unknown(response.statusCode ?? 0, response.data);
+          return r.GetTaskResponse.unknown(
+              response.statusCode ?? 0, response.data);
       }
     } on DioException catch (e) {
       if (e.response != null) {
         switch (e.response!.statusCode) {
-        case 401:
-          return r.GetTaskResponse.unauthorized(UnauthorizedError.fromJson(e.response!.data as Map<String, dynamic>));
-        case 404:
-          return r.GetTaskResponse.notFound(NotFoundError.fromJson(e.response!.data as Map<String, dynamic>));
+          case 401:
+            return r.GetTaskResponse.unauthorized(UnauthorizedError.fromJson(
+                e.response!.data as Map<String, dynamic>));
+          case 404:
+            return r.GetTaskResponse.notFound(NotFoundError.fromJson(
+                e.response!.data as Map<String, dynamic>));
           default:
-            return r.GetTaskResponse.unknown(e.response!.statusCode ?? 0, e.response!.data);
+            return r.GetTaskResponse.unknown(
+                e.response!.statusCode ?? 0, e.response!.data);
         }
       }
       rethrow;
@@ -122,32 +148,43 @@ class TasksApiClient {
     required UpdateTaskRequest body,
   }) async {
     try {
-      final response = await _dio.put('/tasks/$id',
+      final response = await _dio.put(
+        '/tasks/$id',
         data: body.toJson(),
       );
       switch (response.statusCode) {
         case 200:
-          return r.UpdateTaskResponse.success(Task.fromJson(response.data as Map<String, dynamic>));
+          return r.UpdateTaskResponse.success(
+              Task.fromJson(response.data as Map<String, dynamic>));
         case 401:
-          return r.UpdateTaskResponse.unauthorized(UnauthorizedError.fromJson(response.data as Map<String, dynamic>));
+          return r.UpdateTaskResponse.unauthorized(UnauthorizedError.fromJson(
+              response.data as Map<String, dynamic>));
         case 404:
-          return r.UpdateTaskResponse.notFound(NotFoundError.fromJson(response.data as Map<String, dynamic>));
+          return r.UpdateTaskResponse.notFound(
+              NotFoundError.fromJson(response.data as Map<String, dynamic>));
         case 422:
-          return r.UpdateTaskResponse.unprocessableEntity(ValidationError.fromJson(response.data as Map<String, dynamic>));
+          return r.UpdateTaskResponse.unprocessableEntity(
+              ValidationError.fromJson(response.data as Map<String, dynamic>));
         default:
-          return r.UpdateTaskResponse.unknown(response.statusCode ?? 0, response.data);
+          return r.UpdateTaskResponse.unknown(
+              response.statusCode ?? 0, response.data);
       }
     } on DioException catch (e) {
       if (e.response != null) {
         switch (e.response!.statusCode) {
-        case 401:
-          return r.UpdateTaskResponse.unauthorized(UnauthorizedError.fromJson(e.response!.data as Map<String, dynamic>));
-        case 404:
-          return r.UpdateTaskResponse.notFound(NotFoundError.fromJson(e.response!.data as Map<String, dynamic>));
-        case 422:
-          return r.UpdateTaskResponse.unprocessableEntity(ValidationError.fromJson(e.response!.data as Map<String, dynamic>));
+          case 401:
+            return r.UpdateTaskResponse.unauthorized(UnauthorizedError.fromJson(
+                e.response!.data as Map<String, dynamic>));
+          case 404:
+            return r.UpdateTaskResponse.notFound(NotFoundError.fromJson(
+                e.response!.data as Map<String, dynamic>));
+          case 422:
+            return r.UpdateTaskResponse.unprocessableEntity(
+                ValidationError.fromJson(
+                    e.response!.data as Map<String, dynamic>));
           default:
-            return r.UpdateTaskResponse.unknown(e.response!.statusCode ?? 0, e.response!.data);
+            return r.UpdateTaskResponse.unknown(
+                e.response!.statusCode ?? 0, e.response!.data);
         }
       }
       rethrow;
@@ -158,27 +195,34 @@ class TasksApiClient {
     required String id,
   }) async {
     try {
-      final response = await _dio.delete('/tasks/$id',
+      final response = await _dio.delete(
+        '/tasks/$id',
       );
       switch (response.statusCode) {
         case 204:
           return r.DeleteTaskResponse.noContent();
         case 401:
-          return r.DeleteTaskResponse.unauthorized(UnauthorizedError.fromJson(response.data as Map<String, dynamic>));
+          return r.DeleteTaskResponse.unauthorized(UnauthorizedError.fromJson(
+              response.data as Map<String, dynamic>));
         case 404:
-          return r.DeleteTaskResponse.notFound(NotFoundError.fromJson(response.data as Map<String, dynamic>));
+          return r.DeleteTaskResponse.notFound(
+              NotFoundError.fromJson(response.data as Map<String, dynamic>));
         default:
-          return r.DeleteTaskResponse.unknown(response.statusCode ?? 0, response.data);
+          return r.DeleteTaskResponse.unknown(
+              response.statusCode ?? 0, response.data);
       }
     } on DioException catch (e) {
       if (e.response != null) {
         switch (e.response!.statusCode) {
-        case 401:
-          return r.DeleteTaskResponse.unauthorized(UnauthorizedError.fromJson(e.response!.data as Map<String, dynamic>));
-        case 404:
-          return r.DeleteTaskResponse.notFound(NotFoundError.fromJson(e.response!.data as Map<String, dynamic>));
+          case 401:
+            return r.DeleteTaskResponse.unauthorized(UnauthorizedError.fromJson(
+                e.response!.data as Map<String, dynamic>));
+          case 404:
+            return r.DeleteTaskResponse.notFound(NotFoundError.fromJson(
+                e.response!.data as Map<String, dynamic>));
           default:
-            return r.DeleteTaskResponse.unknown(e.response!.statusCode ?? 0, e.response!.data);
+            return r.DeleteTaskResponse.unknown(
+                e.response!.statusCode ?? 0, e.response!.data);
         }
       }
       rethrow;

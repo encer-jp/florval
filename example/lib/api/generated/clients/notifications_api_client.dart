@@ -11,23 +11,32 @@ class NotificationsApiClient {
 
   Future<r.ListNotificationsResponse> listNotifications() async {
     try {
-      final response = await _dio.get('/notifications',
+      final response = await _dio.get(
+        '/notifications',
       );
       switch (response.statusCode) {
         case 200:
-          return r.ListNotificationsResponse.success((response.data as List).map((e) => Notification.fromJson(e as Map<String, dynamic>)).toList());
+          return r.ListNotificationsResponse.success((response.data as List)
+              .map((e) => Notification.fromJson(e as Map<String, dynamic>))
+              .toList());
         case 401:
-          return r.ListNotificationsResponse.unauthorized(UnauthorizedError.fromJson(response.data as Map<String, dynamic>));
+          return r.ListNotificationsResponse.unauthorized(
+              UnauthorizedError.fromJson(
+                  response.data as Map<String, dynamic>));
         default:
-          return r.ListNotificationsResponse.unknown(response.statusCode ?? 0, response.data);
+          return r.ListNotificationsResponse.unknown(
+              response.statusCode ?? 0, response.data);
       }
     } on DioException catch (e) {
       if (e.response != null) {
         switch (e.response!.statusCode) {
-        case 401:
-          return r.ListNotificationsResponse.unauthorized(UnauthorizedError.fromJson(e.response!.data as Map<String, dynamic>));
+          case 401:
+            return r.ListNotificationsResponse.unauthorized(
+                UnauthorizedError.fromJson(
+                    e.response!.data as Map<String, dynamic>));
           default:
-            return r.ListNotificationsResponse.unknown(e.response!.statusCode ?? 0, e.response!.data);
+            return r.ListNotificationsResponse.unknown(
+                e.response!.statusCode ?? 0, e.response!.data);
         }
       }
       rethrow;

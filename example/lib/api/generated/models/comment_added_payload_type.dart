@@ -5,8 +5,8 @@ enum CommentAddedPayloadType {
   commentAdded;
 
   String get jsonValue => switch (this) {
-    CommentAddedPayloadType.commentAdded => 'comment_added',
-  };
+        CommentAddedPayloadType.commentAdded => 'comment_added',
+      };
 
   static CommentAddedPayloadType fromJsonValue(String value) =>
       values.firstWhere((e) => e.jsonValue == value);

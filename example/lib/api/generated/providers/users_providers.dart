@@ -34,4 +34,3 @@ class GetUser extends _$GetUser {
     return client.getUser(id: id);
   }
 }
-

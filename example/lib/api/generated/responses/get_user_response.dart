@@ -6,9 +6,12 @@ sealed class GetUserResponse {
   const GetUserResponse();
 
   const factory GetUserResponse.success(m.User data) = GetUserResponseSuccess;
-  const factory GetUserResponse.unauthorized(m.UnauthorizedError data) = GetUserResponseUnauthorized;
-  const factory GetUserResponse.notFound(m.NotFoundError data) = GetUserResponseNotFound;
-  const factory GetUserResponse.unknown(int statusCode, dynamic body) = GetUserResponseUnknown;
+  const factory GetUserResponse.unauthorized(m.UnauthorizedError data) =
+      GetUserResponseUnauthorized;
+  const factory GetUserResponse.notFound(m.NotFoundError data) =
+      GetUserResponseNotFound;
+  const factory GetUserResponse.unknown(int statusCode, dynamic body) =
+      GetUserResponseUnknown;
 }
 
 class GetUserResponseSuccess extends GetUserResponse {

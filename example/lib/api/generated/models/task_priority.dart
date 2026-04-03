@@ -11,11 +11,11 @@ enum TaskPriority {
   urgent;
 
   String get jsonValue => switch (this) {
-    TaskPriority.low => 'low',
-    TaskPriority.medium => 'medium',
-    TaskPriority.high => 'high',
-    TaskPriority.urgent => 'urgent',
-  };
+        TaskPriority.low => 'low',
+        TaskPriority.medium => 'medium',
+        TaskPriority.high => 'high',
+        TaskPriority.urgent => 'urgent',
+      };
 
   static TaskPriority fromJsonValue(String value) =>
       values.firstWhere((e) => e.jsonValue == value);

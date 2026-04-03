@@ -13,12 +13,11 @@ abstract class CreateTaskRequest with _$CreateTaskRequest {
     String? description,
     CreateTaskRequestStatus? status,
     CreateTaskRequestPriority? priority,
-    @JsonKey(name: 'assignee_id')
-    String? assigneeId,
-    @JsonKey(name: 'due_date')
-    DateTime? dueDate,
+    @JsonKey(name: 'assignee_id') String? assigneeId,
+    @JsonKey(name: 'due_date') DateTime? dueDate,
     List<String>? tags,
   }) = _CreateTaskRequest;
 
-  factory CreateTaskRequest.fromJson(Map<String, dynamic> json) => _$CreateTaskRequestFromJson(json);
+  factory CreateTaskRequest.fromJson(Map<String, dynamic> json) =>
+      _$CreateTaskRequestFromJson(json);
 }

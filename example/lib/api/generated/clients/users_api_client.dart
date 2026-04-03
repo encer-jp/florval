@@ -17,7 +17,8 @@ class UsersApiClient {
     String? search,
   }) async {
     try {
-      final response = await _dio.get('/users',
+      final response = await _dio.get(
+        '/users',
         queryParameters: {
           if (page != null) 'page': page,
           if (limit != null) 'limit': limit,
@@ -26,19 +27,24 @@ class UsersApiClient {
       );
       switch (response.statusCode) {
         case 200:
-          return r.ListUsersResponse.success(PaginatedUsers.fromJson(response.data as Map<String, dynamic>));
+          return r.ListUsersResponse.success(
+              PaginatedUsers.fromJson(response.data as Map<String, dynamic>));
         case 401:
-          return r.ListUsersResponse.unauthorized(UnauthorizedError.fromJson(response.data as Map<String, dynamic>));
+          return r.ListUsersResponse.unauthorized(UnauthorizedError.fromJson(
+              response.data as Map<String, dynamic>));
         default:
-          return r.ListUsersResponse.unknown(response.statusCode ?? 0, response.data);
+          return r.ListUsersResponse.unknown(
+              response.statusCode ?? 0, response.data);
       }
     } on DioException catch (e) {
       if (e.response != null) {
         switch (e.response!.statusCode) {
-        case 401:
-          return r.ListUsersResponse.unauthorized(UnauthorizedError.fromJson(e.response!.data as Map<String, dynamic>));
+          case 401:
+            return r.ListUsersResponse.unauthorized(UnauthorizedError.fromJson(
+                e.response!.data as Map<String, dynamic>));
           default:
-            return r.ListUsersResponse.unknown(e.response!.statusCode ?? 0, e.response!.data);
+            return r.ListUsersResponse.unknown(
+                e.response!.statusCode ?? 0, e.response!.data);
         }
       }
       rethrow;
@@ -49,27 +55,35 @@ class UsersApiClient {
     required String id,
   }) async {
     try {
-      final response = await _dio.get('/users/$id',
+      final response = await _dio.get(
+        '/users/$id',
       );
       switch (response.statusCode) {
         case 200:
-          return r.GetUserResponse.success(User.fromJson(response.data as Map<String, dynamic>));
+          return r.GetUserResponse.success(
+              User.fromJson(response.data as Map<String, dynamic>));
         case 401:
-          return r.GetUserResponse.unauthorized(UnauthorizedError.fromJson(response.data as Map<String, dynamic>));
+          return r.GetUserResponse.unauthorized(UnauthorizedError.fromJson(
+              response.data as Map<String, dynamic>));
         case 404:
-          return r.GetUserResponse.notFound(NotFoundError.fromJson(response.data as Map<String, dynamic>));
+          return r.GetUserResponse.notFound(
+              NotFoundError.fromJson(response.data as Map<String, dynamic>));
         default:
-          return r.GetUserResponse.unknown(response.statusCode ?? 0, response.data);
+          return r.GetUserResponse.unknown(
+              response.statusCode ?? 0, response.data);
       }
     } on DioException catch (e) {
       if (e.response != null) {
         switch (e.response!.statusCode) {
-        case 401:
-          return r.GetUserResponse.unauthorized(UnauthorizedError.fromJson(e.response!.data as Map<String, dynamic>));
-        case 404:
-          return r.GetUserResponse.notFound(NotFoundError.fromJson(e.response!.data as Map<String, dynamic>));
+          case 401:
+            return r.GetUserResponse.unauthorized(UnauthorizedError.fromJson(
+                e.response!.data as Map<String, dynamic>));
+          case 404:
+            return r.GetUserResponse.notFound(NotFoundError.fromJson(
+                e.response!.data as Map<String, dynamic>));
           default:
-            return r.GetUserResponse.unknown(e.response!.statusCode ?? 0, e.response!.data);
+            return r.GetUserResponse.unknown(
+                e.response!.statusCode ?? 0, e.response!.data);
         }
       }
       rethrow;

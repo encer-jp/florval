@@ -5,8 +5,8 @@ enum TaskAssignedPayloadType {
   taskAssigned;
 
   String get jsonValue => switch (this) {
-    TaskAssignedPayloadType.taskAssigned => 'task_assigned',
-  };
+        TaskAssignedPayloadType.taskAssigned => 'task_assigned',
+      };
 
   static TaskAssignedPayloadType fromJsonValue(String value) =>
       values.firstWhere((e) => e.jsonValue == value);

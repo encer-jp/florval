@@ -23,8 +23,8 @@ Future<r.UploadFileResponse> uploadFile(
 }) async {
   return uploadFileMutation.run(ref, (tsx) async {
     final client = tsx.get(uploadsApiClientProvider);
-    final result = await client.uploadFile(file: file, description: description);
+    final result =
+        await client.uploadFile(file: file, description: description);
     return result;
   });
 }
-

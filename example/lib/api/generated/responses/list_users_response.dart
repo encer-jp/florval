@@ -4,9 +4,12 @@ import '../models/unauthorized_error.dart' as m;
 sealed class ListUsersResponse {
   const ListUsersResponse();
 
-  const factory ListUsersResponse.success(m.PaginatedUsers data) = ListUsersResponseSuccess;
-  const factory ListUsersResponse.unauthorized(m.UnauthorizedError data) = ListUsersResponseUnauthorized;
-  const factory ListUsersResponse.unknown(int statusCode, dynamic body) = ListUsersResponseUnknown;
+  const factory ListUsersResponse.success(m.PaginatedUsers data) =
+      ListUsersResponseSuccess;
+  const factory ListUsersResponse.unauthorized(m.UnauthorizedError data) =
+      ListUsersResponseUnauthorized;
+  const factory ListUsersResponse.unknown(int statusCode, dynamic body) =
+      ListUsersResponseUnknown;
 }
 
 class ListUsersResponseSuccess extends ListUsersResponse {

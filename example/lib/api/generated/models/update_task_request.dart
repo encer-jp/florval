@@ -16,10 +16,13 @@ abstract class UpdateTaskRequest with _$UpdateTaskRequest {
     required UpdateTaskRequestStatus status,
     required UpdateTaskRequestPriority priority,
     @JsonKey(name: 'assignee_id')
-    @Default(JsonOptional<String>.absent()) JsonOptional<String> assigneeId,
+    @Default(JsonOptional<String>.absent())
+    JsonOptional<String> assigneeId,
     @JsonKey(name: 'due_date')
-    @Default(JsonOptional<DateTime>.absent()) JsonOptional<DateTime> dueDate,
-    @Default(JsonOptional<List<String>>.absent()) JsonOptional<List<String>> tags,
+    @Default(JsonOptional<DateTime>.absent())
+    JsonOptional<DateTime> dueDate,
+    @Default(JsonOptional<List<String>>.absent())
+    JsonOptional<List<String>> tags,
   }) = _UpdateTaskRequest;
 
   factory UpdateTaskRequest.fromJson(Map<String, dynamic> json) {
@@ -29,15 +32,20 @@ abstract class UpdateTaskRequest with _$UpdateTaskRequest {
           ? JsonOptional.value(json['description'] as String?)
           : const JsonOptional<String>.absent(),
       status: UpdateTaskRequestStatus.fromJsonValue(json['status'] as String),
-      priority: UpdateTaskRequestPriority.fromJsonValue(json['priority'] as String),
+      priority:
+          UpdateTaskRequestPriority.fromJsonValue(json['priority'] as String),
       assigneeId: json.containsKey('assignee_id')
           ? JsonOptional.value(json['assignee_id'] as String?)
           : const JsonOptional<String>.absent(),
       dueDate: json.containsKey('due_date')
-          ? JsonOptional.value(json['due_date'] != null ? DateTime.parse(json['due_date'] as String) : null)
+          ? JsonOptional.value(json['due_date'] != null
+              ? DateTime.parse(json['due_date'] as String)
+              : null)
           : const JsonOptional<DateTime>.absent(),
       tags: json.containsKey('tags')
-          ? JsonOptional.value((json['tags'] as List<dynamic>?)?.map((e) => e as String).toList())
+          ? JsonOptional.value((json['tags'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList())
           : const JsonOptional<List<String>>.absent(),
     );
   }
@@ -54,7 +62,8 @@ abstract class UpdateTaskRequest with _$UpdateTaskRequest {
       json['assignee_id'] = (assigneeId as JsonOptionalValue<String>).value;
     }
     if (dueDate is JsonOptionalValue<DateTime>) {
-      json['due_date'] = (dueDate as JsonOptionalValue<DateTime>).value?.toIso8601String();
+      json['due_date'] =
+          (dueDate as JsonOptionalValue<DateTime>).value?.toIso8601String();
     }
     if (tags is JsonOptionalValue<List<String>>) {
       json['tags'] = (tags as JsonOptionalValue<List<String>>).value;

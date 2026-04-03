@@ -5,10 +5,14 @@ import '../models/unauthorized_error.dart' as m;
 sealed class UploadFileResponse {
   const UploadFileResponse();
 
-  const factory UploadFileResponse.created(m.UploadResult data) = UploadFileResponseCreated;
-  const factory UploadFileResponse.badRequest(m.BadRequestError data) = UploadFileResponseBadRequest;
-  const factory UploadFileResponse.unauthorized(m.UnauthorizedError data) = UploadFileResponseUnauthorized;
-  const factory UploadFileResponse.unknown(int statusCode, dynamic body) = UploadFileResponseUnknown;
+  const factory UploadFileResponse.created(m.UploadResult data) =
+      UploadFileResponseCreated;
+  const factory UploadFileResponse.badRequest(m.BadRequestError data) =
+      UploadFileResponseBadRequest;
+  const factory UploadFileResponse.unauthorized(m.UnauthorizedError data) =
+      UploadFileResponseUnauthorized;
+  const factory UploadFileResponse.unknown(int statusCode, dynamic body) =
+      UploadFileResponseUnknown;
 }
 
 class UploadFileResponseCreated extends UploadFileResponse {

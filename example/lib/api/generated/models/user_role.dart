@@ -9,10 +9,10 @@ enum UserRole {
   viewer;
 
   String get jsonValue => switch (this) {
-    UserRole.admin => 'admin',
-    UserRole.member => 'member',
-    UserRole.viewer => 'viewer',
-  };
+        UserRole.admin => 'admin',
+        UserRole.member => 'member',
+        UserRole.viewer => 'viewer',
+      };
 
   static UserRole fromJsonValue(String value) =>
       values.firstWhere((e) => e.jsonValue == value);

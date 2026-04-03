@@ -4,9 +4,12 @@ import '../models/unauthorized_error.dart' as m;
 sealed class LoginResponse {
   const LoginResponse();
 
-  const factory LoginResponse.success(m.LoginResponse data) = LoginResponseSuccess;
-  const factory LoginResponse.unauthorized(m.UnauthorizedError data) = LoginResponseUnauthorized;
-  const factory LoginResponse.unknown(int statusCode, dynamic body) = LoginResponseUnknown;
+  const factory LoginResponse.success(m.LoginResponse data) =
+      LoginResponseSuccess;
+  const factory LoginResponse.unauthorized(m.UnauthorizedError data) =
+      LoginResponseUnauthorized;
+  const factory LoginResponse.unknown(int statusCode, dynamic body) =
+      LoginResponseUnknown;
 }
 
 class LoginResponseSuccess extends LoginResponse {

@@ -5,10 +5,14 @@ import '../models/server_error.dart' as m;
 sealed class ListTasksResponse {
   const ListTasksResponse();
 
-  const factory ListTasksResponse.success(List<m.Task> data) = ListTasksResponseSuccess;
-  const factory ListTasksResponse.unauthorized(m.UnauthorizedError data) = ListTasksResponseUnauthorized;
-  const factory ListTasksResponse.serverError(m.ServerError data) = ListTasksResponseServerError;
-  const factory ListTasksResponse.unknown(int statusCode, dynamic body) = ListTasksResponseUnknown;
+  const factory ListTasksResponse.success(List<m.Task> data) =
+      ListTasksResponseSuccess;
+  const factory ListTasksResponse.unauthorized(m.UnauthorizedError data) =
+      ListTasksResponseUnauthorized;
+  const factory ListTasksResponse.serverError(m.ServerError data) =
+      ListTasksResponseServerError;
+  const factory ListTasksResponse.unknown(int statusCode, dynamic body) =
+      ListTasksResponseUnknown;
 }
 
 class ListTasksResponseSuccess extends ListTasksResponse {

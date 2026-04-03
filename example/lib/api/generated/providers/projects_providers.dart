@@ -49,4 +49,3 @@ class GetProject extends _$GetProject {
     return client.getProject(id: id);
   }
 }
-

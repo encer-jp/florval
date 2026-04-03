@@ -10,5 +10,6 @@ abstract class LoginRequest with _$LoginRequest {
     required String password,
   }) = _LoginRequest;
 
-  factory LoginRequest.fromJson(Map<String, dynamic> json) => _$LoginRequestFromJson(json);
+  factory LoginRequest.fromJson(Map<String, dynamic> json) =>
+      _$LoginRequestFromJson(json);
 }

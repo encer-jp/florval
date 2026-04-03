@@ -9,10 +9,10 @@ enum CreateTaskRequestStatus {
   done;
 
   String get jsonValue => switch (this) {
-    CreateTaskRequestStatus.todo => 'todo',
-    CreateTaskRequestStatus.inProgress => 'in_progress',
-    CreateTaskRequestStatus.done => 'done',
-  };
+        CreateTaskRequestStatus.todo => 'todo',
+        CreateTaskRequestStatus.inProgress => 'in_progress',
+        CreateTaskRequestStatus.done => 'done',
+      };
 
   static CreateTaskRequestStatus fromJsonValue(String value) =>
       values.firstWhere((e) => e.jsonValue == value);

@@ -9,5 +9,6 @@ abstract class BadRequestError with _$BadRequestError {
     required String message,
   }) = _BadRequestError;
 
-  factory BadRequestError.fromJson(Map<String, dynamic> json) => _$BadRequestErrorFromJson(json);
+  factory BadRequestError.fromJson(Map<String, dynamic> json) =>
+      _$BadRequestErrorFromJson(json);
 }

@@ -5,10 +5,14 @@ import '../models/validation_error.dart' as m;
 sealed class CreateTaskResponse {
   const CreateTaskResponse();
 
-  const factory CreateTaskResponse.created(m.Task data) = CreateTaskResponseCreated;
-  const factory CreateTaskResponse.unauthorized(m.UnauthorizedError data) = CreateTaskResponseUnauthorized;
-  const factory CreateTaskResponse.unprocessableEntity(m.ValidationError data) = CreateTaskResponseUnprocessableEntity;
-  const factory CreateTaskResponse.unknown(int statusCode, dynamic body) = CreateTaskResponseUnknown;
+  const factory CreateTaskResponse.created(m.Task data) =
+      CreateTaskResponseCreated;
+  const factory CreateTaskResponse.unauthorized(m.UnauthorizedError data) =
+      CreateTaskResponseUnauthorized;
+  const factory CreateTaskResponse.unprocessableEntity(m.ValidationError data) =
+      CreateTaskResponseUnprocessableEntity;
+  const factory CreateTaskResponse.unknown(int statusCode, dynamic body) =
+      CreateTaskResponseUnknown;
 }
 
 class CreateTaskResponseCreated extends CreateTaskResponse {
