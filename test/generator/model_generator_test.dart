@@ -1513,9 +1513,16 @@ void main() {
 
         // toJson should NOT contain the readOnly field 'id'
         expect(code, contains('Map<String, dynamic> toJson()'));
-        expect(code, isNot(contains("json['id']")));
+        final toJson = code.substring(code.indexOf('Map<String, dynamic> toJson()'));
+        expect(toJson, isNot(contains("json['id']")));
+        // fromJson should still contain 'id' (readOnly is excluded from toJson only)
+        final fromJson = code.substring(
+          code.indexOf('factory UpdateResource.fromJson'),
+          code.indexOf('Map<String, dynamic> toJson()'),
+        );
+        expect(fromJson, contains("json['id']"));
         // toJson should contain the absentable field 'name'
-        expect(code, contains("json['name']"));
+        expect(toJson, contains("json['name']"));
       });
 
       test('writeOnly field in absentable schema is excluded from custom fromJson', () {
@@ -1546,10 +1553,15 @@ void main() {
         final code = generator.generate(schema);
 
         // fromJson should contain username but NOT secret
-        expect(code, contains("json['username']"));
-        expect(code, isNot(contains("json['secret']")));
+        final fromJson = code.substring(
+          code.indexOf('factory UpdateAccount.fromJson'),
+          code.indexOf('Map<String, dynamic> toJson()'),
+        );
+        expect(fromJson, contains("json['username']"));
+        expect(fromJson, isNot(contains("json['secret']")));
         // toJson should still contain secret (it's writeOnly, not readOnly)
-        expect(code, contains("json['secret']"));
+        final toJson = code.substring(code.indexOf('Map<String, dynamic> toJson()'));
+        expect(toJson, contains("json['secret']"));
       });
     });
 

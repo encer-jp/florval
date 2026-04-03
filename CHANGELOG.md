@@ -8,6 +8,7 @@
 - **Fix `PaginatedData<dynamic, ...>` type inference in `loadNextPage()`**: Add explicit type parameters to `PaginatedData<T, P>(...)` constructor calls in generated paginated providers. Without them, Dart's type inference falls back to `dynamic` when the `PaginatedData` result is assigned to a local variable before being passed to `state = AsyncData(result)`
 - **Fix Family provider `.notifier` access in paginated Mutation helpers**: Pass build parameters (path/query params) through to the Mutation helper function so it can construct the correct Family provider instance (e.g., `xxxProvider(eventId: eventId).notifier`) instead of calling `.notifier` directly on the Family type
 - **Fix `allOf`-wrapped `$ref` resolution in pagination field validation**: When validating `next_cursor_field` existence, resolve `allOf` compositions by merging properties from all entries, not just following top-level `$ref`. This fixes pagination detection for OpenAPI specs where nested objects use the common NestJS `allOf: [$ref: ...]` pattern
+- **Fix `readOnly`/`writeOnly` test assertions in absentable schemas**: Test was checking the entire generated code for absence of `json['field']`, but the field correctly appeared in the counterpart method (`fromJson` for readOnly, `toJson` for writeOnly). Narrow assertions to check only the relevant method body
 
 ### Refactoring
 - Move `_dotFieldAccess` from top-level private function to `ProviderGenerator` static method
