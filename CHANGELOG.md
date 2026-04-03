@@ -1,3 +1,11 @@
+## 0.2.4
+
+### Features
+- **Auto-apply `dart fix` and `dart format` on generated code**: Run `dart fix --apply` followed by `dart format` as a post-processing step after code generation. This automatically resolves lint violations (`directives_ordering`, `prefer_const_constructors`, etc.) without modifying individual generators
+
+### Improvements
+- **Reformat generated API client methods**: Improve readability and consistency of generated API client code by aligning parameters and return statements
+
 ## 0.2.3
 
 ### Bug Fixes
