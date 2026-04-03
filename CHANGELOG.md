@@ -1,3 +1,18 @@
+## 0.2.5
+
+### Features
+- **Paginated `fetchMore` as Mutation pattern**: Convert paginated provider's `fetchMore()` to Riverpod 3.x Mutation pattern. The Notifier now exposes `loadNextPage()` as an internal state-management method, while an external `Mutation<PaginatedData<T, P>>()` constant and `fetchMoreXxx(MutationTarget ref)` helper function are generated alongside it. This enables `MutationState`-based duplicate call prevention and loading state tracking from the UI
+- **Dot-notated `next_cursor_field` in pagination config**: Support nested field paths like `pagination.nextCursor` in `florval.yaml` pagination config. The analyzer resolves dot-separated segments through nested schema properties (including `allOf`-wrapped `$ref`), and the generator emits chained property access (e.g., `data.pagination.nextCursor`)
+
+### Bug Fixes
+- **Fix `PaginatedData<dynamic, ...>` type inference in `loadNextPage()`**: Add explicit type parameters to `PaginatedData<T, P>(...)` constructor calls in generated paginated providers. Without them, Dart's type inference falls back to `dynamic` when the `PaginatedData` result is assigned to a local variable before being passed to `state = AsyncData(result)`
+- **Fix Family provider `.notifier` access in paginated Mutation helpers**: Pass build parameters (path/query params) through to the Mutation helper function so it can construct the correct Family provider instance (e.g., `xxxProvider(eventId: eventId).notifier`) instead of calling `.notifier` directly on the Family type
+- **Fix `allOf`-wrapped `$ref` resolution in pagination field validation**: When validating `next_cursor_field` existence, resolve `allOf` compositions by merging properties from all entries, not just following top-level `$ref`. This fixes pagination detection for OpenAPI specs where nested objects use the common NestJS `allOf: [$ref: ...]` pattern
+
+### Refactoring
+- Move `_dotFieldAccess` from top-level private function to `ProviderGenerator` static method
+- Fix E2E test assertion for Mutation constant that was broken by `dart format` line wrapping
+
 ## 0.2.4
 
 ### Features

@@ -21,6 +21,15 @@ class ProviderGenerator {
     this.retry,
   });
 
+  /// Converts a dot-notated field path to chained camelCase property access.
+  /// e.g. "pagination.nextCursor" → "pagination.nextCursor"
+  static String _dotFieldAccess(String fieldPath) {
+    return fieldPath
+        .split('.')
+        .map((segment) => ReCase(segment).camelCase)
+        .join('.');
+  }
+
   /// Generates a provider file for a group of endpoints sharing a tag.
   String generate(String tag, List<FlorvalEndpoint> endpoints) {
     final buffer = StringBuffer();
@@ -255,12 +264,12 @@ class ProviderGenerator {
     buffer.writeln(
         '      case ${responseType}Success(:final data):');
     buffer.writeln(
-        '        _allItems.addAll(data.${ReCase(pagination.itemsField).camelCase});');
+        '        _allItems.addAll(data.${_dotFieldAccess(pagination.itemsField)});');
     buffer.writeln(
-        '        _nextCursor = data.${ReCase(pagination.nextCursorField).camelCase};');
+        '        _nextCursor = data.${_dotFieldAccess(pagination.nextCursorField)};');
     buffer.writeln(
-        '        _hasMore = data.${ReCase(pagination.nextCursorField).camelCase} != null;');
-    buffer.writeln('        return PaginatedData(');
+        '        _hasMore = data.${_dotFieldAccess(pagination.nextCursorField)} != null;');
+    buffer.writeln('        return PaginatedData<$itemDartType, $pageDartType>(');
     buffer.writeln('          items: List.unmodifiable(_allItems),');
     buffer.writeln('          nextCursor: _nextCursor,');
     buffer.writeln('          hasMore: _hasMore,');
@@ -287,12 +296,12 @@ class ProviderGenerator {
     buffer.writeln(
         '      case ${responseType}Success(:final data):');
     buffer.writeln(
-        '        _allItems.addAll(data.${ReCase(pagination.itemsField).camelCase});');
+        '        _allItems.addAll(data.${_dotFieldAccess(pagination.itemsField)});');
     buffer.writeln(
-        '        _nextCursor = data.${ReCase(pagination.nextCursorField).camelCase};');
+        '        _nextCursor = data.${_dotFieldAccess(pagination.nextCursorField)};');
     buffer.writeln(
-        '        _hasMore = data.${ReCase(pagination.nextCursorField).camelCase} != null;');
-    buffer.writeln('        final result = PaginatedData(');
+        '        _hasMore = data.${_dotFieldAccess(pagination.nextCursorField)} != null;');
+    buffer.writeln('        final result = PaginatedData<$itemDartType, $pageDartType>(');
     buffer.writeln('          items: List.unmodifiable(_allItems),');
     buffer.writeln('          nextCursor: _nextCursor,');
     buffer.writeln('          hasMore: _hasMore,');
@@ -319,6 +328,13 @@ class ProviderGenerator {
     final mutationName = 'fetchMore${className}Mutation';
     final helperName = 'fetchMore${className}';
 
+    // Build params for the helper function (same as build() params)
+    final buildParams = _buildPaginatedBuildParams(endpoint);
+    final hasParams = buildParams.isNotEmpty;
+
+    // Build provider call args for family provider
+    final providerCallArgs = _buildPaginatedProviderCallArgs(endpoint);
+
     // Mutation constant
     buffer.writeln();
     buffer.writeln('/// Mutation for fetching more pages of ${endpoint.operationId}.');
@@ -328,13 +344,39 @@ class ProviderGenerator {
     buffer.writeln();
     buffer.writeln('/// Executes fetchMore mutation for ${endpoint.operationId}.');
     buffer.writeln('Future<$paginatedType> $helperName(');
-    buffer.writeln('  MutationTarget ref,');
-    buffer.writeln(') async {');
+    buffer.writeln('  MutationTarget ref, {');
+    for (final param in buildParams) {
+      buffer.writeln('  $param');
+    }
+    buffer.writeln('}) async {');
     buffer.writeln('  return $mutationName.run(ref, (tsx) async {');
-    buffer.writeln('    final notifier = tsx.get($providerName.notifier);');
+    if (hasParams) {
+      buffer.writeln('    final notifier = tsx.get($providerName($providerCallArgs).notifier);');
+    } else {
+      buffer.writeln('    final notifier = tsx.get($providerName.notifier);');
+    }
     buffer.writeln('    return notifier.loadNextPage();');
     buffer.writeln('  });');
     buffer.writeln('}');
+  }
+
+  /// Build provider call args for family paginated provider.
+  /// e.g. "eventId: eventId, limit: limit"
+  String _buildPaginatedProviderCallArgs(FlorvalEndpoint endpoint) {
+    final args = <String>[];
+    final cursorParam = endpoint.pagination!.cursorParam;
+
+    for (final p in endpoint.pathParameters) {
+      final name = safeProviderParamName(p.dartName);
+      args.add('$name: $name');
+    }
+    for (final p in endpoint.queryParameters) {
+      if (p.name == cursorParam) continue;
+      final name = safeProviderParamName(p.dartName);
+      args.add('$name: $name');
+    }
+
+    return args.join(', ');
   }
 
   /// Build params for paginated provider's build() method.

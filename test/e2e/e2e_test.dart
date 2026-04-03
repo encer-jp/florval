@@ -336,7 +336,8 @@ void main() {
       expect(providerCode, contains('class ListPetsPaginated extends _\$ListPetsPaginated'));
       expect(providerCode, contains('Future<PaginatedData<Pet, ListPetsPaginatedPage>> loadNextPage()'));
       expect(providerCode, contains('PaginatedData<Pet, ListPetsPaginatedPage>'));
-      expect(providerCode, contains('final fetchMoreListPetsPaginatedMutation = Mutation<PaginatedData<Pet, ListPetsPaginatedPage>>()'));
+      expect(providerCode, contains('fetchMoreListPetsPaginatedMutation'));
+      expect(providerCode, contains('Mutation<PaginatedData<Pet, ListPetsPaginatedPage>>()'));
       expect(providerCode, contains('Future<PaginatedData<Pet, ListPetsPaginatedPage>> fetchMoreListPetsPaginated('));
       expect(providerCode, contains("import 'package:riverpod/experimental/mutation.dart';"));
     });

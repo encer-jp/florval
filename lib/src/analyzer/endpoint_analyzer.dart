@@ -345,9 +345,8 @@ class EndpointAnalyzer {
       itemType = const FlorvalType(name: 'dynamic', dartType: 'dynamic');
     }
 
-    // Validate next_cursor_field exists
-    final cursorSchema = properties[config.nextCursorField];
-    if (cursorSchema == null) return null;
+    // Validate next_cursor_field exists (supports dot notation for nested fields)
+    if (!_resolveNestedField(properties, config.nextCursorField)) return null;
 
     // If the 200 response is an inline object (no $ref), auto-generate a
     // wrapper model so the Union type uses a proper class instead of
@@ -386,6 +385,47 @@ class EndpointAnalyzer {
       itemType: itemType,
       wrapperSchema: wrapperSchema,
     );
+  }
+
+  /// Resolves a possibly dot-notated field path through nested properties.
+  /// e.g. "pagination.nextCursor" checks properties["pagination"] →
+  /// resolve → properties["nextCursor"].
+  /// Handles allOf by merging properties from all entries.
+  bool _resolveNestedField(
+    Map<String, v31.Schema> properties,
+    String fieldPath,
+  ) {
+    final segments = fieldPath.split('.');
+    var currentProps = properties;
+    for (var i = 0; i < segments.length; i++) {
+      final schema = currentProps[segments[i]];
+      if (schema == null) return false;
+      if (i < segments.length - 1) {
+        // Need to traverse deeper — resolve and get nested properties
+        final nestedProps = _collectProperties(schema);
+        if (nestedProps == null) return false;
+        currentProps = nestedProps;
+      }
+    }
+    return true;
+  }
+
+  /// Collects properties from a schema, handling $ref and allOf.
+  Map<String, v31.Schema>? _collectProperties(v31.Schema schema) {
+    final resolved = resolver.resolveSchema(schema);
+    if (resolved.properties != null) return resolved.properties;
+    // Handle allOf: merge properties from all entries
+    if (resolved.allOf != null && resolved.allOf!.isNotEmpty) {
+      final merged = <String, v31.Schema>{};
+      for (final entry in resolved.allOf!) {
+        final entryResolved = resolver.resolveSchema(entry);
+        if (entryResolved.properties != null) {
+          merged.addAll(entryResolved.properties!);
+        }
+      }
+      return merged.isNotEmpty ? merged : null;
+    }
+    return null;
   }
 
   /// Generates an operationId from path and method.
