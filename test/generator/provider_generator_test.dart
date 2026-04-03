@@ -827,6 +827,50 @@ void main() {
       expect(code, contains('state: stateParam'));
     });
 
+    test('renames Dart reserved word params with Param suffix in provider build()', () {
+      // This test verifies that Dart keywords used as parameter names
+      // (e.g. from OpenAPI query param named 'in') don't break build_runner.
+      final endpoint = FlorvalEndpoint(
+        path: '/items',
+        method: 'GET',
+        operationId: 'listItems',
+        parameters: [
+          FlorvalParam(
+            name: 'in',
+            dartName: 'in_',  // sanitized by endpoint analyzer
+            location: ParamLocation.query,
+            type: FlorvalType(name: 'String', dartType: 'String'),
+            isRequired: true,
+          ),
+          FlorvalParam(
+            name: 'default',
+            dartName: 'default_',  // sanitized by endpoint analyzer
+            location: ParamLocation.query,
+            type: FlorvalType(name: 'String', dartType: 'String'),
+            isRequired: false,
+          ),
+        ],
+        responses: {
+          200: FlorvalResponse(statusCode: 200),
+        },
+        tags: ['items'],
+      );
+
+      final code = generator.generate('items', [endpoint]);
+
+      // 'in_' should be further renamed to 'in_Param' if it conflicts with Riverpod,
+      // but since 'in_' is not in riverpodReservedNames, it stays as 'in_'.
+      // The Dart keyword 'in' is already handled at the analyzer level (→ 'in_').
+      expect(code, contains('required String in_'));
+      expect(code, contains('String? default_'));
+      // Client call should use sanitized dartName
+      expect(code, contains('in_: in_'));
+      expect(code, contains('default_: default_'));
+      // Must not contain bare keywords as identifiers
+      expect(code, isNot(contains('required String in,')));
+      expect(code, isNot(contains('String? default,')));
+    });
+
     group('deprecated', () {
       test('generates @Deprecated for deprecated GET provider', () {
         final endpoint = FlorvalEndpoint(

@@ -312,4 +312,54 @@ components:
       expect(getPet.pagination, isNull);
     });
   });
+
+  group('parameter name sanitization', () {
+    late EndpointAnalyzer analyzer;
+
+    setUp(() {
+      final spec = SpecReader().readFile('test/fixtures/petstore.yaml');
+      final resolver = RefResolver(spec);
+      final schemaAnalyzer = SchemaAnalyzer(resolver);
+      final responseAnalyzer = ResponseAnalyzer(resolver, schemaAnalyzer);
+      analyzer = EndpointAnalyzer(resolver, schemaAnalyzer, responseAnalyzer);
+    });
+
+    test('sanitizes Dart reserved word parameter names', () {
+      // Simulate a path with a parameter named 'in' (a Dart keyword)
+      final paths = <String, v31.PathItem>{
+        '/items': v31.PathItem(
+          get: v31.Operation(
+            operationId: 'listItems',
+            responses: {
+              '200': v31.Response(description: 'OK'),
+            },
+            parameters: [
+              v31.Parameter(
+                name: 'in',
+                location: v31.ParameterLocation.query,
+                schema: v31.Schema(type: 'string'),
+              ),
+              v31.Parameter(
+                name: 'default',
+                location: v31.ParameterLocation.query,
+                schema: v31.Schema(type: 'string'),
+              ),
+            ],
+          ),
+        ),
+      };
+
+      final result = analyzer.analyzeAll(paths);
+      final endpoint = result.endpoints.first;
+
+      // 'in' → 'in_' (Dart keyword appended with underscore)
+      final inParam = endpoint.parameters.firstWhere((p) => p.name == 'in');
+      expect(inParam.dartName, 'in_');
+
+      // 'default' → 'default_' (Dart keyword appended with underscore)
+      final defaultParam =
+          endpoint.parameters.firstWhere((p) => p.name == 'default');
+      expect(defaultParam.dartName, 'default_');
+    });
+  });
 }

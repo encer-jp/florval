@@ -45,11 +45,44 @@ const riverpodReservedNames = {
 
 /// Returns a safe parameter name for use in Riverpod provider build() methods.
 ///
-/// If [dartName] conflicts with a Riverpod reserved name, appends 'Param'
-/// suffix (e.g. `state` → `stateParam`). Otherwise returns [dartName] as-is.
+/// If [dartName] conflicts with a Riverpod reserved name or a Dart reserved
+/// word, appends 'Param' suffix (e.g. `state` → `stateParam`,
+/// `in` → `inParam`). Otherwise returns [dartName] as-is.
 String safeProviderParamName(String dartName) {
-  if (riverpodReservedNames.contains(dartName)) {
+  if (riverpodReservedNames.contains(dartName) ||
+      dartReservedWords.contains(dartName)) {
     return '${dartName}Param';
   }
   return dartName;
 }
+
+/// Sanitizes a raw parameter name into a valid Dart identifier (camelCase).
+///
+/// Handles non-ASCII characters, Dart reserved words, and names that start
+/// with a digit. Returns a positional fallback (`param0`, `param1`, etc.)
+/// when the name cannot be meaningfully converted.
+String sanitizeParamName(String raw, {int index = 0}) {
+  final sanitized = sanitizeToCamelCase(raw);
+  if (sanitized == null || sanitized.isEmpty) {
+    // Entirely non-ASCII or empty: use index-based fallback
+    return 'param$index';
+  }
+  if (RegExp(r'^[0-9]').hasMatch(sanitized)) {
+    // Starts with a digit: prefix with 'param'
+    return 'param$sanitized';
+  }
+  if (dartReservedWords.contains(sanitized)) {
+    // Dart reserved word: append underscore suffix
+    return '${sanitized}_';
+  }
+  return sanitized;
+}
+
+/// Dart language reserved words that cannot be used as identifiers.
+const dartReservedWords = {
+  'assert', 'break', 'case', 'catch', 'class', 'const', 'continue',
+  'default', 'do', 'else', 'enum', 'extends', 'false', 'final',
+  'finally', 'for', 'if', 'in', 'is', 'new', 'null', 'rethrow',
+  'return', 'super', 'switch', 'this', 'throw', 'true', 'try',
+  'var', 'void', 'while', 'with', 'yield',
+};

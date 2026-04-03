@@ -10,6 +10,7 @@ import '../model/api_response.dart';
 import '../model/api_schema.dart';
 import '../model/api_type.dart';
 import '../parser/ref_resolver.dart';
+import '../utils/dart_identifier.dart';
 import '../utils/logger.dart';
 import 'response_analyzer.dart';
 import 'schema_analyzer.dart';
@@ -141,7 +142,8 @@ class EndpointAnalyzer {
   }
 
   List<FlorvalParam> _analyzeParameters(List<v31.Parameter> parameters) {
-    return parameters.map((p) {
+    return parameters.indexed.map((entry) {
+      final (index, p) = entry;
       final resolved = resolver.resolveParameter(p);
       final typeResult = resolved.schema != null
           ? schemaAnalyzer.schemaToType(resolved.schema!)
@@ -150,7 +152,7 @@ class EndpointAnalyzer {
 
       return FlorvalParam(
         name: resolved.name ?? '',
-        dartName: ReCase(resolved.name ?? '').camelCase,
+        dartName: sanitizeParamName(resolved.name ?? '', index: index),
         location: _toParamLocation(resolved.location),
         type: typeResult.type,
         isRequired: resolved.required ?? false,
@@ -213,6 +215,7 @@ class EndpointAnalyzer {
     final requiredFields = resolved.$required ?? [];
 
     final formFields = <FlorvalField>[];
+    var fieldIndex = 0;
     for (final entry in properties.entries) {
       final fieldName = entry.key;
       final fieldSchema = resolver.resolveSchema(entry.value);
@@ -221,11 +224,12 @@ class EndpointAnalyzer {
       final type = _multipartFieldType(fieldSchema);
 
       formFields.add(FlorvalField(
-        name: ReCase(fieldName).camelCase,
+        name: sanitizeParamName(fieldName, index: fieldIndex),
         jsonKey: fieldName,
         type: type,
         isRequired: fieldRequired,
       ));
+      fieldIndex++;
     }
 
     // Use a placeholder type for the multipart body as a whole
