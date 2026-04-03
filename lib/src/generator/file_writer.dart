@@ -148,6 +148,29 @@ class FileWriter {
     _writeFile(p.join(outputDirectory, 'api.dart'), buffer.toString());
   }
 
+  /// Runs `dart fix --apply` and `dart format` on the output directory.
+  void formatOutput({required void Function(String) log}) {
+    final absDir = p.absolute(outputDirectory);
+
+    // dart fix --apply（const付与、importソート等のlint auto-fix）
+    final fixResult = Process.runSync(
+      'dart',
+      ['fix', '--apply', absDir],
+    );
+    if (fixResult.exitCode != 0) {
+      log('dart fix failed: ${fixResult.stderr}');
+    }
+
+    // dart format
+    final fmtResult = Process.runSync(
+      'dart',
+      ['format', absDir],
+    );
+    if (fmtResult.exitCode != 0) {
+      log('dart format failed: ${fmtResult.stderr}');
+    }
+  }
+
   void _writeFile(String path, String content) {
     File(path).writeAsStringSync(content);
   }
