@@ -434,5 +434,59 @@ void main() {
       final code = generator.generate('users', [makeGetEndpoint()]);
       expect(code, isNot(contains('@Deprecated')));
     });
+
+    test('generates explicit type argument for dio calls', () {
+      final code = generator.generate('users', [makeGetEndpoint()]);
+      expect(code, contains('_dio.get<Map<String, dynamic>>('));
+    });
+
+    test('generates List type argument for list responses', () {
+      final endpoint = FlorvalEndpoint(
+        path: '/pets',
+        method: 'GET',
+        operationId: 'listPets',
+        parameters: [],
+        responses: {
+          200: FlorvalResponse(
+            statusCode: 200,
+            type: FlorvalType(
+              name: 'List<Pet>',
+              dartType: 'List<Pet>',
+              isList: true,
+              itemType: FlorvalType(
+                  name: 'Pet',
+                  dartType: 'Pet',
+                  ref: '#/components/schemas/Pet'),
+            ),
+          ),
+        },
+        tags: ['pets'],
+      );
+      final code = generator.generate('pets', [endpoint]);
+      expect(code, contains('_dio.get<List<dynamic>>('));
+    });
+
+    test('generates void type argument for no-body responses', () {
+      final endpoint = FlorvalEndpoint(
+        path: '/pets/{id}',
+        method: 'DELETE',
+        operationId: 'deletePet',
+        parameters: [
+          FlorvalParam(
+            name: 'id',
+            dartName: 'id',
+            location: ParamLocation.path,
+            type: FlorvalType(name: 'String', dartType: 'String'),
+            isRequired: true,
+          ),
+        ],
+        responses: {
+          204: FlorvalResponse(statusCode: 204),
+        },
+        tags: ['pets'],
+      );
+      final code = generator.generate('pets', [endpoint]);
+      expect(code, contains('_dio.delete<void>('));
+    });
   });
 }
