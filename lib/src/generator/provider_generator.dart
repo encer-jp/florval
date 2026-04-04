@@ -65,10 +65,8 @@ class ProviderGenerator {
         _writeGetProvider(buffer, tag, endpoint);
       } else {
         _writeMutationDefinition(buffer, endpoint);
-        if (autoInvalidate) {
-          _writeMutationHelper(buffer, tag, endpoint,
-              getEndpoints: getEndpoints);
-        }
+        _writeMutationHelper(buffer, tag, endpoint,
+            getEndpoints: getEndpoints);
       }
       buffer.writeln();
     }
@@ -121,7 +119,7 @@ class ProviderGenerator {
 
     // Import model types
     final modelImports = <String>{};
-    final generatesMutationHelpers = autoInvalidate;
+    final generatesMutationHelpers = true;
 
     for (final endpoint in endpoints) {
       _collectModelImports(endpoint, modelImports,

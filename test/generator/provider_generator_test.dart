@@ -266,13 +266,12 @@ void main() {
       expect(code, isNot(contains('build() => null')));
     });
 
-    test('does not import request body types for mutation-only providers without autoInvalidate', () {
+    test('imports request body types for mutation helpers even without autoInvalidate', () {
       final code = generator.generate('users', [makePostEndpoint()]);
 
-      // Mutation-only providers generate only Mutation<T>() constants,
-      // which don't reference request body types.
+      // Mutation helpers always reference request body types.
       expect(code,
-          isNot(contains("import '../models/create_user_request.dart';")));
+          contains("import '../models/create_user_request.dart';"));
     });
 
     test('imports request body types when autoInvalidate generates mutation helpers', () {
@@ -317,12 +316,15 @@ void main() {
       expect(code, contains('final createUserMutation = Mutation<r.CreateUserResponse>();'));
     });
 
-    test('mutation does not generate helper by default', () {
+    test('mutation generates helper without invalidation by default', () {
       final code = generator.generate(
           'users', [makeGetEndpoint(), makePostEndpoint()]);
 
-      expect(code, isNot(contains('Future<r.CreateUserResponse> createUser(')));
-      expect(code, isNot(contains('MutationTarget')));
+      // Helper function should exist
+      expect(code, contains('Future<r.CreateUserResponse> createUser('));
+      expect(code, contains('MutationTarget ref'));
+      expect(code, contains('createUserMutation.run(ref, (tsx) async {'));
+      // No invalidation when autoInvalidate is false
       expect(code, isNot(contains('ref.container.invalidate(')));
     });
 
@@ -349,12 +351,15 @@ void main() {
       expect(code, contains('ref.container.invalidate(listUsersProvider)'));
     });
 
-    test('mutation helper not generated when autoInvalidate is false', () {
+    test('mutation helper generated without invalidation when autoInvalidate is false', () {
       final code = generator.generate(
           'users', [makeGetEndpoint(), makePostEndpoint()]);
 
-      expect(code, isNot(contains('Future<r.CreateUserResponse> createUser(')));
-      expect(code, isNot(contains('MutationTarget')));
+      // Helper function should exist
+      expect(code, contains('Future<r.CreateUserResponse> createUser('));
+      expect(code, contains('MutationTarget ref'));
+      // No invalidation calls
+      expect(code, isNot(contains('ref.container.invalidate(')));
     });
 
     test('mutation helper includes request body params', () {
