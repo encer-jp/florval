@@ -1,3 +1,8 @@
+## 0.2.7
+
+### Bug Fixes
+- **Remove unnecessary `async` from mutation helper functions**: The outer helper functions just return `mutation.run()` without `await`, so the `async` modifier was unnecessary and triggered the `unnecessary_async` Dart lint warning
+
 ## 0.2.6
 
 ### Bug Fixes
