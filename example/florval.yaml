@@ -15,7 +15,7 @@ florval:
     # Generate Riverpod providers
     enabled: true
     # Invalidate same-tag GET providers after mutations
-    auto_invalidate: true
+    auto_invalidate: false
     retry:
       max_attempts: 3
       delay: 1000

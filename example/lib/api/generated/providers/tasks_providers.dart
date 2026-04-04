@@ -35,7 +35,7 @@ class ListTasks extends _$ListTasks {
 /// Mutation for createTask (POST /tasks)
 final createTaskMutation = Mutation<r.CreateTaskResponse>();
 
-/// Executes createTask mutation and invalidates related GET providers.
+/// Executes createTask mutation.
 Future<r.CreateTaskResponse> createTask(
   MutationTarget ref, {
   required CreateTaskRequest body,
@@ -43,8 +43,6 @@ Future<r.CreateTaskResponse> createTask(
   return createTaskMutation.run(ref, (tsx) async {
     final client = tsx.get(tasksApiClientProvider);
     final result = await client.createTask(body: body);
-    ref.container.invalidate(listTasksProvider);
-    ref.container.invalidate(getTaskProvider);
     return result;
   });
 }
@@ -63,7 +61,7 @@ class GetTask extends _$GetTask {
 /// Mutation for updateTask (PUT /tasks/{id})
 final updateTaskMutation = Mutation<r.UpdateTaskResponse>();
 
-/// Executes updateTask mutation and invalidates related GET providers.
+/// Executes updateTask mutation.
 Future<r.UpdateTaskResponse> updateTask(
   MutationTarget ref, {
   required String id,
@@ -72,8 +70,6 @@ Future<r.UpdateTaskResponse> updateTask(
   return updateTaskMutation.run(ref, (tsx) async {
     final client = tsx.get(tasksApiClientProvider);
     final result = await client.updateTask(id: id, body: body);
-    ref.container.invalidate(listTasksProvider);
-    ref.container.invalidate(getTaskProvider);
     return result;
   });
 }
@@ -81,7 +77,7 @@ Future<r.UpdateTaskResponse> updateTask(
 /// Mutation for deleteTask (DELETE /tasks/{id})
 final deleteTaskMutation = Mutation<r.DeleteTaskResponse>();
 
-/// Executes deleteTask mutation and invalidates related GET providers.
+/// Executes deleteTask mutation.
 Future<r.DeleteTaskResponse> deleteTask(
   MutationTarget ref, {
   required String id,
@@ -89,8 +85,6 @@ Future<r.DeleteTaskResponse> deleteTask(
   return deleteTaskMutation.run(ref, (tsx) async {
     final client = tsx.get(tasksApiClientProvider);
     final result = await client.deleteTask(id: id);
-    ref.container.invalidate(listTasksProvider);
-    ref.container.invalidate(getTaskProvider);
     return result;
   });
 }

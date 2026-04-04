@@ -25,7 +25,7 @@ class ListProjects extends _$ListProjects {
 /// Mutation for createProject (POST /projects)
 final createProjectMutation = Mutation<r.CreateProjectResponse>();
 
-/// Executes createProject mutation and invalidates related GET providers.
+/// Executes createProject mutation.
 Future<r.CreateProjectResponse> createProject(
   MutationTarget ref, {
   required CreateProjectRequest body,
@@ -33,8 +33,6 @@ Future<r.CreateProjectResponse> createProject(
   return createProjectMutation.run(ref, (tsx) async {
     final client = tsx.get(projectsApiClientProvider);
     final result = await client.createProject(body: body);
-    ref.container.invalidate(listProjectsProvider);
-    ref.container.invalidate(getProjectProvider);
     return result;
   });
 }
