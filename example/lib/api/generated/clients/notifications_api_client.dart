@@ -11,7 +11,7 @@ class NotificationsApiClient {
 
   Future<r.ListNotificationsResponse> listNotifications() async {
     try {
-      final response = await _dio.get(
+      final response = await _dio.get<List<dynamic>>(
         '/notifications',
       );
       switch (response.statusCode) {

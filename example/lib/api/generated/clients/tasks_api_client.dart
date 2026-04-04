@@ -21,7 +21,7 @@ class TasksApiClient {
     String? triggerError,
   }) async {
     try {
-      final response = await _dio.get(
+      final response = await _dio.get<List<dynamic>>(
         '/tasks',
         queryParameters: {
           if (status != null) 'status': status,
@@ -67,7 +67,7 @@ class TasksApiClient {
     required CreateTaskRequest body,
   }) async {
     try {
-      final response = await _dio.post(
+      final response = await _dio.post<Map<String, dynamic>>(
         '/tasks',
         data: body.toJson(),
       );
@@ -108,7 +108,7 @@ class TasksApiClient {
     required String id,
   }) async {
     try {
-      final response = await _dio.get(
+      final response = await _dio.get<Map<String, dynamic>>(
         '/tasks/$id',
       );
       switch (response.statusCode) {
@@ -148,7 +148,7 @@ class TasksApiClient {
     required UpdateTaskRequest body,
   }) async {
     try {
-      final response = await _dio.put(
+      final response = await _dio.put<Map<String, dynamic>>(
         '/tasks/$id',
         data: body.toJson(),
       );
@@ -195,7 +195,7 @@ class TasksApiClient {
     required String id,
   }) async {
     try {
-      final response = await _dio.delete(
+      final response = await _dio.delete<Map<String, dynamic>>(
         '/tasks/$id',
       );
       switch (response.statusCode) {

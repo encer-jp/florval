@@ -17,7 +17,7 @@ class UsersApiClient {
     String? search,
   }) async {
     try {
-      final response = await _dio.get(
+      final response = await _dio.get<Map<String, dynamic>>(
         '/users',
         queryParameters: {
           if (page != null) 'page': page,
@@ -55,7 +55,7 @@ class UsersApiClient {
     required String id,
   }) async {
     try {
-      final response = await _dio.get(
+      final response = await _dio.get<Map<String, dynamic>>(
         '/users/$id',
       );
       switch (response.statusCode) {
