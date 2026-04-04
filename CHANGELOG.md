@@ -1,3 +1,8 @@
+## 0.2.10
+
+### Bug Fixes
+- **Always generate mutation helper functions regardless of `autoInvalidate`**: When `auto_invalidate` was `false`, mutation helper functions were not generated at all. Now helpers are always generated — `autoInvalidate` only controls whether `ref.container.invalidate()` calls are included
+
 ## 0.2.9
 
 ### Bug Fixes
