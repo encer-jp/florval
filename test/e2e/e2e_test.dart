@@ -396,7 +396,8 @@ void main() {
 
       final retryCode = retryFile.readAsStringSync();
       expect(retryCode, contains('Duration? retry(int retryCount, Object error)'));
-      expect(retryCode, contains('if (retryCount >= 3) return null;'));
+      expect(retryCode, contains('if (retryCount >= 3) {'));
+      expect(retryCode, contains('return null;'));
       expect(retryCode, contains('Duration(milliseconds: 1000 * (retryCount + 1))'));
 
       // Verify provider imports retry.dart and uses @Riverpod(retry: retry)

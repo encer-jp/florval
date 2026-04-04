@@ -669,7 +669,8 @@ void main() {
             const RiverpodRetryConfig(maxAttempts: 3, delay: 1000));
 
         expect(code, contains('Duration? retry(int retryCount, Object error)'));
-        expect(code, contains('if (retryCount >= 3) return null;'));
+        expect(code, contains('if (retryCount >= 3) {'));
+        expect(code, contains('return null;'));
         expect(code, contains('Duration(milliseconds: 1000 * (retryCount + 1))'));
       });
 
@@ -756,7 +757,8 @@ void main() {
         final code = retryGenerator.generateRetryUtility(
             const RiverpodRetryConfig(maxAttempts: 5, delay: 2000));
 
-        expect(code, contains('if (retryCount >= 5) return null;'));
+        expect(code, contains('if (retryCount >= 5) {'));
+        expect(code, contains('return null;'));
         expect(code, contains('Duration(milliseconds: 2000 * (retryCount + 1))'));
       });
 
