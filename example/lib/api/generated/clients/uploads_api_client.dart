@@ -15,7 +15,7 @@ class UploadsApiClient {
     String? description,
   }) async {
     try {
-      final response = await _dio.post(
+      final response = await _dio.post<Map<String, dynamic>>(
         '/uploads',
         data: FormData.fromMap({
           'file': file,

@@ -14,7 +14,7 @@ class AuthApiClient {
     required LoginRequest body,
   }) async {
     try {
-      final response = await _dio.post(
+      final response = await _dio.post<Map<String, dynamic>>(
         '/auth/login',
         data: body.toJson(),
       );

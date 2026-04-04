@@ -14,7 +14,7 @@ class ProjectsApiClient {
 
   Future<r.ListProjectsResponse> listProjects() async {
     try {
-      final response = await _dio.get(
+      final response = await _dio.get<List<dynamic>>(
         '/projects',
       );
       switch (response.statusCode) {
@@ -49,7 +49,7 @@ class ProjectsApiClient {
     required CreateProjectRequest body,
   }) async {
     try {
-      final response = await _dio.post(
+      final response = await _dio.post<Map<String, dynamic>>(
         '/projects',
         data: body.toJson(),
       );
@@ -92,7 +92,7 @@ class ProjectsApiClient {
     required String id,
   }) async {
     try {
-      final response = await _dio.get(
+      final response = await _dio.get<Map<String, dynamic>>(
         '/projects/$id',
       );
       switch (response.statusCode) {
