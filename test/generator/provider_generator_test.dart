@@ -152,7 +152,7 @@ void main() {
       final code = generator.generate('users', [makeListEndpoint()]);
 
       expect(code, contains('class ListUsers extends _\$ListUsers'));
-      expect(code, contains('FutureOr<r.ListUsersResponse> build() async'));
+      expect(code, contains('FutureOr<r.ListUsersResponse> build()'));
       expect(code, contains('client.listUsers()'));
     });
 

@@ -16,7 +16,7 @@ ProjectsApiClient projectsApiClient(Ref ref) {
 @Riverpod(retry: retry)
 class ListProjects extends _$ListProjects {
   @override
-  FutureOr<r.ListProjectsResponse> build() async {
+  FutureOr<r.ListProjectsResponse> build() {
     final client = ref.watch(projectsApiClientProvider);
     return client.listProjects();
   }
@@ -44,7 +44,7 @@ class GetProject extends _$GetProject {
   @override
   FutureOr<r.GetProjectResponse> build({
     required String id,
-  }) async {
+  }) {
     final client = ref.watch(projectsApiClientProvider);
     return client.getProject(id: id);
   }

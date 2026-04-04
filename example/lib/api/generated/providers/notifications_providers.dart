@@ -14,7 +14,7 @@ NotificationsApiClient notificationsApiClient(Ref ref) {
 @Riverpod(retry: retry)
 class ListNotifications extends _$ListNotifications {
   @override
-  FutureOr<r.ListNotificationsResponse> build() async {
+  FutureOr<r.ListNotificationsResponse> build() {
     final client = ref.watch(notificationsApiClientProvider);
     return client.listNotifications();
   }

@@ -186,9 +186,9 @@ class ProviderGenerator {
       for (final param in buildParams) {
         buffer.writeln('    $param');
       }
-      buffer.writeln('  }) async {');
+      buffer.writeln('  }) {');
     } else {
-      buffer.writeln('  FutureOr<$responseType> build() async {');
+      buffer.writeln('  FutureOr<$responseType> build() {');
     }
 
     // build() body
