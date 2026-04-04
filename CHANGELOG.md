@@ -1,3 +1,8 @@
+## 0.2.8
+
+### Bug Fixes
+- **Remove unnecessary `async` from GET provider `build()` methods**: The `build()` methods in GET providers just return `client.methodName()` without `await`, so the `async` modifier was unnecessary and triggered the `unnecessary_async` Dart lint warning
+
 ## 0.2.7
 
 ### Bug Fixes
