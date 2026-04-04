@@ -146,7 +146,7 @@ class ClientGenerator {
 
     final String dioTypeArg;
     if (!hasAnyResponseBody) {
-      dioTypeArg = '<void>';
+      dioTypeArg = '<dynamic>';
     } else {
       final hasListResponse = endpoint.responses.entries
           .where((e) => e.key >= 200 && e.key < 300)
