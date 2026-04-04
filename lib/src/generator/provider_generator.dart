@@ -143,7 +143,9 @@ class ProviderGenerator {
     buffer.writeln(
         '/// Retry function for Riverpod GET providers (linear backoff).');
     buffer.writeln('Duration? retry(int retryCount, Object error) {');
-    buffer.writeln('  if (retryCount >= ${retry.maxAttempts}) return null;');
+    buffer.writeln('  if (retryCount >= ${retry.maxAttempts}) {');
+    buffer.writeln('    return null;');
+    buffer.writeln('  }');
     buffer.writeln(
         '  return Duration(milliseconds: ${retry.delay} * (retryCount + 1));');
     buffer.writeln('}');

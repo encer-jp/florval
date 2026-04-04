@@ -2,6 +2,8 @@
 
 /// Retry function for Riverpod GET providers (linear backoff).
 Duration? retry(int retryCount, Object error) {
-  if (retryCount >= 3) return null;
+  if (retryCount >= 3) {
+    return null;
+  }
   return Duration(milliseconds: 1000 * (retryCount + 1));
 }
