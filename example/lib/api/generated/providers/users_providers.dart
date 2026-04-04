@@ -18,7 +18,7 @@ class ListUsers extends _$ListUsers {
     int? page,
     int? limit,
     String? search,
-  }) async {
+  }) {
     final client = ref.watch(usersApiClientProvider);
     return client.listUsers(page: page, limit: limit, search: search);
   }
@@ -29,7 +29,7 @@ class GetUser extends _$GetUser {
   @override
   FutureOr<r.GetUserResponse> build({
     required String id,
-  }) async {
+  }) {
     final client = ref.watch(usersApiClientProvider);
     return client.getUser(id: id);
   }

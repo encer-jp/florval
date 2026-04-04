@@ -22,7 +22,7 @@ class ListTasks extends _$ListTasks {
     String? priority,
     String? assigneeId,
     String? triggerError,
-  }) async {
+  }) {
     final client = ref.watch(tasksApiClientProvider);
     return client.listTasks(
         status: status,
@@ -54,7 +54,7 @@ class GetTask extends _$GetTask {
   @override
   FutureOr<r.GetTaskResponse> build({
     required String id,
-  }) async {
+  }) {
     final client = ref.watch(tasksApiClientProvider);
     return client.getTask(id: id);
   }
