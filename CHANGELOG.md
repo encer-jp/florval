@@ -1,3 +1,8 @@
+## 0.2.9
+
+### Bug Fixes
+- **Add braces to retry function `if`-statement**: Single-line `if (...) return null;` triggers the `statement_on_same_line` Dart lint. Wrap in braces for compliance
+
 ## 0.2.8
 
 ### Bug Fixes
