@@ -348,7 +348,7 @@ class ProviderGenerator {
     for (final param in buildParams) {
       buffer.writeln('  $param');
     }
-    buffer.writeln('}) async {');
+    buffer.writeln('}) {');
     buffer.writeln('  return $mutationName.run(ref, (tsx) async {');
     if (hasParams) {
       buffer.writeln('    final notifier = tsx.get($providerName($providerCallArgs).notifier);');
@@ -481,11 +481,11 @@ class ProviderGenerator {
       for (final param in helperParams) {
         buffer.writeln('  $param');
       }
-      buffer.writeln('}) async {');
+      buffer.writeln('}) {');
     } else {
       buffer.writeln('Future<$responseType> $helperName(');
       buffer.writeln('  MutationTarget ref,');
-      buffer.writeln(') async {');
+      buffer.writeln(') {');
     }
 
     buffer.writeln('  return $mutationName.run(ref, (tsx) async {');
