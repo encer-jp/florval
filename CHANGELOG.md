@@ -1,3 +1,8 @@
+## 0.2.6
+
+### Bug Fixes
+- **Fix dio method calls to use explicit type arguments**: Add explicit type parameters (e.g., `<Map<String, dynamic>>`, `<dynamic>`) to all generated `dio.get()`, `dio.post()`, `dio.put()`, `dio.patch()`, and `dio.delete()` calls for improved type safety. Calls without a response body now use `<dynamic>` instead of `<void>` to match dio's expected return type
+
 ## 0.2.5
 
 ### Features
