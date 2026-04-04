@@ -466,7 +466,7 @@ void main() {
       expect(code, contains('_dio.get<List<dynamic>>('));
     });
 
-    test('generates void type argument for no-body responses', () {
+    test('generates dynamic type argument for no-body responses', () {
       final endpoint = FlorvalEndpoint(
         path: '/pets/{id}',
         method: 'DELETE',
@@ -486,7 +486,7 @@ void main() {
         tags: ['pets'],
       );
       final code = generator.generate('pets', [endpoint]);
-      expect(code, contains('_dio.delete<void>('));
+      expect(code, contains('_dio.delete<dynamic>('));
     });
   });
 }
