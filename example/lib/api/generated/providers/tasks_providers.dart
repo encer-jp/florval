@@ -39,7 +39,7 @@ final createTaskMutation = Mutation<r.CreateTaskResponse>();
 Future<r.CreateTaskResponse> createTask(
   MutationTarget ref, {
   required CreateTaskRequest body,
-}) async {
+}) {
   return createTaskMutation.run(ref, (tsx) async {
     final client = tsx.get(tasksApiClientProvider);
     final result = await client.createTask(body: body);
@@ -68,7 +68,7 @@ Future<r.UpdateTaskResponse> updateTask(
   MutationTarget ref, {
   required String id,
   required UpdateTaskRequest body,
-}) async {
+}) {
   return updateTaskMutation.run(ref, (tsx) async {
     final client = tsx.get(tasksApiClientProvider);
     final result = await client.updateTask(id: id, body: body);
@@ -85,7 +85,7 @@ final deleteTaskMutation = Mutation<r.DeleteTaskResponse>();
 Future<r.DeleteTaskResponse> deleteTask(
   MutationTarget ref, {
   required String id,
-}) async {
+}) {
   return deleteTaskMutation.run(ref, (tsx) async {
     final client = tsx.get(tasksApiClientProvider);
     final result = await client.deleteTask(id: id);

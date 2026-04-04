@@ -20,7 +20,7 @@ Future<r.UploadFileResponse> uploadFile(
   MutationTarget ref, {
   required MultipartFile file,
   String? description,
-}) async {
+}) {
   return uploadFileMutation.run(ref, (tsx) async {
     final client = tsx.get(uploadsApiClientProvider);
     final result =

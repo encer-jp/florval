@@ -29,7 +29,7 @@ final createProjectMutation = Mutation<r.CreateProjectResponse>();
 Future<r.CreateProjectResponse> createProject(
   MutationTarget ref, {
   required CreateProjectRequest body,
-}) async {
+}) {
   return createProjectMutation.run(ref, (tsx) async {
     final client = tsx.get(projectsApiClientProvider);
     final result = await client.createProject(body: body);

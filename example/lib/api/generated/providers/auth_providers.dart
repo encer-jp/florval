@@ -19,7 +19,7 @@ final loginMutation = Mutation<r.LoginResponse>();
 Future<r.LoginResponse> login(
   MutationTarget ref, {
   required LoginRequest body,
-}) async {
+}) {
   return loginMutation.run(ref, (tsx) async {
     final client = tsx.get(authApiClientProvider);
     final result = await client.login(body: body);
