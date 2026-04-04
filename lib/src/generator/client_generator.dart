@@ -144,7 +144,17 @@ class ClientGenerator {
     final hasAnyResponseBody =
         endpoint.responses.values.any((r) => r.hasBody);
 
-    buffer.write("      final response = await _dio.$dioMethod(");
+    final String dioTypeArg;
+    if (!hasAnyResponseBody) {
+      dioTypeArg = '<void>';
+    } else {
+      final hasListResponse = endpoint.responses.entries
+          .where((e) => e.key >= 200 && e.key < 300)
+          .any((e) => e.value.type?.isList == true);
+      dioTypeArg = hasListResponse ? '<List<dynamic>>' : '<Map<String, dynamic>>';
+    }
+
+    buffer.write("      final response = await _dio.$dioMethod$dioTypeArg(");
     buffer.write("'$pathExpr'");
 
     if (endpoint.queryParameters.isNotEmpty) {
