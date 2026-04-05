@@ -3,6 +3,8 @@ import 'package:dio/dio.dart';
 import '../models/task.dart';
 import '../models/unauthorized_error.dart';
 import '../models/server_error.dart';
+import '../models/list_tasks_status.dart';
+import '../models/list_tasks_priority.dart';
 import '../models/validation_error.dart';
 import '../models/create_task_request.dart';
 import '../models/not_found_error.dart';
@@ -15,8 +17,8 @@ class TasksApiClient {
   TasksApiClient(this._dio);
 
   Future<r.ListTasksResponse> listTasks({
-    String? status,
-    String? priority,
+    ListTasksStatus? status,
+    ListTasksPriority? priority,
     String? assigneeId,
     String? triggerError,
   }) async {
@@ -24,8 +26,8 @@ class TasksApiClient {
       final response = await _dio.get<List<dynamic>>(
         '/tasks',
         queryParameters: {
-          if (status != null) 'status': status,
-          if (priority != null) 'priority': priority,
+          if (status != null) 'status': status.jsonValue,
+          if (priority != null) 'priority': priority.jsonValue,
           if (assigneeId != null) 'assignee_id': assigneeId,
           if (triggerError != null) 'trigger_error': triggerError,
         },

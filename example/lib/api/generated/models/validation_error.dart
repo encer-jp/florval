@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'validation_error_errors_item.dart';
+
 part 'validation_error.freezed.dart';
 part 'validation_error.g.dart';
 
@@ -7,7 +9,7 @@ part 'validation_error.g.dart';
 abstract class ValidationError with _$ValidationError {
   const factory ValidationError({
     required String message,
-    required List<Map<String, dynamic>> errors,
+    required List<ValidationErrorErrorsItem> errors,
   }) = _ValidationError;
 
   factory ValidationError.fromJson(Map<String, dynamic> json) =>

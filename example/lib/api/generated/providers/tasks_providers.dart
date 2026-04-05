@@ -3,6 +3,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'retry.dart';
 import '../clients/tasks_api_client.dart';
+import '../models/list_tasks_status.dart';
+import '../models/list_tasks_priority.dart';
 import '../models/create_task_request.dart';
 import '../models/update_task_request.dart';
 import '../api_responses.dart' as r;
@@ -18,8 +20,8 @@ TasksApiClient tasksApiClient(Ref ref) {
 class ListTasks extends _$ListTasks {
   @override
   FutureOr<r.ListTasksResponse> build({
-    String? status,
-    String? priority,
+    ListTasksStatus? status,
+    ListTasksPriority? priority,
     String? assigneeId,
     String? triggerError,
   }) {
