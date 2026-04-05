@@ -67,33 +67,33 @@ void main() {
 
     test('maps OpenAPI types to Dart types', () {
       expect(
-        analyzer.schemaToType(v31.Schema.string()).type.dartType,
+        analyzer.schemaToType(v31.Schema.string(), contextName: 'T').type.dartType,
         'String',
       );
       expect(
-        analyzer.schemaToType(v31.Schema.integer()).type.dartType,
+        analyzer.schemaToType(v31.Schema.integer(), contextName: 'T').type.dartType,
         'int',
       );
       expect(
-        analyzer.schemaToType(v31.Schema.number()).type.dartType,
+        analyzer.schemaToType(v31.Schema.number(), contextName: 'T').type.dartType,
         'double',
       );
       expect(
-        analyzer.schemaToType(v31.Schema.boolean()).type.dartType,
+        analyzer.schemaToType(v31.Schema.boolean(), contextName: 'T').type.dartType,
         'bool',
       );
     });
 
     test('handles nullable types', () {
       final nullable = v31.Schema.nullableString();
-      final result = analyzer.schemaToType(nullable);
+      final result = analyzer.schemaToType(nullable, contextName: 'T');
       expect(result.type.isNullable, isTrue);
       expect(result.type.dartType, 'String?');
     });
 
     test('handles array type', () {
       final arraySchema = v31.Schema.array(items: v31.Schema.string());
-      final result = analyzer.schemaToType(arraySchema);
+      final result = analyzer.schemaToType(arraySchema, contextName: 'T');
       expect(result.type.isList, isTrue);
       expect(result.type.dartType, 'List<String>');
       expect(result.type.itemType?.dartType, 'String');
@@ -101,7 +101,7 @@ void main() {
 
     test('handles object without properties as Map', () {
       final objSchema = v31.Schema.object();
-      final result = analyzer.schemaToType(objSchema);
+      final result = analyzer.schemaToType(objSchema, contextName: 'T');
       expect(result.type.dartType, 'Map<String, dynamic>');
     });
 
@@ -751,6 +751,7 @@ components:
       final analyzer = SchemaAnalyzer(RefResolver(spec));
       final result = analyzer.schemaToType(
         spec.components!.schemas!['Scores']!,
+        contextName: 'Scores',
       );
 
       expect(result.type.dartType, 'Map<String, int>');
@@ -778,6 +779,7 @@ components:
       final analyzer = SchemaAnalyzer(RefResolver(spec));
       final result = analyzer.schemaToType(
         spec.components!.schemas!['UserMap']!,
+        contextName: 'UserMap',
       );
 
       expect(result.type.dartType, 'Map<String, User>');
@@ -799,6 +801,7 @@ components:
       final analyzer = SchemaAnalyzer(RefResolver(spec));
       final result = analyzer.schemaToType(
         spec.components!.schemas!['Metadata']!,
+        contextName: 'Metadata',
       );
 
       expect(result.type.dartType, 'Map<String, dynamic>');
@@ -847,6 +850,7 @@ components:
       final analyzer = SchemaAnalyzer(RefResolver(spec));
       final result = analyzer.schemaToType(
         spec.components!.schemas!['Anything']!,
+        contextName: 'Anything',
       );
 
       expect(result.type.dartType, 'dynamic');
@@ -854,7 +858,7 @@ components:
 
     test('type object without properties still generates Map<String, dynamic>', () {
       final objSchema = v31.Schema.object();
-      final result = analyzer.schemaToType(objSchema);
+      final result = analyzer.schemaToType(objSchema, contextName: 'T');
       expect(result.type.dartType, 'Map<String, dynamic>');
     });
 
@@ -973,15 +977,50 @@ components:
       expect(enumSchema.enumValues, ['1', '2', '3']);
     });
 
-    test('contextName null falls back to String for inline enum', () {
+    test('inline string enum promoted to named enum using contextName', () {
       final schema = v31.Schema(
         type: 'string',
         enumValues: ['a', 'b', 'c'],
       );
-      final result = analyzer.schemaToType(schema);
-      // No contextName → should fall back to String
-      expect(result.type.dartType, 'String');
-      expect(result.inlineEnumSchemas, isEmpty);
+      final result =
+          analyzer.schemaToType(schema, contextName: 'MyContextEnum');
+      expect(result.type.dartType, 'MyContextEnum');
+      expect(result.type.isEnum, isTrue);
+      expect(result.inlineEnumSchemas, hasLength(1));
+      expect(result.inlineEnumSchemas.first.name, 'MyContextEnum');
+      expect(result.inlineEnumSchemas.first.enumValues, ['a', 'b', 'c']);
+    });
+
+    test('inline enum inside List propagates child contextName', () {
+      final schema = v31.Schema(
+        type: 'array',
+        items: v31.Schema(
+          type: 'string',
+          enumValues: ['x', 'y'],
+        ),
+      );
+      final result = analyzer.schemaToType(schema, contextName: 'Tags');
+      expect(result.type.isList, isTrue);
+      expect(result.type.dartType, 'List<TagsItem>');
+      expect(result.type.itemType?.isEnum, isTrue);
+      expect(result.inlineEnumSchemas, hasLength(1));
+      expect(result.inlineEnumSchemas.first.name, 'TagsItem');
+      expect(result.inlineEnumSchemas.first.enumValues, ['x', 'y']);
+    });
+
+    test('inline enum inside additionalProperties map propagates child contextName', () {
+      final schema = v31.Schema(
+        type: 'object',
+        additionalProperties: v31.Schema(
+          type: 'string',
+          enumValues: ['lo', 'hi'],
+        ),
+      );
+      final result = analyzer.schemaToType(schema, contextName: 'Levels');
+      expect(result.type.dartType, 'Map<String, LevelsValue>');
+      expect(result.inlineEnumSchemas, hasLength(1));
+      expect(result.inlineEnumSchemas.first.name, 'LevelsValue');
+      expect(result.inlineEnumSchemas.first.enumValues, ['lo', 'hi']);
     });
 
     test('multiple inline enum fields in same schema', () {

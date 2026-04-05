@@ -120,6 +120,98 @@ void main() {
       expect(code, contains("if (limit != null) 'limit': limit,"));
     });
 
+    test('serializes enum query parameter via .jsonValue', () {
+      final endpoint = FlorvalEndpoint(
+        path: '/pets',
+        method: 'GET',
+        operationId: 'listPets',
+        parameters: [
+          FlorvalParam(
+            name: 'status',
+            dartName: 'status',
+            location: ParamLocation.query,
+            type: FlorvalType(
+              name: 'ListPetsStatus',
+              dartType: 'ListPetsStatus',
+              isEnum: true,
+              ref: '#/components/schemas/ListPetsStatus',
+            ),
+            isRequired: true,
+          ),
+          FlorvalParam(
+            name: 'sort',
+            dartName: 'sort',
+            location: ParamLocation.query,
+            type: FlorvalType(
+              name: 'ListPetsSort',
+              dartType: 'ListPetsSort',
+              isEnum: true,
+              ref: '#/components/schemas/ListPetsSort',
+            ),
+            isRequired: false,
+          ),
+        ],
+        responses: {
+          200: FlorvalResponse(
+            statusCode: 200,
+            type: FlorvalType(
+              name: 'Pet',
+              dartType: 'Pet',
+              ref: '#/components/schemas/Pet',
+            ),
+          ),
+        },
+        tags: ['pets'],
+      );
+
+      final code = generator.generate('pets', [endpoint]);
+
+      expect(code, contains('required ListPetsStatus status,'));
+      expect(code, contains('ListPetsSort? sort,'));
+      expect(code, contains("'status': status.jsonValue,"));
+      expect(
+        code,
+        contains("if (sort != null) 'sort': sort.jsonValue,"),
+      );
+    });
+
+    test('interpolates enum path parameter via .jsonValue', () {
+      final endpoint = FlorvalEndpoint(
+        path: '/items/{id}',
+        method: 'GET',
+        operationId: 'getItem',
+        parameters: [
+          FlorvalParam(
+            name: 'id',
+            dartName: 'id',
+            location: ParamLocation.path,
+            type: FlorvalType(
+              name: 'GetItemId',
+              dartType: 'GetItemId',
+              isEnum: true,
+              ref: '#/components/schemas/GetItemId',
+            ),
+            isRequired: true,
+          ),
+        ],
+        responses: {
+          200: FlorvalResponse(
+            statusCode: 200,
+            type: FlorvalType(
+              name: 'Item',
+              dartType: 'Item',
+              ref: '#/components/schemas/Item',
+            ),
+          ),
+        },
+        tags: ['items'],
+      );
+
+      final code = generator.generate('items', [endpoint]);
+
+      expect(code, contains(r"'/items/${id.jsonValue}'"));
+    });
+
     test('generates request body', () {
       final endpoint = FlorvalEndpoint(
         path: '/pets',
