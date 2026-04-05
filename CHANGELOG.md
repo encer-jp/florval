@@ -1,3 +1,9 @@
+## 0.2.11
+
+### Bug Fixes
+- **Promote inline enums everywhere and serialize params via `jsonValue`**: Inline `enum` schemas (e.g. `type: string, enum: [...]` written directly in a parameter, request body, multipart form field, array element, `additionalProperties`, or pagination wrapper field) were silently generated as `String`/`int` because `SchemaAnalyzer.schemaToType` needs a `contextName` to name the anonymous enum and several call sites did not pass one. `contextName` is now required, with a documented naming convention (`${OperationId}${ParamName}` for params, `${ParentContext}Item` / `${ParentContext}Value` for array/map children, etc.), so every call site articulates a name and inline enums are always promoted to first-class Dart `enum` types
+- **Serialize enum query/path parameters via `.jsonValue` instead of `.name`**: The generated client used `.name` (the Dart identifier) for enum query params and relied on `toString()` for enum path params. For enum values whose OpenAPI string differs from the Dart identifier (e.g. `"in-progress"` → `inProgress`) this produced the wrong value on the wire. Switch to `.jsonValue`, which returns the original OpenAPI string, and interpolate enum path params as `${x.jsonValue}`
+
 ## 0.2.10
 
 ### Bug Fixes
