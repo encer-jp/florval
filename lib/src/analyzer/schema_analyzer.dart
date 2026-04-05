@@ -104,8 +104,9 @@ class SchemaAnalyzer {
 
   /// Extracts fields from a schema's properties.
   ///
-  /// [schemaName] is used to generate context names for inline union types.
-  ({List<FlorvalField> fields, List<FlorvalSchema> inlineUnions, List<FlorvalSchema> inlineObjects, List<FlorvalSchema> inlineEnums}) _extractFields(v31.Schema schema, {String? schemaName}) {
+  /// [schemaName] is used to generate context names for inline union,
+  /// object, and enum types on each field (`${schemaName}${FieldName}`).
+  ({List<FlorvalField> fields, List<FlorvalSchema> inlineUnions, List<FlorvalSchema> inlineObjects, List<FlorvalSchema> inlineEnums}) _extractFields(v31.Schema schema, {required String schemaName}) {
     final requiredFields = _requiredFields(schema);
     final fields = <FlorvalField>[];
     final inlineUnions = <FlorvalSchema>[];
@@ -127,9 +128,7 @@ class SchemaAnalyzer {
 
         final fieldSchema = entry.value;
         final isRequired = requiredFields.contains(entry.key);
-        final contextName = schemaName != null
-            ? '$schemaName${ReCase(entry.key).pascalCase}'
-            : null;
+        final contextName = '$schemaName${ReCase(entry.key).pascalCase}';
         final typeResult = schemaToType(fieldSchema, contextName: contextName);
         inlineUnions.addAll(typeResult.inlineUnionSchemas);
         inlineObjects.addAll(typeResult.inlineObjectSchemas);
@@ -279,9 +278,22 @@ class SchemaAnalyzer {
 
   /// Converts a schema to a TypeResult containing the type and any inline schemas.
   ///
-  /// [contextName] is used to generate names for inline union types
-  /// (e.g. 'TaskOwner' for field 'owner' in schema 'Task').
-  TypeResult schemaToType(v31.Schema schema, {String? contextName}) {
+  /// [contextName] is required: it provides the name used when the schema
+  /// turns out to be an anonymous inline enum, inline union, or inline
+  /// object that needs a generated Dart type. It is ignored when the
+  /// schema is a `$ref` (the resolver supplies the name) or resolves to
+  /// a primitive.
+  ///
+  /// Naming convention across florval (enforced by callers):
+  ///
+  /// - Component schema field: `${SchemaName}${FieldName}` (e.g. `UserRole`)
+  /// - Array element: `${ParentContext}Item`
+  /// - Map value (`additionalProperties`): `${ParentContext}Value`
+  /// - Operation parameter: `${OperationId}${ParamName}`
+  /// - JSON request body: `${OperationId}Body`
+  /// - Multipart form field: `${OperationId}${FieldName}`
+  /// - Response body: `${OperationId}${StatusSuffix}` (see ResponseAnalyzer)
+  TypeResult schemaToType(v31.Schema schema, {required String contextName}) {
     // Handle $ref
     if (schema.ref != null) {
       final name = resolver.schemaName(schema)!;
@@ -350,7 +362,7 @@ class SchemaAnalyzer {
           );
         } else if (nonNullSchemas.length >= 2) {
           // True union type — generate inline union schema
-          final unionName = contextName ?? 'InlineUnion';
+          final unionName = contextName;
 
           // Build a synthetic schema with only non-null elements for analysis
           final syntheticSchema = compositeList == schema.anyOf
@@ -389,7 +401,7 @@ class SchemaAnalyzer {
 
     switch (type) {
       case 'string':
-        if (_isEnumSchema(schema) && contextName != null) {
+        if (_isEnumSchema(schema)) {
           final enumSchema = _analyzeEnum(contextName, schema);
           return TypeResult(
             type: FlorvalType(
@@ -404,7 +416,7 @@ class SchemaAnalyzer {
         }
         return TypeResult(type: _stringType(schema, isNullable));
       case 'integer':
-        if (_isEnumSchema(schema) && contextName != null) {
+        if (_isEnumSchema(schema)) {
           final enumSchema = _analyzeEnum(contextName, schema);
           return TypeResult(
             type: FlorvalType(
@@ -429,7 +441,7 @@ class SchemaAnalyzer {
           ),
         );
       case 'array':
-        return _arrayType(schema, isNullable);
+        return _arrayType(schema, isNullable, contextName: contextName);
       case 'object':
         return _objectType(schema, isNullable, contextName: contextName);
       default:
@@ -482,10 +494,11 @@ class SchemaAnalyzer {
     );
   }
 
-  TypeResult _arrayType(v31.Schema schema, bool isNullable) {
+  TypeResult _arrayType(v31.Schema schema, bool isNullable,
+      {required String contextName}) {
     final TypeResult itemResult;
     if (schema.items != null) {
-      itemResult = schemaToType(schema.items!);
+      itemResult = schemaToType(schema.items!, contextName: '${contextName}Item');
     } else {
       logger?.warn('Array schema missing "items" — using List<dynamic>. '
           'This is likely an error in the OpenAPI spec.');
@@ -510,13 +523,14 @@ class SchemaAnalyzer {
   }
 
   TypeResult _objectType(v31.Schema schema, bool isNullable,
-      {String? contextName}) {
+      {required String contextName}) {
     // Object with no properties → check additionalProperties for typed Map
     if (schema.properties == null || schema.properties!.isEmpty) {
       final addProps = schema.additionalProperties;
       if (addProps != null && addProps is v31.Schema) {
         // additionalProperties is a Schema → Map<String, T>
-        final valueResult = schemaToType(addProps);
+        final valueResult =
+            schemaToType(addProps, contextName: '${contextName}Value');
         final dartType = 'Map<String, ${valueResult.type.dartType}>';
         return TypeResult(
           type: FlorvalType(
@@ -540,33 +554,21 @@ class SchemaAnalyzer {
       );
     }
 
-    // Object with properties + contextName → generate inline object class
-    if (contextName != null) {
-      final inlineResult = analyze(contextName, schema);
-      return TypeResult(
-        type: FlorvalType(
-          name: contextName,
-          dartType: isNullable ? '$contextName?' : contextName,
-          isNullable: isNullable,
-          ref: '#/components/schemas/$contextName',
-        ),
-        inlineUnionSchemas: inlineResult.inlineUnionSchemas,
-        inlineObjectSchemas: [
-          inlineResult.schema,
-          ...inlineResult.inlineObjectSchemas,
-        ],
-        inlineEnumSchemas: inlineResult.inlineEnumSchemas,
-      );
-    }
-
-    // No contextName → safe fallback to Map
-    const dartType = 'Map<String, dynamic>';
+    // Object with properties → generate inline object class using contextName.
+    final inlineResult = analyze(contextName, schema);
     return TypeResult(
       type: FlorvalType(
-        name: dartType,
-        dartType: isNullable ? '$dartType?' : dartType,
+        name: contextName,
+        dartType: isNullable ? '$contextName?' : contextName,
         isNullable: isNullable,
+        ref: '#/components/schemas/$contextName',
       ),
+      inlineUnionSchemas: inlineResult.inlineUnionSchemas,
+      inlineObjectSchemas: [
+        inlineResult.schema,
+        ...inlineResult.inlineObjectSchemas,
+      ],
+      inlineEnumSchemas: inlineResult.inlineEnumSchemas,
     );
   }
 

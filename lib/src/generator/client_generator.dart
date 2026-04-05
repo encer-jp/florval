@@ -162,11 +162,12 @@ class ClientGenerator {
       buffer.writeln('        queryParameters: {');
       for (final p in endpoint.queryParameters) {
         if (p.isRequired) {
-          final valueExpr = p.type.isEnum ? '${p.dartName}.name' : p.dartName;
+          final valueExpr =
+              p.type.isEnum ? '${p.dartName}.jsonValue' : p.dartName;
           buffer.writeln("          '${p.name}': $valueExpr,");
         } else {
           final valueExpr =
-              p.type.isEnum ? '${p.dartName}.name' : p.dartName;
+              p.type.isEnum ? '${p.dartName}.jsonValue' : p.dartName;
           buffer.writeln(
               "          if (${p.dartName} != null) '${p.name}': $valueExpr,");
         }
@@ -300,7 +301,10 @@ class ClientGenerator {
   String _buildPathExpression(FlorvalEndpoint endpoint) {
     var path = endpoint.path;
     for (final p in endpoint.pathParameters) {
-      path = path.replaceAll('{${p.name}}', '\$${p.dartName}');
+      final replacement = p.type.isEnum
+          ? '\${${p.dartName}.jsonValue}'
+          : '\$${p.dartName}';
+      path = path.replaceAll('{${p.name}}', replacement);
     }
     return path;
   }

@@ -4,7 +4,6 @@ import 'package:openapi_spec_plus/v31.dart' as v31;
 import 'package:recase/recase.dart';
 
 import '../config/florval_config.dart';
-import '../model/analysis_result.dart';
 import '../model/api_endpoint.dart';
 import '../model/api_response.dart';
 import '../model/api_schema.dart';
@@ -77,16 +76,30 @@ class EndpointAnalyzer {
       ...operation.parameters,
     ];
 
-    final parameters = _analyzeParameters(allParams);
-    final requestBody = _analyzeRequestBody(operation.requestBody);
+    final paramsResult = _analyzeParameters(operationId, allParams);
+    final parameters = paramsResult.params;
+    final bodyResult = _analyzeRequestBody(operationId, operation.requestBody);
+    final requestBody = bodyResult?.requestBody;
     final responseResult = responseAnalyzer.analyzeResponses(
       operation.responses,
       operationId: operationId,
     );
     final responses = responseResult.responses;
-    final inlineUnions = [...responseResult.inlineUnionSchemas];
-    final inlineObjects = [...responseResult.inlineObjectSchemas];
-    final inlineEnums = [...responseResult.inlineEnumSchemas];
+    final inlineUnions = [
+      ...responseResult.inlineUnionSchemas,
+      ...paramsResult.inlineUnions,
+      if (bodyResult != null) ...bodyResult.inlineUnions,
+    ];
+    final inlineObjects = [
+      ...responseResult.inlineObjectSchemas,
+      ...paramsResult.inlineObjects,
+      if (bodyResult != null) ...bodyResult.inlineObjects,
+    ];
+    final inlineEnums = [
+      ...responseResult.inlineEnumSchemas,
+      ...paramsResult.inlineEnums,
+      if (bodyResult != null) ...bodyResult.inlineEnums,
+    ];
 
     // Check if this endpoint has a pagination config
     PaginationInfo? pagination;
@@ -95,12 +108,18 @@ class EndpointAnalyzer {
           .where((c) => c.operationId == operationId)
           .firstOrNull;
       if (paginationConfig != null) {
-        pagination = _buildPaginationInfo(
+        final paginationResult = _buildPaginationInfo(
           paginationConfig,
           operation.responses,
           parameters,
           operationId,
         );
+        pagination = paginationResult?.info;
+        if (paginationResult != null) {
+          inlineUnions.addAll(paginationResult.inlineUnions);
+          inlineObjects.addAll(paginationResult.inlineObjects);
+          inlineEnums.addAll(paginationResult.inlineEnums);
+        }
         // Replace 200 response type with the wrapper model type
         if (pagination != null && pagination.wrapperSchema != null) {
           final wrapperName = pagination.wrapperSchema!.name;
@@ -140,29 +159,64 @@ class EndpointAnalyzer {
     );
   }
 
-  List<FlorvalParam> _analyzeParameters(List<v31.Parameter> parameters) {
-    return parameters.map((p) {
-      final resolved = resolver.resolveParameter(p);
-      final typeResult = resolved.schema != null
-          ? schemaAnalyzer.schemaToType(resolved.schema!)
-          : const TypeResult(
-              type: FlorvalType(name: 'String', dartType: 'String'));
+  ({
+    List<FlorvalParam> params,
+    List<FlorvalSchema> inlineEnums,
+    List<FlorvalSchema> inlineUnions,
+    List<FlorvalSchema> inlineObjects,
+  }) _analyzeParameters(String operationId, List<v31.Parameter> parameters) {
+    final params = <FlorvalParam>[];
+    final inlineEnums = <FlorvalSchema>[];
+    final inlineUnions = <FlorvalSchema>[];
+    final inlineObjects = <FlorvalSchema>[];
+    final opBase = ReCase(operationId).pascalCase;
 
-      return FlorvalParam(
-        name: resolved.name ?? '',
-        dartName: ReCase(resolved.name ?? '').camelCase,
+    for (final p in parameters) {
+      final resolved = resolver.resolveParameter(p);
+      final paramName = resolved.name ?? '';
+      final FlorvalType type;
+      if (resolved.schema != null) {
+        final contextName = '$opBase${ReCase(paramName).pascalCase}';
+        final typeResult = schemaAnalyzer.schemaToType(
+          resolved.schema!,
+          contextName: contextName,
+        );
+        type = typeResult.type;
+        inlineEnums.addAll(typeResult.inlineEnumSchemas);
+        inlineUnions.addAll(typeResult.inlineUnionSchemas);
+        inlineObjects.addAll(typeResult.inlineObjectSchemas);
+      } else {
+        type = const FlorvalType(name: 'String', dartType: 'String');
+      }
+
+      params.add(FlorvalParam(
+        name: paramName,
+        dartName: ReCase(paramName).camelCase,
         location: _toParamLocation(resolved.location),
-        type: typeResult.type,
+        type: type,
         isRequired: resolved.required ?? false,
         description: resolved.description,
         example: resolved.example,
         deprecated: resolved.deprecated == true,
-      );
-    }).toList();
+      ));
+    }
+
+    return (
+      params: params,
+      inlineEnums: inlineEnums,
+      inlineUnions: inlineUnions,
+      inlineObjects: inlineObjects,
+    );
   }
 
-  FlorvalRequestBody? _analyzeRequestBody(v31.RequestBody? requestBody) {
+  ({
+    FlorvalRequestBody requestBody,
+    List<FlorvalSchema> inlineEnums,
+    List<FlorvalSchema> inlineUnions,
+    List<FlorvalSchema> inlineObjects,
+  })? _analyzeRequestBody(String operationId, v31.RequestBody? requestBody) {
     if (requestBody == null) return null;
+    final opBase = ReCase(operationId).pascalCase;
 
     // Prefer application/json
     final jsonContent = requestBody.content['application/json'];
@@ -170,13 +224,21 @@ class EndpointAnalyzer {
       final schema = jsonContent.schema;
       if (schema == null) return null;
 
-      final typeResult = schemaAnalyzer.schemaToType(schema);
+      final typeResult = schemaAnalyzer.schemaToType(
+        schema,
+        contextName: '${opBase}Body',
+      );
 
-      return FlorvalRequestBody(
-        type: typeResult.type,
-        isRequired: requestBody.$required ?? false,
-        description: requestBody.description,
-        contentType: ContentType.json,
+      return (
+        requestBody: FlorvalRequestBody(
+          type: typeResult.type,
+          isRequired: requestBody.$required ?? false,
+          description: requestBody.description,
+          contentType: ContentType.json,
+        ),
+        inlineEnums: typeResult.inlineEnumSchemas,
+        inlineUnions: typeResult.inlineUnionSchemas,
+        inlineObjects: typeResult.inlineObjectSchemas,
       );
     }
 
@@ -184,6 +246,7 @@ class EndpointAnalyzer {
     final multipartContent = requestBody.content['multipart/form-data'];
     if (multipartContent != null) {
       return _analyzeMultipartRequestBody(
+        operationId,
         multipartContent,
         requestBody.$required ?? false,
         requestBody.description,
@@ -200,7 +263,13 @@ class EndpointAnalyzer {
     return null;
   }
 
-  FlorvalRequestBody? _analyzeMultipartRequestBody(
+  ({
+    FlorvalRequestBody requestBody,
+    List<FlorvalSchema> inlineEnums,
+    List<FlorvalSchema> inlineUnions,
+    List<FlorvalSchema> inlineObjects,
+  })? _analyzeMultipartRequestBody(
+    String operationId,
     v31.MediaType mediaType,
     bool isRequired,
     String? description,
@@ -211,19 +280,28 @@ class EndpointAnalyzer {
     final resolved = resolver.resolveSchema(schema);
     final properties = resolved.properties ?? {};
     final requiredFields = resolved.$required ?? [];
+    final opBase = ReCase(operationId).pascalCase;
 
     final formFields = <FlorvalField>[];
+    final inlineEnums = <FlorvalSchema>[];
+    final inlineUnions = <FlorvalSchema>[];
+    final inlineObjects = <FlorvalSchema>[];
+
     for (final entry in properties.entries) {
       final fieldName = entry.key;
       final fieldSchema = resolver.resolveSchema(entry.value);
       final fieldRequired = requiredFields.contains(fieldName);
+      final contextName = '$opBase${ReCase(fieldName).pascalCase}';
 
-      final type = _multipartFieldType(fieldSchema);
+      final fieldResult = _multipartFieldType(fieldSchema, contextName);
+      inlineEnums.addAll(fieldResult.inlineEnums);
+      inlineUnions.addAll(fieldResult.inlineUnions);
+      inlineObjects.addAll(fieldResult.inlineObjects);
 
       formFields.add(FlorvalField(
         name: ReCase(fieldName).camelCase,
         jsonKey: fieldName,
-        type: type,
+        type: fieldResult.type,
         isRequired: fieldRequired,
       ));
     }
@@ -231,36 +309,63 @@ class EndpointAnalyzer {
     // Use a placeholder type for the multipart body as a whole
     const multipartType = FlorvalType(name: 'FormData', dartType: 'FormData');
 
-    return FlorvalRequestBody(
-      type: multipartType,
-      isRequired: isRequired,
-      description: description,
-      contentType: ContentType.multipart,
-      formFields: formFields,
+    return (
+      requestBody: FlorvalRequestBody(
+        type: multipartType,
+        isRequired: isRequired,
+        description: description,
+        contentType: ContentType.multipart,
+        formFields: formFields,
+      ),
+      inlineEnums: inlineEnums,
+      inlineUnions: inlineUnions,
+      inlineObjects: inlineObjects,
     );
   }
 
   /// Maps a schema field within a multipart body to the appropriate Dart type.
   /// `string` + `format: binary` → `MultipartFile`
   /// `array` of `string/binary` → `List<MultipartFile>`
-  FlorvalType _multipartFieldType(v31.Schema schema) {
+  ({
+    FlorvalType type,
+    List<FlorvalSchema> inlineEnums,
+    List<FlorvalSchema> inlineUnions,
+    List<FlorvalSchema> inlineObjects,
+  }) _multipartFieldType(v31.Schema schema, String contextName) {
     if (_isBinaryString(schema)) {
-      return const FlorvalType(name: 'MultipartFile', dartType: 'MultipartFile');
+      return (
+        type: const FlorvalType(name: 'MultipartFile', dartType: 'MultipartFile'),
+        inlineEnums: const [],
+        inlineUnions: const [],
+        inlineObjects: const [],
+      );
     }
     final extractedType = _extractType(schema);
     if (extractedType == 'array' && schema.items != null) {
       final itemSchema = resolver.resolveSchema(schema.items!);
       if (_isBinaryString(itemSchema)) {
-        return const FlorvalType(
-          name: 'List<MultipartFile>',
-          dartType: 'List<MultipartFile>',
-          isList: true,
-          itemType: FlorvalType(name: 'MultipartFile', dartType: 'MultipartFile'),
+        return (
+          type: const FlorvalType(
+            name: 'List<MultipartFile>',
+            dartType: 'List<MultipartFile>',
+            isList: true,
+            itemType: FlorvalType(name: 'MultipartFile', dartType: 'MultipartFile'),
+          ),
+          inlineEnums: const [],
+          inlineUnions: const [],
+          inlineObjects: const [],
         );
       }
     }
     // For non-binary fields, use the standard schema-to-type mapping
-    return schemaAnalyzer.schemaToType(schema).type;
+    final typeResult =
+        schemaAnalyzer.schemaToType(schema, contextName: contextName);
+    return (
+      type: typeResult.type,
+      inlineEnums: typeResult.inlineEnumSchemas,
+      inlineUnions: typeResult.inlineUnionSchemas,
+      inlineObjects: typeResult.inlineObjectSchemas,
+    );
   }
 
   /// Returns true if the schema represents a binary string (format: binary).
@@ -299,7 +404,12 @@ class EndpointAnalyzer {
   }
 
   /// Builds PaginationInfo by inspecting the 200 response schema.
-  PaginationInfo? _buildPaginationInfo(
+  ({
+    PaginationInfo info,
+    List<FlorvalSchema> inlineEnums,
+    List<FlorvalSchema> inlineUnions,
+    List<FlorvalSchema> inlineObjects,
+  })? _buildPaginationInfo(
     PaginationConfig config,
     Map<String, v31.Response> responses,
     List<FlorvalParam> parameters,
@@ -334,10 +444,22 @@ class EndpointAnalyzer {
     final itemsType = _extractType(resolvedItems);
     if (itemsType != 'array') return null;
 
+    final wrapperName = '${ReCase(operationId).pascalCase}Page';
+    final inlineEnums = <FlorvalSchema>[];
+    final inlineUnions = <FlorvalSchema>[];
+    final inlineObjects = <FlorvalSchema>[];
+
     // Extract item element type
     final FlorvalType itemType;
     if (resolvedItems.items != null) {
-      itemType = schemaAnalyzer.schemaToType(resolvedItems.items!).type;
+      final itemTypeResult = schemaAnalyzer.schemaToType(
+        resolvedItems.items!,
+        contextName: '${wrapperName}Item',
+      );
+      itemType = itemTypeResult.type;
+      inlineEnums.addAll(itemTypeResult.inlineEnumSchemas);
+      inlineUnions.addAll(itemTypeResult.inlineUnionSchemas);
+      inlineObjects.addAll(itemTypeResult.inlineObjectSchemas);
     } else {
       logger?.warn(
         'Pagination items field "${config.itemsField}" in $operationId '
@@ -353,8 +475,6 @@ class EndpointAnalyzer {
     // Map<String, dynamic>.
     FlorvalSchema? wrapperSchema;
     if (schema.ref == null) {
-      final wrapperName =
-          '${ReCase(operationId).pascalCase}Page';
       final wrapperFields = <FlorvalField>[];
       final requiredFields = resolvedSchema.$required ?? [];
 
@@ -362,7 +482,16 @@ class EndpointAnalyzer {
         final fieldName = ReCase(entry.key).camelCase;
         final fieldSchema = entry.value;
         final isRequired = requiredFields.contains(entry.key);
-        final type = schemaAnalyzer.schemaToType(fieldSchema).type;
+        final contextName =
+            '$wrapperName${ReCase(entry.key).pascalCase}';
+        final typeResult = schemaAnalyzer.schemaToType(
+          fieldSchema,
+          contextName: contextName,
+        );
+        final type = typeResult.type;
+        inlineEnums.addAll(typeResult.inlineEnumSchemas);
+        inlineUnions.addAll(typeResult.inlineUnionSchemas);
+        inlineObjects.addAll(typeResult.inlineObjectSchemas);
 
         wrapperFields.add(FlorvalField(
           name: fieldName,
@@ -378,12 +507,17 @@ class EndpointAnalyzer {
       );
     }
 
-    return PaginationInfo(
-      cursorParam: config.cursorParam,
-      nextCursorField: config.nextCursorField,
-      itemsField: config.itemsField,
-      itemType: itemType,
-      wrapperSchema: wrapperSchema,
+    return (
+      info: PaginationInfo(
+        cursorParam: config.cursorParam,
+        nextCursorField: config.nextCursorField,
+        itemsField: config.itemsField,
+        itemType: itemType,
+        wrapperSchema: wrapperSchema,
+      ),
+      inlineEnums: inlineEnums,
+      inlineUnions: inlineUnions,
+      inlineObjects: inlineObjects,
     );
   }
 

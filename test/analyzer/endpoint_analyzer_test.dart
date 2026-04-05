@@ -61,6 +61,24 @@ void main() {
       expect(limitParam.isRequired, isFalse);
     });
 
+    test('inline-enum query parameter is promoted to a named enum', () {
+      final result = analyzer.analyzeAll(spec.paths);
+      final listPets =
+          result.endpoints.firstWhere((e) => e.operationId == 'listPets');
+
+      final statusParam =
+          listPets.queryParameters.firstWhere((p) => p.name == 'status');
+      expect(statusParam.type.dartType, 'ListPetsStatus');
+      expect(statusParam.type.isEnum, isTrue);
+
+      final listPetsStatusEnum = result.inlineEnumSchemas
+          .firstWhere((s) => s.name == 'ListPetsStatus');
+      expect(
+        listPetsStatusEnum.enumValues,
+        ['in-stock', 'out-of-stock', 'pre-order'],
+      );
+    });
+
     test('parses request body', () {
       final result = analyzer.analyzeAll(spec.paths);
       final createPet =
