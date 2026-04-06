@@ -285,6 +285,62 @@ florval:
       tmpFile.deleteSync();
     });
 
+    test('loads lint config from YAML', () {
+      final tmpFile =
+          File('${Directory.systemTemp.path}/florval_test_lint.yaml');
+      tmpFile.writeAsStringSync('''
+florval:
+  schema_path: api.yaml
+  lint:
+    commands:
+      - dart format .
+      - dart fix --apply
+''');
+
+      final config = FlorvalConfig.fromFile(tmpFile.path);
+
+      expect(config.lint.enabled, isTrue);
+      expect(config.lint.commands, hasLength(2));
+      expect(config.lint.commands[0], 'dart format .');
+      expect(config.lint.commands[1], 'dart fix --apply');
+
+      tmpFile.deleteSync();
+    });
+
+    test('lint defaults to disabled when not specified', () {
+      final tmpFile =
+          File('${Directory.systemTemp.path}/florval_test_lint2.yaml');
+      tmpFile.writeAsStringSync('''
+florval:
+  schema_path: api.yaml
+''');
+
+      final config = FlorvalConfig.fromFile(tmpFile.path);
+
+      expect(config.lint.enabled, isFalse);
+      expect(config.lint.commands, isEmpty);
+
+      tmpFile.deleteSync();
+    });
+
+    test('lint with empty commands list is disabled', () {
+      final tmpFile =
+          File('${Directory.systemTemp.path}/florval_test_lint3.yaml');
+      tmpFile.writeAsStringSync('''
+florval:
+  schema_path: api.yaml
+  lint:
+    commands: []
+''');
+
+      final config = FlorvalConfig.fromFile(tmpFile.path);
+
+      expect(config.lint.enabled, isFalse);
+      expect(config.lint.commands, isEmpty);
+
+      tmpFile.deleteSync();
+    });
+
     test('riverpod retry is null when not specified', () {
       final tmpFile =
           File('${Directory.systemTemp.path}/florval_test_retry3.yaml');

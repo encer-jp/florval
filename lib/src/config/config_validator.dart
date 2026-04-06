@@ -30,6 +30,11 @@ class ConfigValidator {
     'client',
     'riverpod',
     'templates',
+    'lint',
+  };
+
+  static const _validLintKeys = {
+    'commands',
   };
 
   static const _validClientKeys = {
@@ -155,6 +160,19 @@ class ConfigValidator {
       }
     }
 
+    // lint section
+    final lint = florval['lint'];
+    if (lint != null) {
+      if (lint is! YamlMap) {
+        errors.add(const ConfigValidationError(
+          field: 'florval.lint',
+          message: '"lint" must be a map.',
+        ));
+      } else {
+        _validateLint(lint, errors);
+      }
+    }
+
     // templates section
     final templates = florval['templates'];
     if (templates != null) {
@@ -170,6 +188,34 @@ class ConfigValidator {
     }
 
     return errors;
+  }
+
+  void _validateLint(YamlMap lint, List<ConfigValidationError> errors) {
+    _checkUnknownKeys(lint, _validLintKeys, 'florval.lint', errors);
+
+    final commands = lint['commands'];
+    if (commands != null) {
+      if (commands is! YamlList) {
+        errors.add(const ConfigValidationError(
+          field: 'florval.lint.commands',
+          message: '"commands" must be a list of strings.',
+        ));
+      } else {
+        for (var i = 0; i < commands.length; i++) {
+          if (commands[i] is! String) {
+            errors.add(ConfigValidationError(
+              field: 'florval.lint.commands[$i]',
+              message: 'Each command must be a string.',
+            ));
+          } else if ((commands[i] as String).trim().isEmpty) {
+            errors.add(ConfigValidationError(
+              field: 'florval.lint.commands[$i]',
+              message: 'Command must not be empty.',
+            ));
+          }
+        }
+      }
+    }
   }
 
   void _validateClient(

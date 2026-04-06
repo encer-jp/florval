@@ -269,6 +269,118 @@ florval:
     });
   });
 
+  group('ConfigValidator - lint', () {
+    final validator = ConfigValidator();
+
+    test('accepts valid lint config', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  lint:
+    commands:
+      - dart format .
+      - dart fix --apply
+''') as YamlMap;
+
+      final errors = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.error)
+          .toList();
+
+      expect(errors, isEmpty);
+    });
+
+    test('errors when lint is not a map', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  lint: true
+''') as YamlMap;
+
+      final errors = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.error)
+          .toList();
+
+      expect(errors.any((e) => e.message.contains('"lint" must be a map')),
+          isTrue);
+    });
+
+    test('errors when commands is not a list', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  lint:
+    commands: "dart format ."
+''') as YamlMap;
+
+      final errors = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.error)
+          .toList();
+
+      expect(
+          errors.any((e) => e.message.contains('must be a list of strings')),
+          isTrue);
+    });
+
+    test('errors when command entry is not a string', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  lint:
+    commands:
+      - dart format .
+      - 123
+''') as YamlMap;
+
+      final errors = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.error)
+          .toList();
+
+      expect(errors.any((e) => e.message.contains('must be a string')),
+          isTrue);
+    });
+
+    test('errors when command is empty string', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  lint:
+    commands:
+      - ""
+''') as YamlMap;
+
+      final errors = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.error)
+          .toList();
+
+      expect(errors.any((e) => e.message.contains('must not be empty')),
+          isTrue);
+    });
+
+    test('warns on unknown keys in lint', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  lint:
+    commands:
+      - dart format .
+    unknown_key: value
+''') as YamlMap;
+
+      final warnings = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.warning)
+          .toList();
+
+      expect(
+          warnings.any((e) => e.message.contains('unknown_key')), isTrue);
+    });
+  });
+
   group('ConfigValidator - client.retry deprecation', () {
     final validator = ConfigValidator();
 
