@@ -7,6 +7,5 @@ part 'api_dio_provider.g.dart';
 
 @riverpod
 Dio apiDio(Ref ref) {
-  throw UnimplementedError(
-      'Override apiDioProvider with your Dio instance');
+  throw UnimplementedError('Override apiDioProvider with your Dio instance');
 }
