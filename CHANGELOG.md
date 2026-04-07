@@ -1,3 +1,8 @@
+## 0.2.12
+
+### Bug Fixes
+- **Fix multipart form `$ref` fields resolving to wrong type name**: When a `multipart/form-data` request body contained a field with `$ref` (e.g. `updateUserDto: $ref: '#/components/schemas/UpdateUserDto'`), the generated code produced an incorrect contextName-based type like `UserControllerUpdateV1UpdateUserDto` instead of the referenced `UpdateUserDto`. The cause was `resolveSchema()` being called too early, stripping the `$ref` before `schemaToType` could detect it
+
 ## 0.2.11
 
 ### Bug Fixes
