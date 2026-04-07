@@ -289,11 +289,11 @@ class EndpointAnalyzer {
 
     for (final entry in properties.entries) {
       final fieldName = entry.key;
-      final fieldSchema = resolver.resolveSchema(entry.value);
       final fieldRequired = requiredFields.contains(fieldName);
       final contextName = '$opBase${ReCase(fieldName).pascalCase}';
 
-      final fieldResult = _multipartFieldType(fieldSchema, contextName);
+      // Pass original schema (with $ref intact) so schemaToType can detect refs
+      final fieldResult = _multipartFieldType(entry.value, contextName);
       inlineEnums.addAll(fieldResult.inlineEnums);
       inlineUnions.addAll(fieldResult.inlineUnions);
       inlineObjects.addAll(fieldResult.inlineObjects);
@@ -332,7 +332,9 @@ class EndpointAnalyzer {
     List<FlorvalSchema> inlineUnions,
     List<FlorvalSchema> inlineObjects,
   }) _multipartFieldType(v31.Schema schema, String contextName) {
-    if (_isBinaryString(schema)) {
+    // Resolve for binary detection, but keep original schema for schemaToType
+    final resolved = resolver.resolveSchema(schema);
+    if (_isBinaryString(resolved)) {
       return (
         type: const FlorvalType(name: 'MultipartFile', dartType: 'MultipartFile'),
         inlineEnums: const [],
@@ -340,10 +342,9 @@ class EndpointAnalyzer {
         inlineObjects: const [],
       );
     }
-    final extractedType = _extractType(schema);
-    if (extractedType == 'array' && schema.items != null) {
-      final itemSchema = resolver.resolveSchema(schema.items!);
-      if (_isBinaryString(itemSchema)) {
+    final extractedType = _extractType(resolved);
+    if (extractedType == 'array' && resolved.items != null) {
+      final itemSchema = resolver.resolveSchema(resolved.items!);
         return (
           type: const FlorvalType(
             name: 'List<MultipartFile>',
