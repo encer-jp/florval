@@ -319,6 +319,14 @@ class ClientGenerator {
     if (endpoint.requestBody != null && !endpoint.requestBody!.isMultipart) {
       addTypeImport(imports, endpoint.requestBody!.type);
     }
+    // For multipart requests, collect imports from form field types
+    if (endpoint.requestBody != null &&
+        endpoint.requestBody!.isMultipart &&
+        endpoint.requestBody!.formFields != null) {
+      for (final field in endpoint.requestBody!.formFields!) {
+        addTypeImport(imports, field.type);
+      }
+    }
     for (final p in endpoint.parameters) {
       addTypeImport(imports, p.type);
     }

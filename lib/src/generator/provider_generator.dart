@@ -622,6 +622,15 @@ class ProviderGenerator {
         (endpoint.method == 'GET' || includeMutationBody)) {
       addTypeImport(imports, endpoint.requestBody!.type);
     }
+    // For multipart requests, collect imports from form field types
+    if (endpoint.requestBody != null &&
+        endpoint.requestBody!.isMultipart &&
+        endpoint.requestBody!.formFields != null &&
+        (endpoint.method == 'GET' || includeMutationBody)) {
+      for (final field in endpoint.requestBody!.formFields!) {
+        addTypeImport(imports, field.type);
+      }
+    }
     if (endpoint.pagination != null) {
       addTypeImport(imports, endpoint.pagination!.itemType);
       // Import the page type (e.g. SearchPetsPage, CommentPage) for PaginatedData<T, P>
