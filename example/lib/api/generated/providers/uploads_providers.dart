@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:riverpod/experimental/mutation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'api_dio_provider.dart';
 import '../clients/uploads_api_client.dart';
 import '../api_responses.dart' as r;
 
@@ -9,7 +10,7 @@ part 'uploads_providers.g.dart';
 
 @riverpod
 UploadsApiClient uploadsApiClient(Ref ref) {
-  throw UnimplementedError('Provide a Dio instance via override');
+  return UploadsApiClient(ref.watch(apiDioProvider));
 }
 
 /// Mutation for uploadFile (POST /uploads)

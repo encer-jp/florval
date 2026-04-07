@@ -314,6 +314,12 @@ class FlorvalRunner {
         retry: config.riverpod.retry,
       );
 
+      // Generate centralized Dio provider
+      final apiDioCode = providerGenerator.generateApiDioProvider();
+      writer.writeProviderUtility('api_dio_provider.dart', apiDioCode);
+      providerUtilityNames.add('api_dio_provider.dart');
+      logger.debug('Generated utility: api_dio_provider');
+
       // Generate retry utility if configured
       if (config.riverpod.retry != null) {
         final retryCode =

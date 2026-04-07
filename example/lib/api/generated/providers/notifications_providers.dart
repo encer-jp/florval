@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'api_dio_provider.dart';
 import 'retry.dart';
 import '../clients/notifications_api_client.dart';
 import '../api_responses.dart' as r;
@@ -8,7 +9,7 @@ part 'notifications_providers.g.dart';
 
 @riverpod
 NotificationsApiClient notificationsApiClient(Ref ref) {
-  throw UnimplementedError('Provide a Dio instance via override');
+  return NotificationsApiClient(ref.watch(apiDioProvider));
 }
 
 @Riverpod(retry: retry)

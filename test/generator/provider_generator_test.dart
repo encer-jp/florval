@@ -131,11 +131,32 @@ void main() {
           contains("import '../api_responses.dart' as r;"));
     });
 
-    test('generates client provider', () {
+    test('generates client provider using apiDioProvider', () {
       final code = generator.generate('users', [makeGetEndpoint()]);
 
       expect(code, contains('@riverpod'));
       expect(code, contains('UsersApiClient usersApiClient(Ref ref)'));
+      expect(code, contains('return UsersApiClient(ref.watch(apiDioProvider))'));
+      expect(code, isNot(contains('UnimplementedError')));
+    });
+
+    test('generates api_dio_provider import', () {
+      final code = generator.generate('users', [makeGetEndpoint()]);
+
+      expect(code, contains("import 'api_dio_provider.dart';"));
+    });
+
+    test('generates api dio provider file', () {
+      final code = generator.generateApiDioProvider();
+
+      expect(code, contains("import 'package:dio/dio.dart';"));
+      expect(code,
+          contains("import 'package:riverpod_annotation/riverpod_annotation.dart';"));
+      expect(code, contains("part 'api_dio_provider.g.dart';"));
+      expect(code, contains('@riverpod'));
+      expect(code, contains('Dio apiDio(Ref ref)'));
+      expect(code, contains(
+          "throw UnimplementedError('Override apiDioProvider with your Dio instance')"));
     });
 
     test('generates GET endpoint as @riverpod Notifier', () {

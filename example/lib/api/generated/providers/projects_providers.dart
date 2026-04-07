@@ -1,6 +1,7 @@
 import 'package:riverpod/experimental/mutation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'api_dio_provider.dart';
 import 'retry.dart';
 import '../clients/projects_api_client.dart';
 import '../models/create_project_request.dart';
@@ -10,7 +11,7 @@ part 'projects_providers.g.dart';
 
 @riverpod
 ProjectsApiClient projectsApiClient(Ref ref) {
-  throw UnimplementedError('Provide a Dio instance via override');
+  return ProjectsApiClient(ref.watch(apiDioProvider));
 }
 
 @Riverpod(retry: retry)
