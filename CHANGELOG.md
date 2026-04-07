@@ -1,3 +1,8 @@
+## 0.3.0
+
+### Breaking Changes
+- **Centralize API Dio provider**: Generate a single `apiDioProvider` instead of per-tag client providers that throw `UnimplementedError`. Each client provider now uses `ref.watch(apiDioProvider)` to obtain its Dio instance. Users only need one override in `ProviderScope` instead of N per-tag overrides. Migration: replace individual client provider overrides with `apiDioProvider.overrideWithValue(yourDio)`
+
 ## 0.2.13
 
 ### Bug Fixes
