@@ -1,3 +1,8 @@
+## 0.2.13
+
+### Bug Fixes
+- **Add missing imports for multipart form field `$ref` types**: When a `multipart/form-data` request body contained fields referencing `$ref` types (e.g. `UpdateUserDto`), the generated provider and client files did not include import statements for those model types, causing `Undefined class` errors. Both `_collectModelImports()` methods now iterate `formFields` to collect imports for multipart requests
+
 ## 0.2.12
 
 ### Bug Fixes
