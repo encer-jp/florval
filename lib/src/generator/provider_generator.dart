@@ -13,11 +13,13 @@ import '../utils/import_collector.dart';
 class ProviderGenerator {
   final TemplateConfig? templateConfig;
   final bool autoInvalidate;
+  final Set<String> excludeAutoInvalidate;
   final RiverpodRetryConfig? retry;
 
   ProviderGenerator({
     this.templateConfig,
     this.autoInvalidate = false,
+    this.excludeAutoInvalidate = const {},
     this.retry,
   });
 
@@ -490,8 +492,12 @@ class ProviderGenerator {
     // Build helper function signature
     final helperParams = _buildMutationParams(endpoint);
 
+    // Determine if this endpoint should invalidate
+    final shouldInvalidate = autoInvalidate &&
+        !excludeAutoInvalidate.contains(endpoint.operationId);
+
     buffer.writeln();
-    if (getEndpoints.isNotEmpty) {
+    if (shouldInvalidate && getEndpoints.isNotEmpty) {
       buffer.writeln('/// Executes ${ReCase(endpoint.operationId).camelCase} mutation and invalidates related GET providers.');
     } else {
       buffer.writeln('/// Executes ${ReCase(endpoint.operationId).camelCase} mutation.');
@@ -523,11 +529,13 @@ class ProviderGenerator {
       buffer.writeln('    final result = await client.$methodName();');
     }
 
-    // Invalidate GET providers
-    for (final getEndpoint in getEndpoints) {
-      final providerName =
-          '${ReCase(getEndpoint.operationId).camelCase}Provider';
-      buffer.writeln('    ref.container.invalidate($providerName);');
+    // Invalidate GET providers (only if not excluded)
+    if (shouldInvalidate) {
+      for (final getEndpoint in getEndpoints) {
+        final providerName =
+            '${ReCase(getEndpoint.operationId).camelCase}Provider';
+        buffer.writeln('    ref.container.invalidate($providerName);');
+      }
     }
 
     buffer.writeln('    return result;');

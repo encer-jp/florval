@@ -269,6 +269,112 @@ florval:
     });
   });
 
+  group('ConfigValidator - exclude_auto_invalidate', () {
+    final validator = ConfigValidator();
+
+    test('accepts valid exclude_auto_invalidate list', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    enabled: true
+    auto_invalidate: true
+    exclude_auto_invalidate:
+      - likePost
+      - unlikePost
+''') as YamlMap;
+
+      final errors = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.error)
+          .toList();
+
+      expect(errors, isEmpty);
+    });
+
+    test('errors when exclude_auto_invalidate is not a list', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    auto_invalidate: true
+    exclude_auto_invalidate: likePost
+''') as YamlMap;
+
+      final errors = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.error)
+          .toList();
+
+      expect(
+          errors.any((e) => e.field.contains('exclude_auto_invalidate')),
+          isTrue);
+      expect(errors.any((e) => e.message.contains('must be a list')), isTrue);
+    });
+
+    test('errors when entry is not a string', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    auto_invalidate: true
+    exclude_auto_invalidate:
+      - 123
+''') as YamlMap;
+
+      final errors = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.error)
+          .toList();
+
+      expect(
+          errors.any((e) => e.message.contains('must be a string')), isTrue);
+    });
+
+    test('warns when auto_invalidate is false', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    auto_invalidate: false
+    exclude_auto_invalidate:
+      - likePost
+''') as YamlMap;
+
+      final warnings = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.warning)
+          .toList();
+
+      expect(
+          warnings.any((e) =>
+              e.field.contains('exclude_auto_invalidate') &&
+              e.message.contains('no effect')),
+          isTrue);
+    });
+
+    test('warns when auto_invalidate is not set (defaults to false)', () {
+      final yaml = loadYaml('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    exclude_auto_invalidate:
+      - likePost
+''') as YamlMap;
+
+      final warnings = validator
+          .validate(yaml)
+          .where((e) => e.severity == ValidationSeverity.warning)
+          .toList();
+
+      expect(
+          warnings.any((e) =>
+              e.field.contains('exclude_auto_invalidate') &&
+              e.message.contains('no effect')),
+          isTrue);
+    });
+  });
+
   group('ConfigValidator - client.retry deprecation', () {
     final validator = ConfigValidator();
 
