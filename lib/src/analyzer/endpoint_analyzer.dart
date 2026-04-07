@@ -345,6 +345,7 @@ class EndpointAnalyzer {
     final extractedType = _extractType(resolved);
     if (extractedType == 'array' && resolved.items != null) {
       final itemSchema = resolver.resolveSchema(resolved.items!);
+      if (_isBinaryString(itemSchema)) {
         return (
           type: const FlorvalType(
             name: 'List<MultipartFile>',
