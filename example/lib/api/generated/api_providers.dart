@@ -6,4 +6,5 @@ export 'providers/users_providers.dart';
 export 'providers/projects_providers.dart';
 export 'providers/notifications_providers.dart';
 export 'providers/uploads_providers.dart';
+export 'providers/api_dio_provider.dart';
 export 'providers/retry.dart';

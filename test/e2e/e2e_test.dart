@@ -216,6 +216,12 @@ void main() {
           File(p.join(outputDir.path, 'providers', 'pets_providers.dart'))
               .existsSync(),
           isTrue);
+
+      // Verify centralized Dio provider is generated
+      expect(
+          File(p.join(outputDir.path, 'providers', 'api_dio_provider.dart'))
+              .existsSync(),
+          isTrue);
     });
 
     test('generated providers contain correct riverpod syntax', () {
@@ -231,9 +237,12 @@ void main() {
       expect(providerCode,
           contains("import 'package:riverpod_annotation/riverpod_annotation.dart';"));
       expect(providerCode, contains("part 'pets_providers.g.dart';"));
+      expect(providerCode, contains("import 'api_dio_provider.dart';"));
 
-      // Client provider
+      // Client provider uses centralized Dio provider
       expect(providerCode, contains('PetsApiClient petsApiClient('));
+      expect(providerCode, contains('ref.watch(apiDioProvider)'));
+      expect(providerCode, isNot(contains('UnimplementedError')));
 
       // GET endpoints → Notifier
       expect(providerCode, contains('class ListPets extends _\$ListPets'));
@@ -264,6 +273,13 @@ void main() {
           File(p.join(outputDir.path, 'api.dart')).readAsStringSync();
 
       expect(barrelCode, contains("export 'api_providers.dart';"));
+
+      // Verify api_providers.dart exports centralized Dio provider
+      final providerBarrelCode =
+          File(p.join(outputDir.path, 'api_providers.dart'))
+              .readAsStringSync();
+      expect(providerBarrelCode,
+          contains("export 'providers/api_dio_provider.dart';"));
     });
 
     test('generates paginated_data.dart and api_exception.dart when pagination configured', () {

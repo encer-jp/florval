@@ -1,6 +1,7 @@
 import 'package:riverpod/experimental/mutation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'api_dio_provider.dart';
 import '../clients/auth_api_client.dart';
 import '../models/login_request.dart';
 import '../api_responses.dart' as r;
@@ -9,7 +10,7 @@ part 'auth_providers.g.dart';
 
 @riverpod
 AuthApiClient authApiClient(Ref ref) {
-  throw UnimplementedError('Provide a Dio instance via override');
+  return AuthApiClient(ref.watch(apiDioProvider));
 }
 
 /// Mutation for login (POST /auth/login)
