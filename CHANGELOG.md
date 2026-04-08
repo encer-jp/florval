@@ -1,3 +1,8 @@
+## 0.3.1
+
+### Features
+- **`exclude_auto_invalidate` option**: Skip auto-invalidation for specific mutations by operationId. Useful for optimistic updates or mutations where cache invalidation should be handled manually. Configure via `riverpod.exclude_auto_invalidate` list in `florval.yaml`
+
 ## 0.3.0
 
 ### Breaking Changes
