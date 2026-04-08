@@ -27,9 +27,9 @@ class InitCommand {
     enabled: true
     # Invalidate same-tag GET providers after mutations
     auto_invalidate: true
-    # Exclude specific mutations from auto-invalidation (for optimistic updates)
+    # Exclude specific mutations from auto-invalidation by operationId (for optimistic updates)
     # exclude_auto_invalidate:
-    #   - likePost
+    #   - likePost          # operationId from OpenAPI spec
     #   - unlikePost
     retry:
       max_attempts: 3

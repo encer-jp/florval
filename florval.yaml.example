@@ -12,9 +12,9 @@ florval:
   riverpod:
     enabled: true
     auto_invalidate: false
-    # Exclude specific mutations from auto-invalidation (for optimistic updates)
+    # Exclude specific mutations from auto-invalidation by operationId (for optimistic updates)
     # exclude_auto_invalidate:
-    #   - likePost
+    #   - likePost          # operationId from OpenAPI spec
     #   - unlikePost
     #   - toggleFavorite
     # retry:
