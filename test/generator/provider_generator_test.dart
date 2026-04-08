@@ -945,5 +945,67 @@ void main() {
         expect(deprecatedLines.length, greaterThanOrEqualTo(2));
       });
     });
+
+    group('exclude_auto_invalidate', () {
+      test('excludes specific mutation from auto-invalidation', () {
+        final gen = ProviderGenerator(
+          autoInvalidate: true,
+          excludeAutoInvalidate: {'createUser'},
+        );
+
+        final code =
+            gen.generate('users', [makeGetEndpoint(), makePostEndpoint()]);
+
+        // createUser helper should NOT have invalidate calls
+        expect(
+            code, isNot(contains('ref.container.invalidate(getUserProvider)')));
+        // Doc comment should not mention invalidation
+        expect(code, contains('/// Executes createUser mutation.'));
+        expect(
+            code, isNot(contains('invalidates related GET providers')));
+      });
+
+      test(
+          'non-excluded mutations still invalidate when autoInvalidate is true',
+          () {
+        final gen = ProviderGenerator(
+          autoInvalidate: true,
+          excludeAutoInvalidate: {'likePost'},
+        );
+
+        final code =
+            gen.generate('users', [makeGetEndpoint(), makePostEndpoint()]);
+
+        // createUser is NOT excluded, should still invalidate
+        expect(code, contains('ref.container.invalidate(getUserProvider)'));
+        expect(code, contains('invalidates related GET providers'));
+      });
+
+      test('empty excludeAutoInvalidate does not affect behavior', () {
+        final gen = ProviderGenerator(
+          autoInvalidate: true,
+          excludeAutoInvalidate: {},
+        );
+
+        final code =
+            gen.generate('users', [makeGetEndpoint(), makePostEndpoint()]);
+
+        // Normal autoInvalidate behavior
+        expect(code, contains('ref.container.invalidate(getUserProvider)'));
+      });
+
+      test('exclude has no effect when autoInvalidate is false', () {
+        final gen = ProviderGenerator(
+          autoInvalidate: false,
+          excludeAutoInvalidate: {'createUser'},
+        );
+
+        final code =
+            gen.generate('users', [makeGetEndpoint(), makePostEndpoint()]);
+
+        // No invalidation regardless
+        expect(code, isNot(contains('ref.container.invalidate(')));
+      });
+    });
   });
 }

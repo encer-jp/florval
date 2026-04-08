@@ -40,6 +40,7 @@ class ConfigValidator {
   static const _validRiverpodKeys = {
     'enabled',
     'auto_invalidate',
+    'exclude_auto_invalidate',
     'pagination',
     'retry',
   };
@@ -229,6 +230,37 @@ class ConfigValidator {
         field: 'florval.riverpod.auto_invalidate',
         message: '"auto_invalidate" must be a boolean.',
       ));
+    }
+
+    final excludeAutoInvalidate = riverpod['exclude_auto_invalidate'];
+    if (excludeAutoInvalidate != null) {
+      if (excludeAutoInvalidate is! YamlList) {
+        errors.add(const ConfigValidationError(
+          field: 'florval.riverpod.exclude_auto_invalidate',
+          message:
+              '"exclude_auto_invalidate" must be a list of operation ID strings.',
+        ));
+      } else {
+        for (var i = 0; i < excludeAutoInvalidate.length; i++) {
+          if (excludeAutoInvalidate[i] is! String) {
+            errors.add(ConfigValidationError(
+              field: 'florval.riverpod.exclude_auto_invalidate[$i]',
+              message: 'Each entry must be a string (operation ID).',
+            ));
+          }
+        }
+
+        // auto_invalidate: false との組み合わせ警告
+        final autoInvalidate = riverpod['auto_invalidate'];
+        if (autoInvalidate == false || autoInvalidate == null) {
+          errors.add(const ConfigValidationError(
+            field: 'florval.riverpod.exclude_auto_invalidate',
+            message:
+                '"exclude_auto_invalidate" has no effect when "auto_invalidate" is false.',
+            severity: ValidationSeverity.warning,
+          ));
+        }
+      }
     }
 
     final retry = riverpod['retry'];

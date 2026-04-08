@@ -38,7 +38,7 @@ class ListTasks extends _$ListTasks {
 /// Mutation for createTask (POST /tasks)
 final createTaskMutation = Mutation<r.CreateTaskResponse>();
 
-/// Executes createTask mutation.
+/// Executes createTask mutation and invalidates related GET providers.
 Future<r.CreateTaskResponse> createTask(
   MutationTarget ref, {
   required CreateTaskRequest body,
@@ -46,6 +46,8 @@ Future<r.CreateTaskResponse> createTask(
   return createTaskMutation.run(ref, (tsx) async {
     final client = tsx.get(tasksApiClientProvider);
     final result = await client.createTask(body: body);
+    ref.container.invalidate(listTasksProvider);
+    ref.container.invalidate(getTaskProvider);
     return result;
   });
 }
@@ -64,7 +66,7 @@ class GetTask extends _$GetTask {
 /// Mutation for updateTask (PUT /tasks/{id})
 final updateTaskMutation = Mutation<r.UpdateTaskResponse>();
 
-/// Executes updateTask mutation.
+/// Executes updateTask mutation and invalidates related GET providers.
 Future<r.UpdateTaskResponse> updateTask(
   MutationTarget ref, {
   required String id,
@@ -73,6 +75,8 @@ Future<r.UpdateTaskResponse> updateTask(
   return updateTaskMutation.run(ref, (tsx) async {
     final client = tsx.get(tasksApiClientProvider);
     final result = await client.updateTask(id: id, body: body);
+    ref.container.invalidate(listTasksProvider);
+    ref.container.invalidate(getTaskProvider);
     return result;
   });
 }

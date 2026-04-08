@@ -301,5 +301,45 @@ florval:
 
       tmpFile.deleteSync();
     });
+
+    test('loads exclude_auto_invalidate from YAML', () {
+      final tmpFile =
+          File('${Directory.systemTemp.path}/florval_test_eai.yaml');
+      tmpFile.writeAsStringSync('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    enabled: true
+    auto_invalidate: true
+    exclude_auto_invalidate:
+      - likePost
+      - unlikePost
+''');
+
+      final config = FlorvalConfig.fromFile(tmpFile.path);
+
+      expect(
+          config.riverpod.excludeAutoInvalidate, {'likePost', 'unlikePost'});
+
+      tmpFile.deleteSync();
+    });
+
+    test('exclude_auto_invalidate defaults to empty set', () {
+      final tmpFile =
+          File('${Directory.systemTemp.path}/florval_test_eai2.yaml');
+      tmpFile.writeAsStringSync('''
+florval:
+  schema_path: api.yaml
+  riverpod:
+    enabled: true
+    auto_invalidate: true
+''');
+
+      final config = FlorvalConfig.fromFile(tmpFile.path);
+
+      expect(config.riverpod.excludeAutoInvalidate, isEmpty);
+
+      tmpFile.deleteSync();
+    });
   });
 }

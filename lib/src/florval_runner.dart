@@ -311,6 +311,7 @@ class FlorvalRunner {
       final providerGenerator = ProviderGenerator(
         templateConfig: tc,
         autoInvalidate: config.riverpod.autoInvalidate,
+        excludeAutoInvalidate: config.riverpod.excludeAutoInvalidate,
         retry: config.riverpod.retry,
       );
 

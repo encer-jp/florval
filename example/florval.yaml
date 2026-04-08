@@ -15,7 +15,10 @@ florval:
     # Generate Riverpod providers
     enabled: true
     # Invalidate same-tag GET providers after mutations
-    auto_invalidate: false
+    auto_invalidate: true
+    # Exclude specific mutations from auto-invalidation by operationId
+    exclude_auto_invalidate:
+      - deleteTask
     retry:
       max_attempts: 3
       delay: 1000

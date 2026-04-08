@@ -131,6 +131,9 @@ class RiverpodConfig {
   /// Whether to auto-invalidate same-tag GET providers after mutations.
   final bool autoInvalidate;
 
+  /// Operation IDs to exclude from auto-invalidation.
+  final Set<String> excludeAutoInvalidate;
+
   /// Pagination configurations for cursor-based paginated endpoints.
   final List<PaginationConfig> pagination;
 
@@ -140,6 +143,7 @@ class RiverpodConfig {
   const RiverpodConfig({
     this.enabled = false,
     this.autoInvalidate = false,
+    this.excludeAutoInvalidate = const {},
     this.pagination = const [],
     this.retry,
   });
@@ -202,6 +206,16 @@ class RiverpodConfig {
       }
     }
 
+    final excludeList = yaml['exclude_auto_invalidate'];
+    final excludeAutoInvalidate = <String>{};
+    if (excludeList is YamlList) {
+      for (final item in excludeList) {
+        if (item is String) {
+          excludeAutoInvalidate.add(item);
+        }
+      }
+    }
+
     final retryYaml = yaml['retry'];
     final retry = retryYaml is YamlMap
         ? RiverpodRetryConfig.fromYaml(retryYaml)
@@ -210,6 +224,7 @@ class RiverpodConfig {
     return RiverpodConfig(
       enabled: (yaml['enabled'] as bool?) ?? false,
       autoInvalidate: (yaml['auto_invalidate'] as bool?) ?? false,
+      excludeAutoInvalidate: excludeAutoInvalidate,
       pagination: pagination,
       retry: retry,
     );
