@@ -46,8 +46,13 @@ class SpecNormalizer {
       }
 
       // --- nullable → type array ---
-      if (result['nullable'] == true && result['type'] is String) {
-        result['type'] = [result['type'], 'null'];
+      if (result['nullable'] == true) {
+        final type = result['type'];
+        if (type is String) {
+          result['type'] = [type, 'null'];
+        } else {
+          result['type'] = ['null'];
+        }
       }
       result.remove('nullable');
 
