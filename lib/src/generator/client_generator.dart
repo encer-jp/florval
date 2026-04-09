@@ -350,11 +350,19 @@ class ClientGenerator {
     final type = field.type;
     final name = field.name;
     if (_isMultipartFileType(type)) return name;
+    if (type.isPrimitive) return name;
     if (type.isEnum) return '$name.jsonValue';
-    if (_isComplexMultipartField(type)) {
-      if (type.isList) {
-        return "MultipartFile.fromString(jsonEncode($name.map((e) => e.toJson()).toList()), contentType: MediaType('application', 'json'))";
+    if (type.isMap) return name;
+    // List types
+    if (type.isList && type.itemType != null) {
+      if (type.itemType!.isPrimitive || _isMultipartFileType(type.itemType!)) {
+        return name;
       }
+      if (type.itemType!.isEnum) return '$name.map((e) => e.jsonValue).toList()';
+      return "MultipartFile.fromString(jsonEncode($name.map((e) => e.toJson()).toList()), contentType: MediaType('application', 'json'))";
+    }
+    // Complex object ($ref or non-primitive)
+    if (_isComplexMultipartField(type)) {
       return "MultipartFile.fromString(jsonEncode($name.toJson()), contentType: MediaType('application', 'json'))";
     }
     return name;
