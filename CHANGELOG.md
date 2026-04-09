@@ -1,3 +1,8 @@
+## 0.3.3
+
+### Bug Fixes
+- **Fix nullable lost on `allOf`/`$ref` schemas without `type` field**: When an OpenAPI 3.0 property used `nullable: true` with `allOf` (e.g. `nullable: true, allOf: [{$ref: '#/components/schemas/Foo'}]`), the v3.0→v3.1 normalizer silently discarded the nullable information because it only converted `nullable` when an explicit `type` field was present. Now properly converts `nullable: true` to `type: ['null']` for all schemas, ensuring nullable `$ref` properties generate `T?` instead of `required T`
+
 ## 0.3.2
 
 ### Bug Fixes
