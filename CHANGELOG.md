@@ -1,3 +1,8 @@
+## 0.3.2
+
+### Bug Fixes
+- **Serialize complex object fields in `multipart/form-data` as JSON**: Non-binary complex types (`$ref` or object schemas) in multipart form fields were passed directly to `FormData.fromMap()`, causing dio to call `.toString()` instead of properly serializing the data. Now generates `MultipartFile.fromString(jsonEncode(dto.toJson()), contentType: MediaType('application', 'json'))` for such fields. Also handles enum fields with `.jsonValue` and list-of-enum fields with `.map((e) => e.jsonValue).toList()`. Conditionally adds `dart:convert` and `http_parser` imports only when complex multipart fields are present
+
 ## 0.3.1
 
 ### Features

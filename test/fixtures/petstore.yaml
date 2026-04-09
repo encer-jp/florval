@@ -104,6 +104,8 @@ paths:
                   format: binary
                 description:
                   type: string
+                metadata:
+                  $ref: "#/components/schemas/Category"
       responses:
         "200":
           description: Photo uploaded
