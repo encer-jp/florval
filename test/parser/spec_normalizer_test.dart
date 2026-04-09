@@ -231,7 +231,7 @@ void main() {
         expect(nameSchema['type'], ['string', 'null']);
       });
 
-      test('preserves nullable on allOf wrapper without type', () {
+      test('converts nullable to type array on allOf wrapper without type', () {
         final spec = _makeSpec(schemas: {
           'Bar': {
             'type': 'object',
@@ -255,7 +255,8 @@ void main() {
         final result = normalizer.normalizeV30(spec);
         final tenantSchema = _getSchema(result, 'Bar', 'tenant');
 
-        expect(tenantSchema['nullable'], true);
+        expect(tenantSchema['type'], ['null']);
+        expect(tenantSchema['nullable'], isNull);
         expect(tenantSchema['allOf'], isNotNull);
       });
 

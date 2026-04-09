@@ -47,14 +47,14 @@ class SpecNormalizer {
 
       // --- nullable → type array ---
       if (result['nullable'] == true) {
-        if (result['type'] is String) {
-          result['type'] = [result['type'], 'null'];
-          result.remove('nullable');
+        final type = result['type'];
+        if (type is String) {
+          result['type'] = [type, 'null'];
+        } else {
+          result['type'] = ['null'];
         }
-        // else: keep nullable for schemas without a type (allOf, oneOf, $ref, etc.)
-      } else {
-        result.remove('nullable');
       }
+      result.remove('nullable');
 
       // --- exclusiveMinimum (bool → number) ---
       if (result['exclusiveMinimum'] is bool) {
