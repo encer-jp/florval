@@ -231,6 +231,34 @@ void main() {
         expect(nameSchema['type'], ['string', 'null']);
       });
 
+      test('preserves nullable on allOf wrapper without type', () {
+        final spec = _makeSpec(schemas: {
+          'Bar': {
+            'type': 'object',
+            'properties': {
+              'tenant': {
+                'nullable': true,
+                'allOf': [
+                  {r'$ref': '#/components/schemas/Tenant'},
+                ],
+              },
+            },
+          },
+          'Tenant': {
+            'type': 'object',
+            'properties': {
+              'id': {'type': 'string'},
+            },
+          },
+        });
+
+        final result = normalizer.normalizeV30(spec);
+        final tenantSchema = _getSchema(result, 'Bar', 'tenant');
+
+        expect(tenantSchema['nullable'], true);
+        expect(tenantSchema['allOf'], isNotNull);
+      });
+
       test('normalizes schemas inside oneOf', () {
         final spec = _makeSpec(schemas: {
           'Foo': {
