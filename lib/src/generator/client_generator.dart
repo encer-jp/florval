@@ -24,8 +24,22 @@ class ClientGenerator {
       buffer.writeln();
     }
 
+    // Check if any endpoint has complex multipart fields needing JSON serialization
+    final hasComplexMultipart = endpoints.any((e) =>
+        e.requestBody != null &&
+        e.requestBody!.isMultipart &&
+        e.requestBody!.formFields != null &&
+        e.requestBody!.formFields!.any((f) => _isComplexMultipartField(f.type)));
+
     // Imports
+    if (hasComplexMultipart) {
+      buffer.writeln("import 'dart:convert';");
+      buffer.writeln();
+    }
     buffer.writeln("import 'package:dio/dio.dart';");
+    if (hasComplexMultipart) {
+      buffer.writeln("import 'package:http_parser/http_parser.dart';");
+    }
 
     // Custom client imports
     if (templateConfig != null) {
@@ -181,11 +195,12 @@ class ClientGenerator {
         buffer.writeln(',');
         buffer.writeln('        data: FormData.fromMap({');
         for (final field in body.formFields!) {
+          final valueExpr = _multipartFieldValueExpr(field);
           if (field.isRequired) {
-            buffer.writeln("          '${field.jsonKey}': ${field.name},");
+            buffer.writeln("          '${field.jsonKey}': $valueExpr,");
           } else {
             buffer.writeln(
-                "          if (${field.name} != null) '${field.jsonKey}': ${field.name},");
+                "          if (${field.name} != null) '${field.jsonKey}': $valueExpr,");
           }
         }
         buffer.write('        })');
@@ -307,6 +322,42 @@ class ClientGenerator {
       path = path.replaceAll('{${p.name}}', replacement);
     }
     return path;
+  }
+
+  /// Whether a type represents MultipartFile (single or list).
+  bool _isMultipartFileType(FlorvalType type) {
+    final base = type.dartType.replaceAll('?', '');
+    return base == 'MultipartFile' || base == 'List<MultipartFile>';
+  }
+
+  /// Whether a multipart form field is a complex object type that needs
+  /// JSON serialization via `MultipartFile.fromString(jsonEncode(...))`.
+  bool _isComplexMultipartField(FlorvalType type) {
+    if (_isMultipartFileType(type)) return false;
+    if (type.isPrimitive) return false;
+    if (type.isEnum) return false;
+    if (type.isMap) return false;
+    // List of non-primitive, non-MultipartFile items
+    if (type.isList && type.itemType != null) {
+      return !type.itemType!.isPrimitive && !_isMultipartFileType(type.itemType!);
+    }
+    // Non-primitive single object ($ref or inline object)
+    return true;
+  }
+
+  /// Builds the value expression for a multipart form field.
+  String _multipartFieldValueExpr(FlorvalField field) {
+    final type = field.type;
+    final name = field.name;
+    if (_isMultipartFileType(type)) return name;
+    if (type.isEnum) return '$name.jsonValue';
+    if (_isComplexMultipartField(type)) {
+      if (type.isList) {
+        return "MultipartFile.fromString(jsonEncode($name.map((e) => e.toJson()).toList()), contentType: MediaType('application', 'json'))";
+      }
+      return "MultipartFile.fromString(jsonEncode($name.toJson()), contentType: MediaType('application', 'json'))";
+    }
+    return name;
   }
 
   void _collectModelImports(

@@ -369,6 +369,81 @@ void main() {
       expect(code, isNot(contains('body.toJson()')));
     });
 
+    test('generates multipart with complex object field as MultipartFile.fromString', () {
+      final endpoint = FlorvalEndpoint(
+        path: '/pets/{petId}/photo',
+        method: 'POST',
+        operationId: 'uploadPetPhotoWithMetadata',
+        parameters: [
+          FlorvalParam(
+            name: 'petId',
+            dartName: 'petId',
+            location: ParamLocation.path,
+            type: FlorvalType(name: 'int', dartType: 'int'),
+            isRequired: true,
+          ),
+        ],
+        requestBody: FlorvalRequestBody(
+          type: FlorvalType(name: 'FormData', dartType: 'FormData'),
+          isRequired: true,
+          contentType: ContentType.multipart,
+          formFields: [
+            FlorvalField(
+              name: 'file',
+              jsonKey: 'file',
+              type: FlorvalType(name: 'MultipartFile', dartType: 'MultipartFile'),
+              isRequired: true,
+            ),
+            FlorvalField(
+              name: 'metadata',
+              jsonKey: 'metadata',
+              type: FlorvalType(
+                  name: 'Category',
+                  dartType: 'Category',
+                  ref: '#/components/schemas/Category'),
+              isRequired: true,
+            ),
+            FlorvalField(
+              name: 'tags',
+              jsonKey: 'tags',
+              type: FlorvalType(
+                name: 'List<Tag>',
+                dartType: 'List<Tag>',
+                isList: true,
+                itemType: FlorvalType(
+                    name: 'Tag',
+                    dartType: 'Tag',
+                    ref: '#/components/schemas/Tag'),
+              ),
+              isRequired: false,
+            ),
+          ],
+        ),
+        responses: {
+          200: FlorvalResponse(
+            statusCode: 200,
+            type: FlorvalType(
+                name: 'Pet',
+                dartType: 'Pet',
+                ref: '#/components/schemas/Pet'),
+          ),
+        },
+        tags: ['pets'],
+      );
+
+      final code = generator.generate('pets', [endpoint]);
+
+      // File field should be passed directly
+      expect(code, contains("'file': file,"));
+      // Complex object field should use MultipartFile.fromString + jsonEncode
+      expect(code, contains("MultipartFile.fromString(jsonEncode(metadata.toJson()), contentType: MediaType('application', 'json'))"));
+      // List of complex objects should also use MultipartFile.fromString + jsonEncode
+      expect(code, contains("MultipartFile.fromString(jsonEncode(tags.map((e) => e.toJson()).toList()), contentType: MediaType('application', 'json'))"));
+      // Should import dart:convert and http_parser
+      expect(code, contains("import 'dart:convert';"));
+      expect(code, contains("import 'package:http_parser/http_parser.dart';"));
+    });
+
     test('generates doc comment from endpoint summary', () {
       final endpoint = FlorvalEndpoint(
         path: '/users/{id}',
