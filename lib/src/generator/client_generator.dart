@@ -3,6 +3,7 @@ import 'package:recase/recase.dart';
 import '../config/template_config.dart';
 import '../model/api_endpoint.dart';
 import '../model/api_response.dart';
+import '../model/api_type.dart';
 import '../utils/doc_comment.dart';
 import '../utils/import_collector.dart';
 import '../utils/status_code.dart';
