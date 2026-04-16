@@ -82,7 +82,8 @@ void main() async {
   final usersResp = await usersClient.listUsers(page: 1, limit: 3);
   switch (usersResp) {
     case r.ListUsersResponseSuccess(:final data):
-      print('OK: ${data.data.length}/${data.total} users (page ${data.page}/${data.totalPages})');
+      print(
+          'OK: ${data.data.length}/${data.total} users (page ${data.page}/${data.totalPages})');
     default:
       print('FAIL: $usersResp');
   }
@@ -93,7 +94,8 @@ void main() async {
   switch (projResp) {
     case r.ListProjectsResponseSuccess(:final data):
       for (final p in data) {
-        print('  ${p.name} (owner: ${p.owner.name}, members: ${p.members.length})');
+        print(
+            '  ${p.name} (owner: ${p.owner.name}, members: ${p.members.length})');
       }
       print('OK: ${data.length} projects');
     default:
