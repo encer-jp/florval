@@ -1,3 +1,8 @@
+## 0.3.4
+
+### Bug Fixes
+- **Apply `JsonOptional<T>` to DTO schemas referenced from `multipart/form-data` PATCH/PUT endpoints**: When a PATCH/PUT endpoint used `multipart/form-data` with a complex object form field (e.g. `updateUserDto: {$ref: '#/components/schemas/UpdateUserDto'}` alongside a binary `iconFile`), the referenced DTO's optional fields were not wrapped in `JsonOptional<T>` because `_markAbsentableFields()` unconditionally excluded all multipart request bodies. Now iterates multipart form fields and marks any complex object DTO (named `$ref`, inline object, or `allOf`-wrapped schema) as absentable, generating proper `@Freezed(fromJson: false, toJson: false)` with `containsKey`-based 3-state fromJson/toJson
+
 ## 0.3.3
 
 ### Bug Fixes
