@@ -23,8 +23,8 @@ void main() {
 
     test('extracts all endpoints', () {
       final result = analyzer.analyzeAll(spec.paths);
-      // GET /pets, POST /pets, GET /pets/paginated, POST /pets/{petId}/photo, GET /pets/{petId}, PUT /pets/{petId}, DELETE /pets/{petId}
-      expect(result.endpoints.length, 7);
+      // GET /pets, POST /pets, GET /pets/paginated, POST /pets/{petId}/photo, PATCH /pets/{petId}/details, GET /pets/{petId}, PUT /pets/{petId}, DELETE /pets/{petId}
+      expect(result.endpoints.length, 8);
     });
 
     test('parses GET /pets correctly', () {
