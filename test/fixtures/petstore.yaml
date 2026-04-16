@@ -121,6 +121,46 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /pets/{petId}/details:
+    patch:
+      operationId: updatePetWithPhoto
+      tags:
+        - pets
+      summary: Update a pet with optional photo upload
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                updatePetDto:
+                  $ref: "#/components/schemas/UpdatePetRequest"
+                photo:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Pet updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+        "404":
+          description: Pet not found
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /pets/{petId}:
     get:
       operationId: getPet
@@ -313,6 +353,14 @@ components:
         categoryId:
           type: integer
           format: int64
+
+    UpdatePetRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        tag:
+          type: string
 
     Error:
       type: object

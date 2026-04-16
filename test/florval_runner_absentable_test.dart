@@ -11,14 +11,31 @@ void main() {
     /// The private method is tested through this replica to validate
     /// the algorithm without requiring file I/O dependencies.
 
+    bool isComplexObjectField(FlorvalType type) {
+      if (type.isPrimitive) return false;
+      if (type.dartType == 'MultipartFile' ||
+          type.dartType == 'List<MultipartFile>') return false;
+      if (type.isEnum) return false;
+      if (type.isMap) return false;
+      if (type.isList) return false;
+      return true;
+    }
+
     AnalysisResult markAbsentableFields(AnalysisResult analysis) {
       // Mirror the logic from FlorvalRunner._markAbsentableFields
       final absentableSchemaNames = <String>{};
       for (final endpoint in analysis.endpoints) {
         if ((endpoint.method == 'PATCH' || endpoint.method == 'PUT') &&
-            endpoint.requestBody != null &&
-            !endpoint.requestBody!.isMultipart) {
-          absentableSchemaNames.add(endpoint.requestBody!.type.name);
+            endpoint.requestBody != null) {
+          if (!endpoint.requestBody!.isMultipart) {
+            absentableSchemaNames.add(endpoint.requestBody!.type.name);
+          } else if (endpoint.requestBody!.formFields != null) {
+            for (final field in endpoint.requestBody!.formFields!) {
+              if (isComplexObjectField(field.type)) {
+                absentableSchemaNames.add(field.type.name);
+              }
+            }
+          }
         }
       }
       if (absentableSchemaNames.isEmpty) return analysis;
@@ -106,21 +123,23 @@ void main() {
       String operationId, {
       String? requestBodyType,
       bool multipart = false,
+      List<FlorvalField>? formFields,
     }) {
       return FlorvalEndpoint(
         path: '/test',
         method: method,
         operationId: operationId,
         parameters: [],
-        requestBody: requestBodyType != null
+        requestBody: requestBodyType != null || (multipart && formFields != null)
             ? FlorvalRequestBody(
                 type: FlorvalType(
-                  name: requestBodyType,
-                  dartType: requestBodyType,
+                  name: multipart ? 'FormData' : requestBodyType!,
+                  dartType: multipart ? 'FormData' : requestBodyType!,
                 ),
                 isRequired: true,
                 contentType:
                     multipart ? ContentType.multipart : ContentType.json,
+                formFields: formFields,
               )
             : null,
         responses: {
@@ -206,20 +225,161 @@ void main() {
       }
     });
 
-    test('does NOT mark fields for multipart PUT request body', () {
+    test('does NOT mark fields for multipart PUT without complex object form fields',
+        () {
       final analysis = AnalysisResult(
         schemas: [makeSchema('UploadRequest')],
-        endpoints: [makeEndpoint('PUT', 'upload',
-            requestBodyType: 'UploadRequest', multipart: true)],
+        endpoints: [
+          makeEndpoint('PUT', 'upload', multipart: true, formFields: [
+            FlorvalField(
+              name: 'file',
+              jsonKey: 'file',
+              type: const FlorvalType(
+                  name: 'MultipartFile', dartType: 'MultipartFile'),
+              isRequired: true,
+            ),
+            FlorvalField(
+              name: 'description',
+              jsonKey: 'description',
+              type: const FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: false,
+            ),
+          ]),
+        ],
         inlineUnionSchemas: [],
         inlineObjectSchemas: [],
       );
 
       final result = markAbsentableFields(analysis);
 
+      // UploadRequest schema is unrelated to the form fields,
+      // so it should NOT be marked absentable
       for (final field in result.schemas.first.fields) {
         expect(field.absentable, isFalse,
-            reason: 'Multipart fields should not be absentable');
+            reason:
+                'Schema unrelated to multipart form fields should not be absentable');
+      }
+    });
+
+    test(
+        'marks referenced DTO schema as absentable for multipart PATCH endpoint',
+        () {
+      final analysis = AnalysisResult(
+        schemas: [makeSchema('UpdateUserDto')],
+        endpoints: [
+          makeEndpoint('PATCH', 'updateMe', multipart: true, formFields: [
+            FlorvalField(
+              name: 'updateUserDto',
+              jsonKey: 'updateUserDto',
+              type: const FlorvalType(
+                name: 'UpdateUserDto',
+                dartType: 'UpdateUserDto',
+                ref: '#/components/schemas/UpdateUserDto',
+              ),
+              isRequired: false,
+            ),
+            FlorvalField(
+              name: 'iconFile',
+              jsonKey: 'iconFile',
+              type: const FlorvalType(
+                  name: 'MultipartFile', dartType: 'MultipartFile'),
+              isRequired: false,
+            ),
+          ]),
+        ],
+        inlineUnionSchemas: [],
+        inlineObjectSchemas: [],
+      );
+
+      final result = markAbsentableFields(analysis);
+      final schema = result.schemas.first;
+
+      // Required field: NOT absentable
+      expect(schema.fields[0].name, equals('id'));
+      expect(schema.fields[0].absentable, isFalse);
+
+      // Non-required fields: absentable
+      expect(schema.fields[1].name, equals('name'));
+      expect(schema.fields[1].absentable, isTrue);
+      expect(schema.fields[2].name, equals('email'));
+      expect(schema.fields[2].absentable, isTrue);
+    });
+
+    test(
+        'marks inline object schema as absentable for multipart PUT endpoint',
+        () {
+      // Inline objects have ref == null but are still complex DTOs
+      final analysis = AnalysisResult(
+        schemas: [],
+        endpoints: [
+          makeEndpoint('PUT', 'updateProfile', multipart: true, formFields: [
+            FlorvalField(
+              name: 'profileData',
+              jsonKey: 'profileData',
+              type: const FlorvalType(
+                name: 'UpdateProfileProfileData',
+                dartType: 'UpdateProfileProfileData',
+                // No $ref — inline object
+              ),
+              isRequired: false,
+            ),
+            FlorvalField(
+              name: 'avatar',
+              jsonKey: 'avatar',
+              type: const FlorvalType(
+                  name: 'MultipartFile', dartType: 'MultipartFile'),
+              isRequired: false,
+            ),
+          ]),
+        ],
+        inlineUnionSchemas: [],
+        inlineObjectSchemas: [makeSchema('UpdateProfileProfileData')],
+      );
+
+      final result = markAbsentableFields(analysis);
+      final schema = result.inlineObjectSchemas.first;
+
+      // Non-required fields: absentable
+      expect(schema.fields[1].absentable, isTrue);
+      expect(schema.fields[2].absentable, isTrue);
+    });
+
+    test('does NOT mark primitive or file form fields as absentable schemas',
+        () {
+      final analysis = AnalysisResult(
+        schemas: [
+          makeSchema('String'),
+          makeSchema('MultipartFile'),
+        ],
+        endpoints: [
+          makeEndpoint('PATCH', 'updateItem', multipart: true, formFields: [
+            FlorvalField(
+              name: 'description',
+              jsonKey: 'description',
+              type: const FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: false,
+            ),
+            FlorvalField(
+              name: 'file',
+              jsonKey: 'file',
+              type: const FlorvalType(
+                  name: 'MultipartFile', dartType: 'MultipartFile'),
+              isRequired: false,
+            ),
+          ]),
+        ],
+        inlineUnionSchemas: [],
+        inlineObjectSchemas: [],
+      );
+
+      final result = markAbsentableFields(analysis);
+
+      for (final schema in result.schemas) {
+        for (final field in schema.fields) {
+          expect(field.absentable, isFalse,
+              reason:
+                  'Primitive/file form fields should not cause absentable marking');
+        }
       }
     });
 

@@ -193,6 +193,38 @@ void main() {
       expect(barrelCode, contains("export 'api_clients.dart';"));
     });
 
+    test('multipart PATCH generates JsonOptional for referenced DTO', () {
+      final config = _makeConfig(outputDir.path);
+
+      FlorvalRunner().run(config);
+
+      // UpdatePetRequest model should exist
+      final modelFile =
+          File(p.join(outputDir.path, 'models', 'update_pet_request.dart'));
+      expect(modelFile.existsSync(), isTrue);
+
+      final modelCode = modelFile.readAsStringSync();
+
+      // Should use JsonOptional for non-required fields (PATCH multipart)
+      expect(modelCode, contains('JsonOptional<String>'));
+      expect(modelCode, contains('@Freezed(fromJson: false, toJson: false)'));
+      expect(modelCode, contains('json.containsKey('));
+
+      // Should have core/json_optional.dart generated
+      final jsonOptionalFile =
+          File(p.join(outputDir.path, 'core', 'json_optional.dart'));
+      expect(jsonOptionalFile.existsSync(), isTrue);
+
+      // Client should have the multipart PATCH method
+      final clientCode =
+          File(p.join(outputDir.path, 'clients', 'pets_api_client.dart'))
+              .readAsStringSync();
+      expect(clientCode,
+          contains('Future<r.UpdatePetWithPhotoResponse> updatePetWithPhoto('));
+      expect(clientCode, contains('UpdatePetRequest?'));
+      expect(clientCode, contains('MultipartFile?'));
+    });
+
     test('does not generate providers when riverpod is disabled', () {
       final config = _makeConfig(outputDir.path);
 

@@ -7,6 +7,7 @@ import 'config/florval_config.dart';
 import 'model/analysis_result.dart';
 import 'model/api_endpoint.dart';
 import 'model/api_schema.dart';
+import 'model/api_type.dart';
 import 'generator/client_generator.dart';
 import 'generator/file_writer.dart';
 import 'generator/json_optional_generator.dart';
@@ -51,13 +52,22 @@ class FlorvalRunner {
 
   /// Marks non-required fields in PATCH/PUT request body schemas as absentable.
   AnalysisResult _markAbsentableFields(AnalysisResult analysis) {
-    // Collect schema names used by PATCH/PUT JSON request bodies
+    // Collect schema names used by PATCH/PUT request bodies
     final absentableSchemaNames = <String>{};
     for (final endpoint in analysis.endpoints) {
       if ((endpoint.method == 'PATCH' || endpoint.method == 'PUT') &&
-          endpoint.requestBody != null &&
-          !endpoint.requestBody!.isMultipart) {
-        absentableSchemaNames.add(endpoint.requestBody!.type.name);
+          endpoint.requestBody != null) {
+        if (!endpoint.requestBody!.isMultipart) {
+          // JSON body: the body type itself is absentable
+          absentableSchemaNames.add(endpoint.requestBody!.type.name);
+        } else if (endpoint.requestBody!.formFields != null) {
+          // Multipart body: complex object form fields reference absentable schemas
+          for (final field in endpoint.requestBody!.formFields!) {
+            if (_isComplexObjectField(field.type)) {
+              absentableSchemaNames.add(field.type.name);
+            }
+          }
+        }
       }
     }
     if (absentableSchemaNames.isEmpty) return analysis;
@@ -376,5 +386,17 @@ class FlorvalRunner {
     logger.success(
         'Generated ${modelNames.length} models, ${responseNames.length} responses, ${clientNames.length} clients${providerNames.isNotEmpty ? ', ${providerNames.length} providers' : ''}');
     logger.info('Output written to ${config.outputDirectory}');
+  }
+
+  /// Whether a multipart form field type represents a complex object (DTO)
+  /// whose non-required fields should be marked as absentable for PATCH/PUT.
+  static bool _isComplexObjectField(FlorvalType type) {
+    if (type.isPrimitive) return false;
+    if (type.dartType == 'MultipartFile' ||
+        type.dartType == 'List<MultipartFile>') return false;
+    if (type.isEnum) return false;
+    if (type.isMap) return false;
+    if (type.isList) return false;
+    return true;
   }
 }
