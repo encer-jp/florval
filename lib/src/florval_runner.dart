@@ -22,8 +22,7 @@ import 'utils/logger.dart';
 class FlorvalRunner {
   final FlorvalLogger logger;
 
-  FlorvalRunner({FlorvalLogger? logger})
-      : logger = logger ?? FlorvalLogger();
+  FlorvalRunner({FlorvalLogger? logger}) : logger = logger ?? FlorvalLogger();
 
   /// Runs the code generation pipeline.
   void run(FlorvalConfig config) {
@@ -34,18 +33,22 @@ class FlorvalRunner {
 
     if (analysis.inlineUnionSchemas.isNotEmpty) {
       logger.debug(
-          'Found ${analysis.inlineUnionSchemas.length} inline union schemas');
+        'Found ${analysis.inlineUnionSchemas.length} inline union schemas',
+      );
     }
     if (analysis.inlineObjectSchemas.isNotEmpty) {
       logger.debug(
-          'Found ${analysis.inlineObjectSchemas.length} inline object schemas');
+        'Found ${analysis.inlineObjectSchemas.length} inline object schemas',
+      );
     }
     if (analysis.inlineEnumSchemas.isNotEmpty) {
       logger.debug(
-          'Found ${analysis.inlineEnumSchemas.length} inline enum schemas');
+        'Found ${analysis.inlineEnumSchemas.length} inline enum schemas',
+      );
     }
     logger.info(
-        'Found ${analysis.schemas.length} schemas and ${analysis.endpoints.length} endpoints');
+      'Found ${analysis.schemas.length} schemas and ${analysis.endpoints.length} endpoints',
+    );
 
     _generate(config, analysis);
   }
@@ -73,15 +76,20 @@ class FlorvalRunner {
     if (absentableSchemaNames.isEmpty) return analysis;
 
     logger.debug(
-        'Marking absentable fields in ${absentableSchemaNames.length} PATCH/PUT schemas: $absentableSchemaNames');
+      'Marking absentable fields in ${absentableSchemaNames.length} PATCH/PUT schemas: $absentableSchemaNames',
+    );
 
     return AnalysisResult(
       schemas: _applyAbsentable(analysis.schemas, absentableSchemaNames),
       endpoints: analysis.endpoints,
       inlineUnionSchemas: _applyAbsentable(
-          analysis.inlineUnionSchemas, absentableSchemaNames),
+        analysis.inlineUnionSchemas,
+        absentableSchemaNames,
+      ),
       inlineObjectSchemas: _applyAbsentable(
-          analysis.inlineObjectSchemas, absentableSchemaNames),
+        analysis.inlineObjectSchemas,
+        absentableSchemaNames,
+      ),
       inlineEnumSchemas: analysis.inlineEnumSchemas,
     );
   }
@@ -97,19 +105,21 @@ class FlorvalRunner {
       return FlorvalSchema(
         name: schema.name,
         fields: schema.fields
-            .map((f) => FlorvalField(
-                  name: f.name,
-                  jsonKey: f.jsonKey,
-                  type: f.type,
-                  isRequired: f.isRequired,
-                  absentable: !f.isRequired,
-                  defaultValue: f.defaultValue,
-                  deprecated: f.deprecated,
-                  description: f.description,
-                  example: f.example,
-                  readOnly: f.readOnly,
-                  writeOnly: f.writeOnly,
-                ))
+            .map(
+              (f) => FlorvalField(
+                name: f.name,
+                jsonKey: f.jsonKey,
+                type: f.type,
+                isRequired: f.isRequired,
+                absentable: !f.isRequired,
+                defaultValue: f.defaultValue,
+                deprecated: f.deprecated,
+                description: f.description,
+                example: f.example,
+                readOnly: f.readOnly,
+                writeOnly: f.writeOnly,
+              ),
+            )
             .toList(),
         discriminator: schema.discriminator,
         oneOf: schema.oneOf,
@@ -142,14 +152,20 @@ class FlorvalRunner {
     // 1. Parse
     final specReader = SpecReader();
     final spec = specReader.readFile(config.schemaPath);
-    logger.debug('Spec parsed successfully: ${spec.info.title} v${spec.info.version}');
+    logger.debug(
+      'Spec parsed successfully: ${spec.info.title} v${spec.info.version}',
+    );
 
     // 2. Resolve
     final resolver = RefResolver(spec);
 
     // 3. Analyze
     final schemaAnalyzer = SchemaAnalyzer(resolver, logger: logger);
-    final responseAnalyzer = ResponseAnalyzer(resolver, schemaAnalyzer, logger: logger);
+    final responseAnalyzer = ResponseAnalyzer(
+      resolver,
+      schemaAnalyzer,
+      logger: logger,
+    );
     final endpointAnalyzer = EndpointAnalyzer(
       resolver,
       schemaAnalyzer,
@@ -226,7 +242,8 @@ class FlorvalRunner {
     final variantNames = ModelGenerator.variantSchemaNames(analysis.schemas);
     if (variantNames.isNotEmpty) {
       logger.debug(
-          'Skipping ${variantNames.length} variant schemas inlined into unions: $variantNames');
+        'Skipping ${variantNames.length} variant schemas inlined into unions: $variantNames',
+      );
     }
 
     // Models
@@ -333,16 +350,16 @@ class FlorvalRunner {
 
       // Generate retry utility if configured
       if (config.riverpod.retry != null) {
-        final retryCode =
-            providerGenerator.generateRetryUtility(config.riverpod.retry!);
+        final retryCode = providerGenerator.generateRetryUtility(
+          config.riverpod.retry!,
+        );
         writer.writeProviderUtility('retry.dart', retryCode);
         providerUtilityNames.add('retry.dart');
         logger.debug('Generated utility: retry');
       }
 
       for (final entry in endpointsByTag.entries) {
-        final code =
-            providerGenerator.generate(entry.key, entry.value);
+        final code = providerGenerator.generate(entry.key, entry.value);
         writer.writeProvider(entry.key, code);
         providerNames.add(entry.key);
         logger.debug('Generated provider: ${entry.key}');
@@ -354,18 +371,23 @@ class FlorvalRunner {
     // the barrel file exports both the union file and the standalone model.
     // Scans ALL union schemas (component + inline) to catch every subclass.
     final allUnionSchemas = <FlorvalSchema>[
-      ...analysis.schemas.where((s) =>
-          (s.oneOf != null && s.oneOf!.isNotEmpty) ||
-          (s.anyOf != null && s.anyOf!.isNotEmpty)),
+      ...analysis.schemas.where(
+        (s) =>
+            (s.oneOf != null && s.oneOf!.isNotEmpty) ||
+            (s.anyOf != null && s.anyOf!.isNotEmpty),
+      ),
       ...analysis.inlineUnionSchemas,
     ];
     final subclassNames = ModelGenerator.unionSubclassNames(allUnionSchemas);
     if (subclassNames.isNotEmpty) {
-      final removed = modelNames.where((n) => subclassNames.contains(n)).toList();
+      final removed = modelNames
+          .where((n) => subclassNames.contains(n))
+          .toList();
       if (removed.isNotEmpty) {
         modelNames.removeWhere((n) => subclassNames.contains(n));
         logger.debug(
-            'Excluded ${removed.length} models from barrel to avoid ambiguous exports: $removed');
+          'Excluded ${removed.length} models from barrel to avoid ambiguous exports: $removed',
+        );
       }
     }
 
@@ -384,19 +406,30 @@ class FlorvalRunner {
     writer.formatOutput(log: (msg) => logger.warn(msg));
 
     logger.success(
-        'Generated ${modelNames.length} models, ${responseNames.length} responses, ${clientNames.length} clients${providerNames.isNotEmpty ? ', ${providerNames.length} providers' : ''}');
+      'Generated ${modelNames.length} models, ${responseNames.length} responses, ${clientNames.length} clients${providerNames.isNotEmpty ? ', ${providerNames.length} providers' : ''}',
+    );
     logger.info('Output written to ${config.outputDirectory}');
   }
 
   /// Whether a multipart form field type represents a complex object (DTO)
   /// whose non-required fields should be marked as absentable for PATCH/PUT.
   static bool _isComplexObjectField(FlorvalType type) {
-    if (type.isPrimitive) return false;
+    if (type.isPrimitive) {
+      return false;
+    }
     if (type.dartType == 'MultipartFile' ||
-        type.dartType == 'List<MultipartFile>') return false;
-    if (type.isEnum) return false;
-    if (type.isMap) return false;
-    if (type.isList) return false;
+        type.dartType == 'List<MultipartFile>') {
+      return false;
+    }
+    if (type.isEnum) {
+      return false;
+    }
+    if (type.isMap) {
+      return false;
+    }
+    if (type.isList) {
+      return false;
+    }
     return true;
   }
 }

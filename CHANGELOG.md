@@ -1,3 +1,8 @@
+## 0.3.5
+
+### Bug Fixes
+- **Wrap single-statement `if` blocks in braces**: The `_isComplexObjectField` method had `if` statements with single-line return statements, triggering the `curly_braces_in_flow_control_structures` Dart lint. All `if` statements now properly wrap their bodies in braces for full lint compliance
+
 ## 0.3.4
 
 ### Bug Fixes
