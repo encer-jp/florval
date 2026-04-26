@@ -309,7 +309,9 @@ class ProviderGenerator {
 
     // loadNextPage() method — called by external Mutation helper
     buffer.writeln('  Future<$paginatedType> loadNextPage() async {');
-    buffer.writeln('    if (!_hasMore || _nextCursor == null) return state.requireValue;');
+    buffer.writeln('    if (!_hasMore || _nextCursor == null) {');
+    buffer.writeln('      return state.requireValue;');
+    buffer.writeln('    }');
     buffer.writeln();
     buffer.writeln('    final client = ref.read($clientProvider);');
 

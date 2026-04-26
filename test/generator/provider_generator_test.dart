@@ -610,7 +610,14 @@ void main() {
       test('paginated provider loadNextPage() uses cursor param', () {
         final code = generator.generate('pets', [makePaginatedEndpoint()]);
 
-        expect(code, contains('if (!_hasMore || _nextCursor == null) return state.requireValue;'));
+        expect(
+          code,
+          contains(
+            'if (!_hasMore || _nextCursor == null) {\n'
+            '      return state.requireValue;\n'
+            '    }',
+          ),
+        );
         expect(code, contains('after: _nextCursor'));
       });
 
