@@ -1,3 +1,8 @@
+## 0.3.6
+
+### Bug Fixes
+- **Wrap paginated `loadNextPage()` early return in braces**: Generated paginated providers emitted `if (!_hasMore || _nextCursor == null) return state.requireValue;` on a single line, triggering the `always_put_control_body_on_new_line` lint in consumer projects. The body is now placed on a new line inside `{ ... }`
+
 ## 0.3.5
 
 ### Bug Fixes
