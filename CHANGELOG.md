@@ -1,3 +1,8 @@
+## 0.3.7
+
+### Bug Fixes
+- **Drop unnecessary `async` on paginated `fetchMore` mutation closure**: The closure passed to `Mutation.run` for paginated `fetchMore...` helpers was generated with `async` even though it only returned `notifier.loadNextPage()` directly without using `await`, triggering the `unnecessary_async` lint in consumer projects. The closure is now generated without the `async` modifier
+
 ## 0.3.6
 
 ### Bug Fixes
