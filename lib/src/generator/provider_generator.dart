@@ -377,7 +377,7 @@ class ProviderGenerator {
       buffer.writeln('  $param');
     }
     buffer.writeln('}) {');
-    buffer.writeln('  return $mutationName.run(ref, (tsx) async {');
+    buffer.writeln('  return $mutationName.run(ref, (tsx) {');
     if (hasParams) {
       buffer.writeln('    final notifier = tsx.get($providerName($providerCallArgs).notifier);');
     } else {

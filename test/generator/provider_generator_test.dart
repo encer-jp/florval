@@ -649,6 +649,13 @@ void main() {
         expect(code, contains('notifier.loadNextPage()'));
       });
 
+      test('paginated Mutation helper run() closure is not async (no await inside)', () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        expect(code, contains('fetchMoreListPetsPaginatedMutation.run(ref, (tsx) {'));
+        expect(code, isNot(contains('fetchMoreListPetsPaginatedMutation.run(ref, (tsx) async {')));
+      });
+
       test('paginated endpoint imports mutation.dart', () {
         final code = generator.generate('pets', [makePaginatedEndpoint()]);
 
