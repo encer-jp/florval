@@ -256,6 +256,7 @@ class ProviderGenerator {
     buffer.writeln('  final List<$itemDartType> _allItems = [];');
     buffer.writeln('  String? _nextCursor;');
     buffer.writeln('  bool _hasMore = true;');
+    buffer.writeln('  Future<$paginatedType>? _inflightFetchMore;');
     buffer.writeln();
 
     buffer.writeln('  @override');
@@ -307,12 +308,29 @@ class ProviderGenerator {
     buffer.writeln('  }');
     buffer.writeln();
 
-    // loadNextPage() method — called by external Mutation helper
-    buffer.writeln('  Future<$paginatedType> loadNextPage() async {');
+    // loadNextPage() method — called by external Mutation helper.
+    // Dedupes concurrent calls by returning the in-flight Future.
+    buffer.writeln('  Future<$paginatedType> loadNextPage() {');
+    buffer.writeln('    final inflight = _inflightFetchMore;');
+    buffer.writeln('    if (inflight != null) return inflight;');
+    buffer.writeln();
     buffer.writeln('    if (!_hasMore || _nextCursor == null) {');
-    buffer.writeln('      return state.requireValue;');
+    buffer.writeln('      return Future.sync(() => state.requireValue);');
     buffer.writeln('    }');
     buffer.writeln();
+    buffer.writeln('    final future = _fetchNextPage();');
+    buffer.writeln('    _inflightFetchMore = future;');
+    buffer.writeln('    future.whenComplete(() {');
+    buffer.writeln('      if (identical(_inflightFetchMore, future)) {');
+    buffer.writeln('        _inflightFetchMore = null;');
+    buffer.writeln('      }');
+    buffer.writeln('    });');
+    buffer.writeln('    return future;');
+    buffer.writeln('  }');
+    buffer.writeln();
+
+    // _fetchNextPage() — actual fetch body, wrapped by loadNextPage().
+    buffer.writeln('  Future<$paginatedType> _fetchNextPage() async {');
     buffer.writeln('    final client = ref.read($clientProvider);');
 
     // Build call args with cursor

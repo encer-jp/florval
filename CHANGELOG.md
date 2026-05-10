@@ -1,3 +1,8 @@
+## 0.3.8
+
+### Features
+- **Dedupe concurrent `fetchMore` calls via in-flight `Future`**: Generated paginated Notifiers now hold an `_inflightFetchMore` field, and `loadNextPage()` returns the same in-flight `Future` when a previous call has not yet completed. Prevents duplicate network requests, double `addAll` to `_allItems`, and `_nextCursor` race conditions caused by scroll-end re-firing or button mashing. The fetch body is extracted into a private `_fetchNextPage()` method, and the lock is released on completion (success or failure) via `whenComplete`, so retries with the same cursor still work after errors
+
 ## 0.3.7
 
 ### Bug Fixes
