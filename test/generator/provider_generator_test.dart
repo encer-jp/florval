@@ -614,11 +614,43 @@ void main() {
           code,
           contains(
             'if (!_hasMore || _nextCursor == null) {\n'
-            '      return state.requireValue;\n'
+            '      return Future.sync(() => state.requireValue);\n'
             '    }',
           ),
         );
         expect(code, contains('after: _nextCursor'));
+      });
+
+      test('paginated provider declares _inflightFetchMore field', () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        expect(
+          code,
+          contains(
+            'Future<PaginatedData<Pet, ListPetsPaginatedPage>>? _inflightFetchMore;',
+          ),
+        );
+      });
+
+      test('paginated provider loadNextPage() dedupes via in-flight Future', () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        expect(code, contains('final inflight = _inflightFetchMore;'));
+        expect(code, contains('if (inflight != null) return inflight;'));
+        expect(code, contains('_inflightFetchMore = future;'));
+        expect(code, contains('future.whenComplete(() {'));
+        expect(code, contains('if (identical(_inflightFetchMore, future)) {'));
+        expect(code, contains('_inflightFetchMore = null;'));
+      });
+
+      test('paginated provider extracts fetch body to _fetchNextPage()', () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        expect(
+          code,
+          contains('Future<PaginatedData<Pet, ListPetsPaginatedPage>> _fetchNextPage() async {'),
+        );
+        expect(code, contains('final future = _fetchNextPage();'));
       });
 
       test('paginated provider loadNextPage() updates state and returns result', () {
