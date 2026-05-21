@@ -444,6 +444,215 @@ void main() {
       expect(code, contains("import 'package:http_parser/http_parser.dart';"));
     });
 
+    test('generates List<MultipartFile> field with explicit per-file MapEntry',
+        () {
+      final endpoint = FlorvalEndpoint(
+        path: '/events/{eventId}/album/photos',
+        method: 'POST',
+        operationId: 'uploadPhotos',
+        parameters: [
+          FlorvalParam(
+            name: 'eventId',
+            dartName: 'eventId',
+            location: ParamLocation.path,
+            type: FlorvalType(name: 'String', dartType: 'String'),
+            isRequired: true,
+          ),
+        ],
+        requestBody: FlorvalRequestBody(
+          type: FlorvalType(name: 'FormData', dartType: 'FormData'),
+          isRequired: true,
+          contentType: ContentType.multipart,
+          formFields: [
+            FlorvalField(
+              name: 'images',
+              jsonKey: 'images',
+              type: FlorvalType(
+                name: 'List<MultipartFile>',
+                dartType: 'List<MultipartFile>',
+                isList: true,
+                itemType: FlorvalType(
+                    name: 'MultipartFile', dartType: 'MultipartFile'),
+              ),
+              isRequired: true,
+            ),
+          ],
+        ),
+        responses: {201: FlorvalResponse(statusCode: 201)},
+        tags: ['album'],
+      );
+
+      final code = generator.generate('album', [endpoint]);
+
+      // images must NOT appear inside FormData.fromMap({...})
+      expect(code, isNot(contains("'images': images,")));
+      // A _formData local must be built, and each file pushed via MapEntry
+      expect(code, contains('final _formData = FormData.fromMap({'));
+      expect(code, contains('for (final e in images) {'));
+      expect(code,
+          contains("_formData.files.add(MapEntry('images', e));"));
+      // The dio call must reference _formData, not an inline FormData.fromMap
+      expect(code, contains('data: _formData'));
+    });
+
+    test('generates List<MultipartFile> alongside primitive fields', () {
+      final endpoint = FlorvalEndpoint(
+        path: '/events/{eventId}/album/photos',
+        method: 'POST',
+        operationId: 'uploadPhotosWithMeta',
+        parameters: [
+          FlorvalParam(
+            name: 'eventId',
+            dartName: 'eventId',
+            location: ParamLocation.path,
+            type: FlorvalType(name: 'String', dartType: 'String'),
+            isRequired: true,
+          ),
+        ],
+        requestBody: FlorvalRequestBody(
+          type: FlorvalType(name: 'FormData', dartType: 'FormData'),
+          isRequired: true,
+          contentType: ContentType.multipart,
+          formFields: [
+            FlorvalField(
+              name: 'images',
+              jsonKey: 'images',
+              type: FlorvalType(
+                name: 'List<MultipartFile>',
+                dartType: 'List<MultipartFile>',
+                isList: true,
+                itemType: FlorvalType(
+                    name: 'MultipartFile', dartType: 'MultipartFile'),
+              ),
+              isRequired: true,
+            ),
+            FlorvalField(
+              name: 'caption',
+              jsonKey: 'caption',
+              type: FlorvalType(name: 'String', dartType: 'String'),
+              isRequired: false,
+            ),
+            FlorvalField(
+              name: 'tags',
+              jsonKey: 'tags',
+              type: FlorvalType(
+                name: 'List<String>',
+                dartType: 'List<String>',
+                isList: true,
+                itemType: FlorvalType(name: 'String', dartType: 'String'),
+              ),
+              isRequired: false,
+            ),
+          ],
+        ),
+        responses: {201: FlorvalResponse(statusCode: 201)},
+        tags: ['album'],
+      );
+
+      final code = generator.generate('album', [endpoint]);
+
+      // Primitive fields remain inside FormData.fromMap
+      expect(code,
+          contains("if (caption != null) 'caption': caption,"));
+      expect(code, contains("if (tags != null) 'tags': tags,"));
+      // images is NOT inside FormData.fromMap
+      expect(code, isNot(contains("'images': images,")));
+      // images is pushed via the file loop
+      expect(code, contains('for (final e in images) {'));
+      expect(code,
+          contains("_formData.files.add(MapEntry('images', e));"));
+
+      // Ordering: FormData.fromMap built first, then file loop, then data: _formData
+      final fromMapIdx = code.indexOf('final _formData = FormData.fromMap({');
+      final loopIdx = code.indexOf('for (final e in images) {');
+      final dataIdx = code.indexOf('data: _formData');
+      expect(fromMapIdx, lessThan(loopIdx));
+      expect(loopIdx, lessThan(dataIdx));
+    });
+
+    test('generates optional List<MultipartFile> with null guard', () {
+      final endpoint = FlorvalEndpoint(
+        path: '/uploads',
+        method: 'POST',
+        operationId: 'uploadOptionalImages',
+        parameters: [],
+        requestBody: FlorvalRequestBody(
+          type: FlorvalType(name: 'FormData', dartType: 'FormData'),
+          isRequired: true,
+          contentType: ContentType.multipart,
+          formFields: [
+            FlorvalField(
+              name: 'images',
+              jsonKey: 'images',
+              type: FlorvalType(
+                name: 'List<MultipartFile>',
+                dartType: 'List<MultipartFile>',
+                isList: true,
+                itemType: FlorvalType(
+                    name: 'MultipartFile', dartType: 'MultipartFile'),
+              ),
+              isRequired: false,
+            ),
+          ],
+        ),
+        responses: {201: FlorvalResponse(statusCode: 201)},
+        tags: ['uploads'],
+      );
+
+      final code = generator.generate('uploads', [endpoint]);
+
+      // Param is nullable
+      expect(code, contains('List<MultipartFile>? images,'));
+      // Null-guarded loop
+      expect(code, contains('if (images != null) {'));
+      expect(code, contains('for (final e in images!) {'));
+      expect(code,
+          contains("_formData.files.add(MapEntry('images', e));"));
+    });
+
+    test(
+        'single MultipartFile field still uses FormData.fromMap (no preamble)',
+        () {
+      // Regression guard: the single-file path must not change.
+      final endpoint = FlorvalEndpoint(
+        path: '/pets/{petId}/photo',
+        method: 'POST',
+        operationId: 'uploadSinglePhoto',
+        parameters: [
+          FlorvalParam(
+            name: 'petId',
+            dartName: 'petId',
+            location: ParamLocation.path,
+            type: FlorvalType(name: 'int', dartType: 'int'),
+            isRequired: true,
+          ),
+        ],
+        requestBody: FlorvalRequestBody(
+          type: FlorvalType(name: 'FormData', dartType: 'FormData'),
+          isRequired: true,
+          contentType: ContentType.multipart,
+          formFields: [
+            FlorvalField(
+              name: 'file',
+              jsonKey: 'file',
+              type: FlorvalType(
+                  name: 'MultipartFile', dartType: 'MultipartFile'),
+              isRequired: true,
+            ),
+          ],
+        ),
+        responses: {200: FlorvalResponse(statusCode: 200)},
+        tags: ['pets'],
+      );
+
+      final code = generator.generate('pets', [endpoint]);
+
+      expect(code, contains('FormData.fromMap({'));
+      expect(code, contains("'file': file,"));
+      expect(code, isNot(contains('final _formData =')));
+      expect(code, isNot(contains('_formData.files.add')));
+    });
+
     test('generates multipart with enum field using .jsonValue', () {
       final endpoint = FlorvalEndpoint(
         path: '/pets',

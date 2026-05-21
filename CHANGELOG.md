@@ -1,3 +1,8 @@
+## 0.3.8
+
+### Bug Fixes
+- **Fix `Unexpected field` error on `List<MultipartFile>` multipart uploads**: When a multipart endpoint had a `List<MultipartFile>` form field, the generated client passed it through `FormData.fromMap({...})`, which uses Dio's default `ListFormat.multiCompatible` and appends `[]` to the field name (e.g. `images[]` instead of `images`). Servers that require strict field-name matching (NestJS multer `FilesInterceptor`, Express/Fastify equivalents, etc.) rejected such requests with HTTP 400 "Unexpected field". The generator now emits a `_formData` local that calls `formData.files.add(MapEntry(name, file))` for each file, preserving the exact form field name. Single-`MultipartFile` fields and other multipart shapes are unchanged.
+
 ## 0.3.7
 
 ### Bug Fixes
