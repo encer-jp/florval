@@ -121,6 +121,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /pets/{petId}/photos:
+    post:
+      operationId: uploadPetPhotos
+      tags:
+        - pets
+      summary: Upload multiple pet photos
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - images
+              properties:
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                caption:
+                  type: string
+      responses:
+        "201":
+          description: Photos uploaded
+        "400":
+          description: Bad request
   /pets/{petId}/details:
     patch:
       operationId: updatePetWithPhoto

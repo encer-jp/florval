@@ -179,6 +179,19 @@ void main() {
       expect(clientCode, contains('required MultipartFile file,'));
       expect(clientCode, contains('String? description,'));
       expect(clientCode, contains('FormData.fromMap('));
+
+      // Verify List<MultipartFile> endpoint uses explicit MapEntry pushes
+      // rather than passing the list through FormData.fromMap (which would
+      // append `[]` to the field name via ListFormat.multiCompatible).
+      expect(clientCode,
+          contains('Future<r.UploadPetPhotosResponse> uploadPetPhotos('));
+      expect(clientCode, contains('required List<MultipartFile> images,'));
+      expect(clientCode, contains('final _formData = FormData.fromMap({'));
+      expect(clientCode, contains('for (final e in images) {'));
+      expect(clientCode,
+          contains("_formData.files.add(MapEntry('images', e));"));
+      expect(clientCode, contains('data: _formData'));
+      expect(clientCode, isNot(contains("'images': images,")));
     });
 
     test('barrel file exports all generated files', () {

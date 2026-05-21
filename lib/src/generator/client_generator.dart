@@ -170,6 +170,22 @@ class ClientGenerator {
       dioTypeArg = hasListResponse ? '<List<dynamic>>' : '<Map<String, dynamic>>';
     }
 
+    // Detect List<MultipartFile> fields in multipart bodies — Dio's
+    // FormData.fromMap defaults to ListFormat.multiCompatible which appends
+    // `[]` to array field names, breaking servers that expect strict name
+    // matching (e.g. NestJS multer FilesInterceptor). For these fields we
+    // emit a preamble that builds `_formData` and pushes each file under
+    // the exact same field name via `files.add(MapEntry(name, file))`.
+    final useFormDataPreamble = endpoint.requestBody != null &&
+        endpoint.requestBody!.isMultipart &&
+        endpoint.requestBody!.formFields != null &&
+        endpoint.requestBody!.formFields!
+            .any((f) => _isMultipartFileListType(f.type));
+
+    if (useFormDataPreamble) {
+      _writeMultipartPreamble(buffer, endpoint.requestBody!);
+    }
+
     buffer.write("      final response = await _dio.$dioMethod$dioTypeArg(");
     buffer.write("'$pathExpr'");
 
@@ -195,17 +211,21 @@ class ClientGenerator {
       final body = endpoint.requestBody!;
       if (body.isMultipart && body.formFields != null) {
         buffer.writeln(',');
-        buffer.writeln('        data: FormData.fromMap({');
-        for (final field in body.formFields!) {
-          final valueExpr = _multipartFieldValueExpr(field);
-          if (field.isRequired) {
-            buffer.writeln("          '${field.jsonKey}': $valueExpr,");
-          } else {
-            buffer.writeln(
-                "          if (${field.name} != null) '${field.jsonKey}': $valueExpr,");
+        if (useFormDataPreamble) {
+          buffer.write('        data: _formData');
+        } else {
+          buffer.writeln('        data: FormData.fromMap({');
+          for (final field in body.formFields!) {
+            final valueExpr = _multipartFieldValueExpr(field);
+            if (field.isRequired) {
+              buffer.writeln("          '${field.jsonKey}': $valueExpr,");
+            } else {
+              buffer.writeln(
+                  "          if (${field.name} != null) '${field.jsonKey}': $valueExpr,");
+            }
           }
+          buffer.write('        })');
         }
-        buffer.write('        })');
       } else {
         buffer.writeln(',');
         buffer.write('        data: body');
@@ -330,6 +350,60 @@ class ClientGenerator {
   bool _isMultipartFileType(FlorvalType type) {
     final base = type.dartType.replaceAll('?', '');
     return base == 'MultipartFile' || base == 'List<MultipartFile>';
+  }
+
+  /// Whether a type is specifically List<MultipartFile> (not a single
+  /// MultipartFile). Used to detect form fields that need explicit
+  /// per-file MapEntry handling to avoid Dio's `[]` suffix on field names.
+  bool _isMultipartFileListType(FlorvalType type) {
+    if (!type.isList) return false;
+    if (type.itemType == null) return false;
+    final itemBase = type.itemType!.dartType.replaceAll('?', '');
+    return itemBase == 'MultipartFile';
+  }
+
+  /// Emits the preamble that builds a `_formData` local variable when a
+  /// multipart body contains one or more `List<MultipartFile>` fields.
+  ///
+  /// Non-file-list fields go into `FormData.fromMap({...})`; each file in
+  /// each file-list field is then appended via
+  /// `_formData.files.add(MapEntry(jsonKey, file))` so the field name is
+  /// preserved verbatim (no `[]` suffix).
+  void _writeMultipartPreamble(
+      StringBuffer buffer, FlorvalRequestBody body) {
+    final fields = body.formFields!;
+    final fileListFields =
+        fields.where((f) => _isMultipartFileListType(f.type)).toList();
+    final otherFields =
+        fields.where((f) => !_isMultipartFileListType(f.type)).toList();
+
+    buffer.writeln('      final _formData = FormData.fromMap({');
+    for (final field in otherFields) {
+      final valueExpr = _multipartFieldValueExpr(field);
+      if (field.isRequired) {
+        buffer.writeln("        '${field.jsonKey}': $valueExpr,");
+      } else {
+        buffer.writeln(
+            "        if (${field.name} != null) '${field.jsonKey}': $valueExpr,");
+      }
+    }
+    buffer.writeln('      });');
+
+    for (final field in fileListFields) {
+      if (field.isRequired) {
+        buffer.writeln('      for (final e in ${field.name}) {');
+        buffer.writeln(
+            "        _formData.files.add(MapEntry('${field.jsonKey}', e));");
+        buffer.writeln('      }');
+      } else {
+        buffer.writeln('      if (${field.name} != null) {');
+        buffer.writeln('        for (final e in ${field.name}!) {');
+        buffer.writeln(
+            "          _formData.files.add(MapEntry('${field.jsonKey}', e));");
+        buffer.writeln('        }');
+        buffer.writeln('      }');
+      }
+    }
   }
 
   /// Whether a multipart form field is a complex object type that needs
