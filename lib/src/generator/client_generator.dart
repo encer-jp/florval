@@ -352,8 +352,8 @@ class ClientGenerator {
     return base == 'MultipartFile' || base == 'List<MultipartFile>';
   }
 
-  /// Whether a type is specifically List<MultipartFile> (not a single
-  /// MultipartFile). Used to detect form fields that need explicit
+  /// Whether a type is specifically `List<MultipartFile>` (not a single
+  /// `MultipartFile`). Used to detect form fields that need explicit
   /// per-file MapEntry handling to avoid Dio's `[]` suffix on field names.
   bool _isMultipartFileListType(FlorvalType type) {
     if (!type.isList) return false;
