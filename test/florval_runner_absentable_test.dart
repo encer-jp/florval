@@ -12,12 +12,22 @@ void main() {
     /// the algorithm without requiring file I/O dependencies.
 
     bool isComplexObjectField(FlorvalType type) {
-      if (type.isPrimitive) return false;
+      if (type.isPrimitive) {
+        return false;
+      }
       if (type.dartType == 'MultipartFile' ||
-          type.dartType == 'List<MultipartFile>') return false;
-      if (type.isEnum) return false;
-      if (type.isMap) return false;
-      if (type.isList) return false;
+          type.dartType == 'List<MultipartFile>') {
+        return false;
+      }
+      if (type.isEnum) {
+        return false;
+      }
+      if (type.isMap) {
+        return false;
+      }
+      if (type.isList) {
+        return false;
+      }
       return true;
     }
 

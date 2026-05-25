@@ -2,6 +2,7 @@
 
 ### Bug Fixes
 - **Wrap `List<MultipartFile>` in backticks in `_isMultipartFileListType` doc comment**: The doc comment on `ClientGenerator._isMultipartFileListType` referenced `List<MultipartFile>` and `MultipartFile` without backticks, so dartdoc interpreted the angle brackets as HTML tags. pana reported `INFO: Angle brackets will be interpreted as HTML.` and the pub.dev score lost 10 points on "code has no errors, warnings, lints, or formatting issues". Both type references are now wrapped in backticks so they render as inline code
+- **Wrap single-line `if` returns in `florval_runner_absentable_test.dart` in braces**: Several `if (...) return false;` statements in the `isComplexObjectField` test helper triggered the `curly_braces_in_flow_control_structures` lint. All branches now use explicit `{ ... }` bodies
 
 ## 0.3.8
 
