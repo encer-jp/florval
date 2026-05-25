@@ -1,3 +1,8 @@
+## 0.3.10
+
+### Features
+- **Serialize `format: date` fields as `yyyy-MM-dd`**: DateTime fields with OpenAPI `format: date` were serialized as full ISO 8601 strings (e.g. `2026-05-26T00:00:00.000`) instead of date-only strings (`2026-05-26`). The generator now preserves the OpenAPI `format` on `FlorvalType`, emits a `DateOnlyConverter` (`JsonConverter<DateTime, String>`) in `core/date_serializer.dart`, and annotates `format: date` fields with `@DateOnlyConverter()` so json_serializable produces `yyyy-MM-dd` output. Absentable (PATCH/PUT) models with `format: date` fields also serialize correctly via inline date formatting in the custom `toJson`
+
 ## 0.3.9
 
 ### Bug Fixes

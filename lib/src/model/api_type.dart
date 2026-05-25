@@ -21,6 +21,9 @@ class FlorvalType {
   /// Whether this type is a Dart enum (generated from an OpenAPI enum schema).
   final bool isEnum;
 
+  /// Original OpenAPI format (e.g. 'date', 'date-time').
+  final String? format;
+
   /// Whether this is a primitive Dart type (String, int, double, bool, DateTime).
   bool get isPrimitive =>
       !isList &&
@@ -39,6 +42,7 @@ class FlorvalType {
     this.itemType,
     this.ref,
     this.isEnum = false,
+    this.format,
   });
 
   /// Creates a nullable version of this type.
@@ -50,6 +54,7 @@ class FlorvalType {
         itemType: itemType,
         ref: ref,
         isEnum: isEnum,
+        format: format,
       );
 
   @override

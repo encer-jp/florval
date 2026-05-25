@@ -10,6 +10,7 @@ import 'model/api_schema.dart';
 import 'model/api_type.dart';
 import 'generator/client_generator.dart';
 import 'generator/file_writer.dart';
+import 'generator/date_serializer_generator.dart';
 import 'generator/json_optional_generator.dart';
 import 'generator/model_generator.dart';
 import 'generator/provider_generator.dart';
@@ -147,6 +148,26 @@ class FlorvalRunner {
     return false;
   }
 
+  bool _hasDateOnlyFields(AnalysisResult analysis) {
+    for (final schemas in [
+      analysis.schemas,
+      analysis.inlineUnionSchemas,
+      analysis.inlineObjectSchemas,
+    ]) {
+      for (final schema in schemas) {
+        if (schema.fields.any((f) => f.type.format == 'date')) return true;
+        // Check union variant fields
+        for (final variant in [
+          ...?schema.oneOf,
+          ...?schema.anyOf,
+        ]) {
+          if (variant.fields.any((f) => f.type.format == 'date')) return true;
+        }
+      }
+    }
+    return false;
+  }
+
   /// Parse, resolve, and analyze the OpenAPI spec.
   AnalysisResult _analyze(FlorvalConfig config) {
     // 1. Parse
@@ -234,6 +255,13 @@ class FlorvalRunner {
       writer.writeCoreFile('json_optional.dart', jsonOptionalGen.generate());
       coreFileNames.add('json_optional.dart');
       logger.debug('Generated core: json_optional');
+    }
+    if (_hasDateOnlyFields(analysis)) {
+      final dateSerializerGen = DateSerializerGenerator(templateConfig: tc);
+      writer.writeCoreFile(
+          'date_serializer.dart', dateSerializerGen.generate());
+      coreFileNames.add('date_serializer.dart');
+      logger.debug('Generated core: date_serializer');
     }
 
     // Identify variant schemas and generated subclass names that are inlined

@@ -59,6 +59,13 @@ class ModelGenerator {
     if (hasAbsentable) {
       imports.add('../core/json_optional');
     }
+    // DateOnlyConverter is only needed for non-absentable date fields
+    // (absentable models use custom toJson that formats dates inline).
+    final hasDateOnlyField = schema.fields.any(
+        (f) => !f.absentable && f.type.format == 'date');
+    if (hasDateOnlyField) {
+      imports.add('../core/date_serializer');
+    }
     for (final import_ in imports) {
       buffer.writeln("import '$import_.dart';");
     }
@@ -256,6 +263,12 @@ class ModelGenerator {
 
     // Import referenced types from variant fields
     final imports = _collectUnionImports(schema);
+    // Check if any variant field uses format: date
+    final allVariantFields = (schema.oneOf ?? schema.anyOf ?? [])
+        .expand((v) => v.fields);
+    if (allVariantFields.any((f) => f.type.format == 'date')) {
+      imports.add('../core/date_serializer');
+    }
     for (final import_ in imports) {
       buffer.writeln("import '$import_.dart';");
     }
@@ -510,6 +523,12 @@ class ModelGenerator {
       buffer.writeln('    @JsonKey(${jsonKeyParams.join(', ')})');
     }
 
+    // Add @DateOnlyConverter() for format: date fields (non-absentable only;
+    // absentable models use custom toJson which handles date formatting directly).
+    if (!field.absentable && field.type.format == 'date') {
+      buffer.writeln('    @DateOnlyConverter()');
+    }
+
     if (field.absentable) {
       // absentable takes priority over defaultValue
       final innerType = _absentableInnerType(field);
@@ -674,16 +693,32 @@ class ModelGenerator {
     final q = nullable ? '?' : '';
 
     if (baseDartType == 'DateTime') {
+      if (type.format == 'date') {
+        return "'\${$accessor$q.year.toString().padLeft(4, '0')}-'"
+            "'\${$accessor$q.month.toString().padLeft(2, '0')}-'"
+            "'\${$accessor$q.day.toString().padLeft(2, '0')}'";
+      }
       return '$accessor$q.toIso8601String()';
     }
     if (type.isEnum) {
       return '$accessor$q.jsonValue';
     }
-    if (type.isList && type.itemType != null && !type.itemType!.isPrimitive && !type.itemType!.isMap) {
+    if (type.isList && type.itemType != null) {
       if (type.itemType!.isEnum) {
         return '$accessor$q.map((e) => e.jsonValue).toList()';
       }
-      return '$accessor$q.map((e) => e.toJson()).toList()';
+      if (type.itemType!.dartType.replaceAll('?', '') == 'DateTime') {
+        if (type.itemType!.format == 'date') {
+          return "$accessor$q.map((e) => "
+              "'\${e.year.toString().padLeft(4, '0')}-'"
+              "'\${e.month.toString().padLeft(2, '0')}-'"
+              "'\${e.day.toString().padLeft(2, '0')}').toList()";
+        }
+        return '$accessor$q.map((e) => e.toIso8601String()).toList()';
+      }
+      if (!type.itemType!.isPrimitive && !type.itemType!.isMap) {
+        return '$accessor$q.map((e) => e.toJson()).toList()';
+      }
     }
     if (type.ref != null && !type.isEnum && !type.isList) {
       return '$accessor$q.toJson()';

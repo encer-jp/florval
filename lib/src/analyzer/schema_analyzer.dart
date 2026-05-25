@@ -461,6 +461,7 @@ class SchemaAnalyzer {
         name: 'DateTime',
         dartType: isNullable ? 'DateTime?' : 'DateTime',
         isNullable: isNullable,
+        format: format,
       );
     }
     if (format == 'binary') {
@@ -469,12 +470,14 @@ class SchemaAnalyzer {
         dartType: isNullable ? 'List<int>?' : 'List<int>',
         isNullable: isNullable,
         isList: true,
+        format: format,
       );
     }
     return FlorvalType(
       name: 'String',
       dartType: isNullable ? 'String?' : 'String',
       isNullable: isNullable,
+      format: format,
     );
   }
 
@@ -483,6 +486,7 @@ class SchemaAnalyzer {
       name: 'int',
       dartType: isNullable ? 'int?' : 'int',
       isNullable: isNullable,
+      format: schema.format,
     );
   }
 
@@ -491,6 +495,7 @@ class SchemaAnalyzer {
       name: 'double',
       dartType: isNullable ? 'double?' : 'double',
       isNullable: isNullable,
+      format: schema.format,
     );
   }
 
