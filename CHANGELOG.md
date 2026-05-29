@@ -1,3 +1,13 @@
+## 0.3.11
+
+### Features
+- **Support `format: byte`, `format: time`, and `format: duration`**: These three OpenAPI string formats were previously passed through as plain `String`, losing their semantics. The generator now maps and serializes them via dedicated converters emitted under `core/`:
+  - `format: byte` → `List<int>` with `Base64Converter` (`base64Decode`/`base64Encode`) in `core/byte_serializer.dart`
+  - `format: time` → a Flutter-independent `LocalTime` value type (hour/minute/second/microsecond) with `LocalTimeConverter` in `core/time_serializer.dart`
+  - `format: duration` → Dart `Duration` with `DurationConverter` (ISO 8601, e.g. `PnDTnHnMnS`) in `core/duration_serializer.dart`; year/month components (`PnYnM`) raise a `FormatException` as they cannot be represented as a fixed `Duration`
+
+  Like `format: date`, the generator preserves the OpenAPI `format` on `FlorvalType`, only emits each core file when a matching field exists (re-exported from the barrel), and annotates non-absentable fields with the converter (`@Base64Converter()` / `@LocalTimeConverter()` / `@DurationConverter()`). Absentable (PATCH/PUT) models call the converters directly from the custom `fromJson`/`toJson`, including for `List<T>` element types
+
 ## 0.3.10
 
 ### Features
