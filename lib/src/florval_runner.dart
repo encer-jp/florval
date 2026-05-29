@@ -10,8 +10,11 @@ import 'model/api_schema.dart';
 import 'model/api_type.dart';
 import 'generator/client_generator.dart';
 import 'generator/file_writer.dart';
+import 'generator/byte_serializer_generator.dart';
 import 'generator/date_serializer_generator.dart';
+import 'generator/duration_serializer_generator.dart';
 import 'generator/json_optional_generator.dart';
+import 'generator/time_serializer_generator.dart';
 import 'generator/model_generator.dart';
 import 'generator/provider_generator.dart';
 import 'generator/response_generator.dart';
@@ -148,20 +151,24 @@ class FlorvalRunner {
     return false;
   }
 
-  bool _hasDateOnlyFields(AnalysisResult analysis) {
+  /// Returns true if any field (including union variant and list element types)
+  /// across the analysis uses the given OpenAPI [format].
+  bool _hasFieldWithFormat(AnalysisResult analysis, String format) {
+    bool fieldMatches(FlorvalField f) =>
+        f.type.format == format || f.type.itemType?.format == format;
     for (final schemas in [
       analysis.schemas,
       analysis.inlineUnionSchemas,
       analysis.inlineObjectSchemas,
     ]) {
       for (final schema in schemas) {
-        if (schema.fields.any((f) => f.type.format == 'date')) return true;
+        if (schema.fields.any(fieldMatches)) return true;
         // Check union variant fields
         for (final variant in [
           ...?schema.oneOf,
           ...?schema.anyOf,
         ]) {
-          if (variant.fields.any((f) => f.type.format == 'date')) return true;
+          if (variant.fields.any(fieldMatches)) return true;
         }
       }
     }
@@ -256,12 +263,34 @@ class FlorvalRunner {
       coreFileNames.add('json_optional.dart');
       logger.debug('Generated core: json_optional');
     }
-    if (_hasDateOnlyFields(analysis)) {
+    if (_hasFieldWithFormat(analysis, 'date')) {
       final dateSerializerGen = DateSerializerGenerator(templateConfig: tc);
       writer.writeCoreFile(
           'date_serializer.dart', dateSerializerGen.generate());
       coreFileNames.add('date_serializer.dart');
       logger.debug('Generated core: date_serializer');
+    }
+    if (_hasFieldWithFormat(analysis, 'byte')) {
+      final byteSerializerGen = ByteSerializerGenerator(templateConfig: tc);
+      writer.writeCoreFile(
+          'byte_serializer.dart', byteSerializerGen.generate());
+      coreFileNames.add('byte_serializer.dart');
+      logger.debug('Generated core: byte_serializer');
+    }
+    if (_hasFieldWithFormat(analysis, 'time')) {
+      final timeSerializerGen = TimeSerializerGenerator(templateConfig: tc);
+      writer.writeCoreFile(
+          'time_serializer.dart', timeSerializerGen.generate());
+      coreFileNames.add('time_serializer.dart');
+      logger.debug('Generated core: time_serializer');
+    }
+    if (_hasFieldWithFormat(analysis, 'duration')) {
+      final durationSerializerGen =
+          DurationSerializerGenerator(templateConfig: tc);
+      writer.writeCoreFile(
+          'duration_serializer.dart', durationSerializerGen.generate());
+      coreFileNames.add('duration_serializer.dart');
+      logger.debug('Generated core: duration_serializer');
     }
 
     // Identify variant schemas and generated subclass names that are inlined

@@ -66,6 +66,14 @@ class ModelGenerator {
     if (hasDateOnlyField) {
       imports.add('../core/date_serializer');
     }
+    // Converter-based formats (byte/time/duration) need their core import for
+    // both the annotation path and the custom (absentable) from/toJson path.
+    for (final fmt in const ['byte', 'time', 'duration']) {
+      if (schema.fields.any(
+          (f) => f.type.format == fmt || f.type.itemType?.format == fmt)) {
+        imports.add(_formatConverter(fmt)!.import);
+      }
+    }
     for (final import_ in imports) {
       buffer.writeln("import '$import_.dart';");
     }
@@ -268,6 +276,12 @@ class ModelGenerator {
         .expand((v) => v.fields);
     if (allVariantFields.any((f) => f.type.format == 'date')) {
       imports.add('../core/date_serializer');
+    }
+    for (final fmt in const ['byte', 'time', 'duration']) {
+      if (allVariantFields.any(
+          (f) => f.type.format == fmt || f.type.itemType?.format == fmt)) {
+        imports.add(_formatConverter(fmt)!.import);
+      }
     }
     for (final import_ in imports) {
       buffer.writeln("import '$import_.dart';");
@@ -529,6 +543,16 @@ class ModelGenerator {
       buffer.writeln('    @DateOnlyConverter()');
     }
 
+    // Converter-based formats (byte/time/duration): annotate non-absentable
+    // fields so json_serializable round-trips them. Absentable fields use the
+    // custom from/toJson which calls the converter directly.
+    if (!field.absentable) {
+      final conv = _typeConverter(field.type);
+      if (conv != null) {
+        buffer.writeln('    @${conv.converter}()');
+      }
+    }
+
     if (field.absentable) {
       // absentable takes priority over defaultValue
       final innerType = _absentableInnerType(field);
@@ -583,10 +607,47 @@ class ModelGenerator {
     buffer.writeln('  }');
   }
 
+  /// Maps an OpenAPI [format] that requires a generated [JsonConverter] to its
+  /// converter class name and core import path. Returns null for formats with
+  /// no dedicated converter (handled inline, like `date`, or needing none).
+  ({String converter, String import})? _formatConverter(String? format) {
+    switch (format) {
+      case 'byte':
+        return (
+          converter: 'Base64Converter',
+          import: '../core/byte_serializer',
+        );
+      case 'time':
+        return (
+          converter: 'LocalTimeConverter',
+          import: '../core/time_serializer',
+        );
+      case 'duration':
+        return (
+          converter: 'DurationConverter',
+          import: '../core/duration_serializer',
+        );
+    }
+    return null;
+  }
+
+  /// Returns the converter for [type], also considering its list element type.
+  ({String converter, String import})? _typeConverter(FlorvalType type) =>
+      _formatConverter(type.format) ?? _formatConverter(type.itemType?.format);
+
   /// Returns a Dart expression that casts a JSON value to the target type.
   String _fromJsonCastExpression(FlorvalType type, String accessor) {
     final nullable = type.isNullable;
     final baseDartType = type.dartType.replaceAll('?', '');
+
+    // Converter-based formats (byte/time/duration).
+    final conv = _formatConverter(type.format);
+    if (conv != null) {
+      if (nullable) {
+        return '$accessor != null ? const ${conv.converter}().fromJson($accessor as String) : null';
+      }
+      return 'const ${conv.converter}().fromJson($accessor as String)';
+    }
 
     // DateTime
     if (baseDartType == 'DateTime') {
@@ -644,6 +705,10 @@ class ModelGenerator {
 
   /// Returns a cast expression for a single list item.
   String _fromJsonListItemCast(FlorvalType itemType) {
+    final conv = _formatConverter(itemType.format);
+    if (conv != null) {
+      return 'const ${conv.converter}().fromJson(e as String)';
+    }
     if (itemType.ref != null && !itemType.isEnum) {
       return '${itemType.dartType}.fromJson(e as Map<String, dynamic>)';
     }
@@ -692,6 +757,17 @@ class ModelGenerator {
     final baseDartType = type.dartType.replaceAll('?', '');
     final q = nullable ? '?' : '';
 
+    // Converter-based formats (byte/time/duration). When nullable the accessor
+    // is a compound expression (no type promotion), so cast to the non-null
+    // base type after the null guard before handing it to the converter.
+    final conv = _formatConverter(type.format);
+    if (conv != null) {
+      if (nullable) {
+        return '$accessor == null ? null : const ${conv.converter}().toJson($accessor as $baseDartType)';
+      }
+      return 'const ${conv.converter}().toJson($accessor)';
+    }
+
     if (baseDartType == 'DateTime') {
       if (type.format == 'date') {
         return "'\${$accessor$q.year.toString().padLeft(4, '0')}-'"
@@ -706,6 +782,10 @@ class ModelGenerator {
     if (type.isList && type.itemType != null) {
       if (type.itemType!.isEnum) {
         return '$accessor$q.map((e) => e.jsonValue).toList()';
+      }
+      final itemConv = _formatConverter(type.itemType!.format);
+      if (itemConv != null) {
+        return '$accessor$q.map((e) => const ${itemConv.converter}().toJson(e)).toList()';
       }
       if (type.itemType!.dartType.replaceAll('?', '') == 'DateTime') {
         if (type.itemType!.format == 'date') {
