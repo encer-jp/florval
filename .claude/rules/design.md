@@ -265,6 +265,9 @@ openapi_spec_plusのSchemaから freezed クラスを生成。
 | string + date | DateTime |
 | string + uuid | String |
 | string + binary | List<int> |
+| string + byte | List<int>（base64、Base64Converter経由） |
+| string + time | LocalTime（生成ランタイム型、LocalTimeConverter経由） |
+| string + duration | Duration（ISO 8601、DurationConverter経由） |
 | integer | int |
 | integer + int64 | int |
 | number | double |
