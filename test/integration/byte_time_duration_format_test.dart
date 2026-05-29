@@ -1,6 +1,5 @@
 import 'package:florval/src/analyzer/schema_analyzer.dart';
 import 'package:florval/src/generator/model_generator.dart';
-import 'package:florval/src/model/api_field.dart';
 import 'package:florval/src/model/api_schema.dart';
 import 'package:florval/src/model/api_type.dart';
 import 'package:florval/src/parser/ref_resolver.dart';
@@ -9,15 +8,9 @@ import 'package:test/test.dart';
 
 void main() {
   group('byte/time/duration format integration', () {
-    SchemaAnalyzer makeAnalyzer(String yaml) {
-      final spec = SpecReader().parse(yaml);
-      final resolver = RefResolver(spec);
-      return SchemaAnalyzer(resolver, logger: null);
-    }
-
     FlorvalSchema analyzeSchema(String yaml, String name) {
-      final analyzer = makeAnalyzer(yaml);
       final spec = SpecReader().parse(yaml);
+      final analyzer = SchemaAnalyzer(RefResolver(spec));
       return analyzer.analyze(name, spec.components!.schemas![name]!).schema;
     }
 
