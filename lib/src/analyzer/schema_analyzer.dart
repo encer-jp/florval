@@ -473,6 +473,31 @@ class SchemaAnalyzer {
         format: format,
       );
     }
+    if (format == 'byte') {
+      // base64-encoded bytes; handled via Base64Converter (not a raw list).
+      return FlorvalType(
+        name: 'List<int>',
+        dartType: isNullable ? 'List<int>?' : 'List<int>',
+        isNullable: isNullable,
+        format: format,
+      );
+    }
+    if (format == 'time') {
+      return FlorvalType(
+        name: 'LocalTime',
+        dartType: isNullable ? 'LocalTime?' : 'LocalTime',
+        isNullable: isNullable,
+        format: format,
+      );
+    }
+    if (format == 'duration') {
+      return FlorvalType(
+        name: 'Duration',
+        dartType: isNullable ? 'Duration?' : 'Duration',
+        isNullable: isNullable,
+        format: format,
+      );
+    }
     return FlorvalType(
       name: 'String',
       dartType: isNullable ? 'String?' : 'String',
