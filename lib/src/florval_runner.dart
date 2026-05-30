@@ -148,20 +148,22 @@ class FlorvalRunner {
     return false;
   }
 
-  bool _hasDateOnlyFields(AnalysisResult analysis) {
+  bool _hasDateFields(AnalysisResult analysis) {
+    bool isDateField(FlorvalField f) =>
+        f.type.format == 'date' || f.type.format == 'date-time';
     for (final schemas in [
       analysis.schemas,
       analysis.inlineUnionSchemas,
       analysis.inlineObjectSchemas,
     ]) {
       for (final schema in schemas) {
-        if (schema.fields.any((f) => f.type.format == 'date')) return true;
+        if (schema.fields.any(isDateField)) return true;
         // Check union variant fields
         for (final variant in [
           ...?schema.oneOf,
           ...?schema.anyOf,
         ]) {
-          if (variant.fields.any((f) => f.type.format == 'date')) return true;
+          if (variant.fields.any(isDateField)) return true;
         }
       }
     }
@@ -256,7 +258,7 @@ class FlorvalRunner {
       coreFileNames.add('json_optional.dart');
       logger.debug('Generated core: json_optional');
     }
-    if (_hasDateOnlyFields(analysis)) {
+    if (_hasDateFields(analysis)) {
       final dateSerializerGen = DateSerializerGenerator(templateConfig: tc);
       writer.writeCoreFile(
           'date_serializer.dart', dateSerializerGen.generate());

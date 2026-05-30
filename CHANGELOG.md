@@ -1,3 +1,8 @@
+## 0.3.11
+
+### Bug Fixes
+- **Serialize `format: date-time` fields as UTC**: DateTime fields with OpenAPI `format: date-time` were serialized with a bare `toIso8601String()` on the local `DateTime`, producing a timezone-less string (e.g. `2026-05-30T18:00:00.000`) with no `Z`/offset. A server running in UTC then interprets that local wall-clock time as UTC, so every value is off by the device's timezone offset. The generator now emits a `DateTimeUtcConverter` (`JsonConverter<DateTime, String>`) in `core/date_serializer.dart` that serializes via `toUtc().toIso8601String()` (with a `Z` suffix), annotates non-absentable `format: date-time` fields with `@DateTimeUtcConverter()`, and inlines `toUtc().toIso8601String()` in the custom `toJson` of absentable (PATCH/PUT) models. Deserialization is unchanged (`DateTime.parse`). `format: date` fields are unaffected.
+
 ## 0.3.10
 
 ### Features

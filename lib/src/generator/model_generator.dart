@@ -59,11 +59,12 @@ class ModelGenerator {
     if (hasAbsentable) {
       imports.add('../core/json_optional');
     }
-    // DateOnlyConverter is only needed for non-absentable date fields
+    // Date converters are only needed for non-absentable date/date-time fields
     // (absentable models use custom toJson that formats dates inline).
-    final hasDateOnlyField = schema.fields.any(
-        (f) => !f.absentable && f.type.format == 'date');
-    if (hasDateOnlyField) {
+    final hasDateConverterField = schema.fields.any((f) =>
+        !f.absentable &&
+        (f.type.format == 'date' || f.type.format == 'date-time'));
+    if (hasDateConverterField) {
       imports.add('../core/date_serializer');
     }
     for (final import_ in imports) {
@@ -263,10 +264,11 @@ class ModelGenerator {
 
     // Import referenced types from variant fields
     final imports = _collectUnionImports(schema);
-    // Check if any variant field uses format: date
+    // Check if any variant field uses format: date or date-time
     final allVariantFields = (schema.oneOf ?? schema.anyOf ?? [])
         .expand((v) => v.fields);
-    if (allVariantFields.any((f) => f.type.format == 'date')) {
+    if (allVariantFields.any(
+        (f) => f.type.format == 'date' || f.type.format == 'date-time')) {
       imports.add('../core/date_serializer');
     }
     for (final import_ in imports) {
@@ -523,10 +525,14 @@ class ModelGenerator {
       buffer.writeln('    @JsonKey(${jsonKeyParams.join(', ')})');
     }
 
-    // Add @DateOnlyConverter() for format: date fields (non-absentable only;
-    // absentable models use custom toJson which handles date formatting directly).
+    // Add a date converter for format: date / date-time fields (non-absentable
+    // only; absentable models use custom toJson which handles formatting
+    // directly). date-time fields are normalized to UTC on serialization so the
+    // server receives an unambiguous instant instead of a local wall-clock time.
     if (!field.absentable && field.type.format == 'date') {
       buffer.writeln('    @DateOnlyConverter()');
+    } else if (!field.absentable && field.type.format == 'date-time') {
+      buffer.writeln('    @DateTimeUtcConverter()');
     }
 
     if (field.absentable) {
@@ -698,7 +704,9 @@ class ModelGenerator {
             "'\${$accessor$q.month.toString().padLeft(2, '0')}-'"
             "'\${$accessor$q.day.toString().padLeft(2, '0')}'";
       }
-      return '$accessor$q.toIso8601String()';
+      // date-time → normalize to UTC so the server receives an unambiguous
+      // instant (with a `Z` suffix) rather than a local wall-clock time.
+      return '$accessor$q.toUtc().toIso8601String()';
     }
     if (type.isEnum) {
       return '$accessor$q.jsonValue';
@@ -714,7 +722,7 @@ class ModelGenerator {
               "'\${e.month.toString().padLeft(2, '0')}-'"
               "'\${e.day.toString().padLeft(2, '0')}').toList()";
         }
-        return '$accessor$q.map((e) => e.toIso8601String()).toList()';
+        return '$accessor$q.map((e) => e.toUtc().toIso8601String()).toList()';
       }
       if (!type.itemType!.isPrimitive && !type.itemType!.isMap) {
         return '$accessor$q.map((e) => e.toJson()).toList()';
