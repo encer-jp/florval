@@ -372,11 +372,16 @@ class ProviderGenerator {
     buffer.writeln();
     buffer.writeln('/// Executes fetchMore mutation for ${endpoint.operationId}.');
     buffer.writeln('Future<$paginatedType> $helperName(');
-    buffer.writeln('  MutationTarget ref, {');
-    for (final param in buildParams) {
-      buffer.writeln('  $param');
+    if (hasParams) {
+      buffer.writeln('  MutationTarget ref, {');
+      for (final param in buildParams) {
+        buffer.writeln('  $param');
+      }
+      buffer.writeln('}) {');
+    } else {
+      buffer.writeln('  MutationTarget ref,');
+      buffer.writeln(') {');
     }
-    buffer.writeln('}) {');
     buffer.writeln('  return $mutationName.run(ref, (tsx) {');
     if (hasParams) {
       buffer.writeln('    final notifier = tsx.get($providerName($providerCallArgs).notifier);');

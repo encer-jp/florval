@@ -1,3 +1,8 @@
+## 0.3.12
+
+### Bug Fixes
+- **Fix invalid Dart from paginated `fetchMore` helper with no extra params**: The generated `fetchMore...` pagination helper always emitted a named-argument block (`MutationTarget ref, { ... })`), even for endpoints with no path/query parameters besides the excluded cursor. This produced an empty `{ }` block (`MutationTarget ref, {\n}) {`), which is a Dart syntax error (`Expected an identifier.`), so `dart format` and `build_runner` failed in consumer projects. The helper now branches on whether any additional params exist: with params it emits the named block as before; with none it emits only the positional `MutationTarget ref` argument.
+
 ## 0.3.11
 
 ### Bug Fixes

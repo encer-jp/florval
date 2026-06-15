@@ -656,6 +656,58 @@ void main() {
         expect(code, isNot(contains('fetchMoreListPetsPaginatedMutation.run(ref, (tsx) async {')));
       });
 
+      // A paginated endpoint whose only parameter is the cursor (which is
+      // excluded from build/helper params) yields zero additional params.
+      FlorvalEndpoint makeNoParamPaginatedEndpoint() => FlorvalEndpoint(
+            path: '/pets/online',
+            method: 'GET',
+            operationId: 'listOnlinePets',
+            parameters: [
+              FlorvalParam(
+                name: 'after',
+                dartName: 'after',
+                location: ParamLocation.query,
+                type: FlorvalType(name: 'String', dartType: 'String'),
+                isRequired: false,
+              ),
+            ],
+            responses: {
+              200: FlorvalResponse(
+                statusCode: 200,
+                type: FlorvalType(
+                    name: 'ListOnlinePetsPage',
+                    dartType: 'ListOnlinePetsPage',
+                    ref: '#/components/schemas/ListOnlinePetsPage'),
+              ),
+            },
+            tags: ['pets'],
+            pagination: PaginationInfo(
+              cursorParam: 'after',
+              nextCursorField: 'nextCursor',
+              itemsField: 'items',
+              itemType: FlorvalType(
+                  name: 'Pet',
+                  dartType: 'Pet',
+                  ref: '#/components/schemas/Pet'),
+            ),
+          );
+
+      test('fetchMore helper with no extra params omits empty named block', () {
+        final code = generator.generate('pets', [makeNoParamPaginatedEndpoint()]);
+
+        // Valid Dart: positional ref only, no empty `{ }` named block.
+        expect(
+          code,
+          contains(
+            'Future<PaginatedData<Pet, ListOnlinePetsPage>> fetchMoreListOnlinePets(\n'
+            '  MutationTarget ref,\n'
+            ') {',
+          ),
+        );
+        // The broken `, {` ... `})` shape must not be emitted for this case.
+        expect(code, isNot(contains('  MutationTarget ref, {\n}) {')));
+      });
+
       test('paginated endpoint imports mutation.dart', () {
         final code = generator.generate('pets', [makePaginatedEndpoint()]);
 
