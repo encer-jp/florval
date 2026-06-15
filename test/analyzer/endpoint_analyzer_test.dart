@@ -23,8 +23,8 @@ void main() {
 
     test('extracts all endpoints', () {
       final result = analyzer.analyzeAll(spec.paths);
-      // GET /pets, POST /pets, GET /pets/paginated, POST /pets/{petId}/photo, PATCH /pets/{petId}/details, GET /pets/{petId}, PUT /pets/{petId}, DELETE /pets/{petId}
-      expect(result.endpoints.length, 8);
+      // GET /pets, POST /pets, POST /pets/{petId}/photo, POST /pets/{petId}/photos, PATCH /pets/{petId}/details, GET /pets/{petId}, PUT /pets/{petId}, DELETE /pets/{petId}, GET /pets/paginated
+      expect(result.endpoints.length, 9);
     });
 
     test('parses GET /pets correctly', () {
@@ -136,7 +136,7 @@ void main() {
           result.endpoints.firstWhere((e) => e.operationId == 'uploadPetPhoto');
 
       final fields = uploadPhoto.requestBody!.formFields!;
-      expect(fields.length, 2);
+      expect(fields.length, 3);
 
       final fileField = fields.firstWhere((f) => f.jsonKey == 'file');
       expect(fileField.type.dartType, 'MultipartFile');
@@ -145,6 +145,10 @@ void main() {
       final descField = fields.firstWhere((f) => f.jsonKey == 'description');
       expect(descField.type.dartType, 'String');
       expect(descField.isRequired, isFalse);
+
+      final metadataField = fields.firstWhere((f) => f.jsonKey == 'metadata');
+      expect(metadataField.type.dartType, 'Category');
+      expect(metadataField.isRequired, isFalse);
     });
 
     test('pagination is null when no pagination config provided', () {

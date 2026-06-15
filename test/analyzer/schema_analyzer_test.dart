@@ -107,9 +107,16 @@ void main() {
 
     test('analyzes all schemas', () {
       final result = analyzer.analyzeAll(spec.components!.schemas!);
-      expect(result.schemas.length, 6); // Pet, Category, CreatePetRequest, Error, ValidationError, FieldError
-      expect(result.schemas.map((s) => s.name).toSet(),
-          {'Pet', 'Category', 'CreatePetRequest', 'Error', 'ValidationError', 'FieldError'});
+      expect(result.schemas.length, 7); // Pet, Category, CreatePetRequest, UpdatePetRequest, Error, ValidationError, FieldError
+      expect(result.schemas.map((s) => s.name).toSet(), {
+        'Pet',
+        'Category',
+        'CreatePetRequest',
+        'UpdatePetRequest',
+        'Error',
+        'ValidationError',
+        'FieldError'
+      });
     });
 
     test('detects enum schemas', () {
