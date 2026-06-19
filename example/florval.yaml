@@ -5,10 +5,11 @@ florval:
   # Output directory for generated code
   output_directory: lib/api/generated
 
+  # The `client` block is optional and reserved: these keys are validated but
+  # do NOT drive generation. The base URL, timeouts, and interceptors live on
+  # the Dio you supply via apiDioProvider (see lib/main.dart), not here.
   client:
-    # Environment variable name for base URL
     base_url_env: API_BASE_URL
-    # Default request timeout in milliseconds
     timeout: 30000
 
   riverpod:
