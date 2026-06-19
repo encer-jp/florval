@@ -1,3 +1,8 @@
+## 0.3.13
+
+### Documentation
+- **Rewrite the README to lead with the value proposition**: Restructured the README so it opens with what florval does and why it matters (OpenAPI → dio + freezed + Riverpod 3.x with status-code Union types) instead of burying the pitch below setup details. Verified and tightened the competitor comparison table against the current state of swagger_parser and other generators, fixed non-compiling Dart 3 `switch` samples, corrected the `PaginatedData` file path, and documented the Dio wiring seam and real-world setup. No generator behavior changes.
+
 ## 0.3.12
 
 ### Bug Fixes
