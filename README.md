@@ -81,10 +81,14 @@ class GetTask extends _$GetTask {
 final response = await client.getTask(id: taskId);
 
 switch (response) {
-  case GetTaskResponseSuccess(:final data)        => showTask(data), // data is Task
-  case GetTaskResponseNotFound(:final data)       => showError(data.message),
-  case GetTaskResponseUnauthorized(:final data)   => handleAuth(data),
-  case GetTaskResponseUnknown(:final statusCode)  => showError('Error: $statusCode'),
+  case GetTaskResponseSuccess(:final data):       // data is Task
+    showTask(data);
+  case GetTaskResponseNotFound(:final data):
+    showError(data.message);
+  case GetTaskResponseUnauthorized(:final data):
+    handleAuth(data);
+  case GetTaskResponseUnknown(:final statusCode):
+    showError('Error: $statusCode');
 }
 ```
 
@@ -159,10 +163,14 @@ Future<CreateTaskResponse> createTask(
 final response = await createTask(ref, body: CreateTaskRequest(title: 'New task'));
 
 switch (response) {
-  case CreateTaskResponseCreated(:final data)              => showTask(data), // data is Task
-  case CreateTaskResponseUnprocessableEntity(:final data)  => showErrors(data.errors),
-  case CreateTaskResponseUnauthorized(:final data)         => handleAuth(data),
-  case CreateTaskResponseUnknown(:final statusCode)        => showError('Error: $statusCode'),
+  case CreateTaskResponseCreated(:final data):              // data is Task
+    showTask(data);
+  case CreateTaskResponseUnprocessableEntity(:final data):
+    showErrors(data.errors);
+  case CreateTaskResponseUnauthorized(:final data):
+    handleAuth(data);
+  case CreateTaskResponseUnknown(:final statusCode):
+    showError('Error: $statusCode');
 }
 // listTasks and getTask providers are automatically refreshed!
 ```
@@ -377,10 +385,14 @@ try {
 final response = await client.getTask(id: taskId);
 
 switch (response) {
-  case GetTaskResponseSuccess(:final data)        => showTask(data),
-  case GetTaskResponseNotFound(:final data)       => showError(data.message),
-  case GetTaskResponseUnauthorized(:final data)   => handleAuth(data),
-  case GetTaskResponseUnknown(:final statusCode)  => showError('Error: $statusCode'),
+  case GetTaskResponseSuccess(:final data):
+    showTask(data);
+  case GetTaskResponseNotFound(:final data):
+    showError(data.message);
+  case GetTaskResponseUnauthorized(:final data):
+    handleAuth(data);
+  case GetTaskResponseUnknown(:final statusCode):
+    showError('Error: $statusCode');
 }
 ```
 
@@ -689,7 +701,7 @@ florval generates a paginating Notifier. Its state is a `PaginatedData<Item, Pag
 accumulates items across pages, plus a `fetchMore…()` helper:
 
 ```dart
-// Generated runtime container (core/paginated_data.dart):
+// Generated runtime container (models/paginated_data.dart):
 class PaginatedData<T, P> {
   final List<T> items;     // accumulated across all loaded pages
   final String? nextCursor;
@@ -767,9 +779,10 @@ class PostsView extends HookConsumerWidget {
 lib/api/generated/
 ├── core/
 │   ├── json_optional.dart       # JsonOptional<T> runtime type for PATCH/PUT
-│   ├── paginated_data.dart      # PaginatedData<T, P> container (if pagination is used)
 │   └── date_serializer.dart     # JsonConverters for date / date-time formats
 ├── models/                      # freezed data classes + inline enums
+│   ├── paginated_data.dart      # PaginatedData<T, P> container (if pagination is used)
+│   └── api_exception.dart       # thrown by paginating providers on non-success
 ├── responses/                   # Status-code sealed classes (one per endpoint)
 ├── clients/                     # dio API clients
 ├── providers/                   # Riverpod Notifiers + Mutations (if riverpod.enabled)
