@@ -765,12 +765,17 @@ class PostsView extends HookConsumerWidget {
 | Auto-invalidation after mutations | ✅ | ❌ | ❌ |
 | Cursor-based pagination | ✅ | ❌ | ❌ |
 | Inline enum generation | ✅ | ✅ | ✅ |
-| @Default from OpenAPI defaults | ✅ | ❌ | ❌ |
-| freezed 3.x | ✅ | ✅ | ❌ |
+| freezed 3.x models | ✅ | ✅ | ❌ |
 | No Retrofit dependency | ✅ | ❌ | N/A |
 | OpenAPI 3.0 + 3.1 | ✅ | ✅ | ✅ |
 | Swagger 2.0 | ✅ | ✅ | ✅ |
 | multipart/form-data | ✅ | ✅ | ✅ |
+
+> swagger_parser generates Retrofit + dio clients and can target freezed 3.x via its
+> `use_freezed3` option. openapi_generator's `dart-dio` target serializes with
+> built_value (default) or json_serializable (beta) — freezed is not an option, so it
+> ships its own dio client (no Retrofit). Competitor columns verified against
+> swagger_parser 1.37.x and the openapi-generator `dart-dio` docs (June 2026).
 
 ## Generated output structure
 
