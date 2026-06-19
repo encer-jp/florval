@@ -6,11 +6,176 @@
 
 **Generate type-safe Flutter/Dart API clients from OpenAPI specs — with status-code-level response handling, Riverpod integration, and cursor-based pagination.**
 
-Inspired by [orval](https://orval.dev) for React. florval brings the same level of automation to Flutter: one command turns your OpenAPI spec into production-ready Dart code.
+Inspired by [orval](https://orval.dev) for React, florval brings the same level of automation to Flutter: one command turns your OpenAPI spec into production-ready Dart code.
 
 ---
 
-## OpenAPI in, type-safe Dart out
+## Why florval?
+
+Most Flutter OpenAPI generators collapse every response into a single type and throw on anything that isn't `2xx`. Error handling becomes a pile of manual `statusCode` checks:
+
+```dart
+// ❌ What other generators produce — you're on your own for error handling
+try {
+  final task = await client.getTask(id: taskId);
+  // What if the server returned 404? 422? 500?
+  // You don't find out until it throws.
+} on DioException catch (e) {
+  if (e.response?.statusCode == 404) { ... }
+  else if (e.response?.statusCode == 422) { ... }
+  // Manual, stringly-typed, easy to forget a case.
+}
+```
+
+florval turns **every documented status code into its own typed variant**, so the compiler forces you to handle each one:
+
+```dart
+// ✅ florval — exhaustive, compiler-checked, no exceptions for expected errors
+final response = await client.getTask(id: taskId);
+
+switch (response) {
+  case GetTaskResponseSuccess(:final data):       // data is a typed Task
+    showTask(data);
+  case GetTaskResponseNotFound(:final data):
+    showError(data.message);
+  case GetTaskResponseUnauthorized(:final data):
+    handleAuth(data);
+  case GetTaskResponseUnknown(:final statusCode):
+    showError('Error: $statusCode');
+}
+```
+
+No `try/catch` for expected outcomes. No `statusCode == 200` checks. Every response path is exhaustive and checked at compile time — and the same code is wired into Riverpod providers, mutations, and pagination for you.
+
+## Features
+
+**Core — what sets florval apart:**
+
+- **Status-code Union types** — a plain Dart sealed class per endpoint, one variant per response code
+- **JsonOptional\<T\> for PATCH/PUT** — distinguishes "don't send this key" from "send `null`"
+- **Riverpod 3.x integration** — Notifiers for GET, Mutation API for POST/PUT/DELETE
+- **Auto-invalidation** — mutations automatically refresh related GET providers
+- **Cursor-based pagination** — accumulating `fetchMore()` with a typed `PaginatedData<T, P>`
+
+**Generation:**
+
+- **freezed 3.x models** — immutable data classes with `copyWith` and JSON serialization
+- **Inline enum generation** — `enum` properties in schemas become dedicated Dart enums with `@JsonValue`
+- **Discriminator Union types** — `oneOf`/`anyOf` + `discriminator` → `@Freezed(unionKey: ...)` with `@FreezedUnionValue`
+- **Date handling** — `format: date` and `format: date-time` get correct converters (UTC-safe)
+- **Doc comments** — `description` and `example` become `///` doc comments
+- **`@Deprecated` annotations** — schema, property, operation, and parameter-level `deprecated` flags
+- **`@Default` values** — OpenAPI `default` values generate `@Default(...)` annotations
+- **multipart/form-data** — file uploads with `MultipartFile` support
+- **dio clients** — clean HTTP clients, no Retrofit, full control over your Dio instance
+
+**DX:**
+
+- **Watch mode** — auto-regenerate on spec file changes
+- **OpenAPI 3.0 & 3.1** — v3.0 specs are normalized to v3.1 automatically
+- **Swagger 2.0** — partial support (auto-normalized to v3.1)
+- **Zero runtime dependency** — generated code depends only on dio, freezed, and optionally Riverpod
+
+## Quick Start
+
+### 1. Install
+
+```yaml
+dev_dependencies:
+  florval: ^0.3.0
+```
+
+### 2. Initialize
+
+```bash
+dart run florval init
+```
+
+This creates a `florval.yaml` config file. Edit `schema_path` to point to your OpenAPI spec.
+
+### 3. Generate
+
+```bash
+dart run florval generate
+```
+
+### 4. Build
+
+```bash
+dart run build_runner build --delete-conflicting-outputs
+```
+
+This runs freezed, json_serializable, and riverpod_generator on the generated code.
+
+> **Tip — scope build_runner to the generated code.** On a real app, running freezed/json_serializable over your whole `lib/` is slow and may clash with other builders. Add a [`build.yaml`](#recommended-buildyaml) that restricts generation to florval's output directory.
+
+### 5. Wire up your Dio
+
+This is the one manual step, and the most important. **florval never creates an HTTP client for you** — it generates a single Riverpod seam, `apiDioProvider`, and every generated client reads its `Dio` from it:
+
+```dart
+// providers/api_dio_provider.dart  (generated — do not edit)
+@riverpod
+Dio apiDio(Ref ref) {
+  throw UnimplementedError('Override apiDioProvider with your Dio instance');
+}
+```
+
+Override it once at the root of your app with a `Dio` you fully control — base URL, timeouts, auth headers, interceptors:
+
+```dart
+void main() {
+  runApp(
+    ProviderScope(
+      overrides: [
+        apiDioProvider.overrideWith(authedDio), // ← the integration point
+      ],
+      child: const App(),
+    ),
+  );
+}
+```
+
+Because the base URL and timeouts live on *your* `Dio`, you get full control and can swap implementations per flavor/environment without regenerating. A realistic provider:
+
+```dart
+@Riverpod(keepAlive: true)
+Dio authedDio(Ref ref) {
+  final tokenStore = ref.read(tokenStoreProvider);
+
+  final dio = Dio(
+    BaseOptions(
+      // Pick the base URL at build time: --dart-define=API_BASE_URL=https://api.example.com
+      baseUrl: const String.fromEnvironment('API_BASE_URL'),
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 30),
+      sendTimeout: const Duration(seconds: 30),
+      headers: {Headers.acceptHeader: Headers.jsonContentType},
+    ),
+  );
+
+  // Attach the bearer token to every request.
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        final token = await tokenStore.accessToken();
+        if (token != null) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        handler.next(options);
+      },
+    ),
+  );
+
+  return dio;
+}
+```
+
+See [Wiring patterns](#wiring-patterns) for token-refresh-on-401 and transport-level retry.
+
+## From OpenAPI to type-safe Dart
+
+A tour of what each part of your spec turns into.
 
 ### GET endpoint → Client + Riverpod provider
 
@@ -43,7 +208,7 @@ Inspired by [orval](https://orval.dev) for React. florval brings the same level 
               $ref: "#/components/schemas/NotFoundError"
 ```
 
-**florval generates** a dio client and Riverpod provider — each status code is routed to a typed variant automatically:
+**florval generates** a dio client and a Riverpod provider — each status code is routed to a typed variant automatically:
 
 ```dart
 // clients/tasks_api_client.dart
@@ -75,21 +240,22 @@ class GetTask extends _$GetTask {
 }
 ```
 
-**You write** — pattern-match to get the freezed `Task` model directly:
+**You write** — watch the provider and pattern-match on the response (`switch` is exhaustive, so the compiler keeps you honest):
 
 ```dart
-final response = await client.getTask(id: taskId);
+// In a ConsumerWidget — getTaskProvider yields AsyncValue<GetTaskResponse>:
+final asyncTask = ref.watch(getTaskProvider(id: taskId));
 
-switch (response) {
-  case GetTaskResponseSuccess(:final data):       // data is Task
-    showTask(data);
-  case GetTaskResponseNotFound(:final data):
-    showError(data.message);
-  case GetTaskResponseUnauthorized(:final data):
-    handleAuth(data);
-  case GetTaskResponseUnknown(:final statusCode):
-    showError('Error: $statusCode');
-}
+return asyncTask.when(
+  data: (response) => switch (response) {
+    GetTaskResponseSuccess(:final data) => TaskView(task: data), // data is Task
+    GetTaskResponseNotFound(:final data) => ErrorText(data.message),
+    GetTaskResponseUnauthorized() => const LoginPrompt(),
+    GetTaskResponseUnknown(:final statusCode) => ErrorText('Error: $statusCode'),
+  },
+  loading: () => const CircularProgressIndicator(),
+  error: (e, _) => ErrorText('$e'),
+);
 ```
 
 ### POST endpoint → Client + Mutation with auto-invalidation
@@ -209,7 +375,6 @@ abstract class Task with _$Task {
     required TaskStatus status,
     required TaskPriority priority,
     @JsonKey(name: 'assignee_id') required String? assigneeId,
-    required User? assignee,
     required List<String> tags,
     @JsonKey(name: 'due_date') required DateTime? dueDate,
     @JsonKey(name: 'created_at') required DateTime createdAt,
@@ -219,7 +384,7 @@ abstract class Task with _$Task {
   factory Task.fromJson(Map<String, dynamic> json) => _$TaskFromJson(json);
 }
 
-// models/task_status.dart — generated from inline enum
+// models/task_status.dart — generated from the inline enum
 enum TaskStatus {
   @JsonValue('todo')
   todo,
@@ -241,6 +406,8 @@ enum TaskStatus {
 
 ### PUT request body → JsonOptional\<T\> for partial updates
 
+A `null` field and an absent field mean different things in a partial update: one clears the value, the other leaves it untouched. Dart has no "undefined", so florval models the three states with `JsonOptional<T>`.
+
 **Your OpenAPI spec:**
 
 ```yaml
@@ -259,7 +426,7 @@ UpdateTaskRequest:
     tags:        { type: array, items: { type: string } }
 ```
 
-**florval generates** — optional fields wrapped in `JsonOptional<T>` to distinguish "not sent" from "null":
+**florval generates** — optional fields wrapped in `JsonOptional<T>` to distinguish "not sent" from "`null`":
 
 ```dart
 // models/update_task_request.dart
@@ -287,7 +454,7 @@ abstract class UpdateTaskRequest with _$UpdateTaskRequest {
 **You write:**
 
 ```dart
-// Only update title — optional fields stay untouched on the server
+// Only update the title — optional fields you omit stay untouched on the server
 final body = UpdateTaskRequest(
   title: 'New title',
   status: UpdateTaskRequestStatus.done,
@@ -295,7 +462,7 @@ final body = UpdateTaskRequest(
 );
 // → {"title": "New title", "status": "done", "priority": "high"}
 
-// Explicitly clear the due date
+// Explicitly clear the due date by sending null
 final body = UpdateTaskRequest(
   title: 'New title',
   status: UpdateTaskRequestStatus.done,
@@ -356,173 +523,6 @@ switch (payload) {
     showComment(commentText);
 }
 ```
-
----
-
-## Why florval?
-
-### The problem with other generators
-
-Most Flutter OpenAPI generators treat every response as a single type:
-
-```dart
-// ❌ What other generators produce — you're on your own for error handling
-try {
-  final user = await client.getUser(id: 42);
-  // What if the server returned 404? 422? 500?
-  // You don't know until it throws.
-} on DioException catch (e) {
-  if (e.response?.statusCode == 404) { ... }
-  else if (e.response?.statusCode == 422) { ... }
-  // Manual, error-prone, no type safety
-}
-```
-
-### What florval generates
-
-```dart
-// ✅ florval — every status code is a typed variant
-final response = await client.getTask(id: taskId);
-
-switch (response) {
-  case GetTaskResponseSuccess(:final data):
-    showTask(data);
-  case GetTaskResponseNotFound(:final data):
-    showError(data.message);
-  case GetTaskResponseUnauthorized(:final data):
-    handleAuth(data);
-  case GetTaskResponseUnknown(:final statusCode):
-    showError('Error: $statusCode');
-}
-```
-
-No exceptions. No `statusCode == 200` checks. Every response path is exhaustive and compiler-checked.
-
-## Features
-
-**Core — what sets florval apart:**
-
-- **Status-code Union types** — plain Dart sealed classes for every endpoint response
-- **JsonOptional\<T\> for PATCH/PUT** — distinguishes "don't send this key" from "send null"
-- **Riverpod 3.x integration** — Notifiers for GET, Mutation API for POST/PUT/DELETE
-- **Auto-invalidation** — mutations automatically refresh related GET providers
-
-**Generation:**
-
-- **freezed 3.x models** — immutable data classes with `copyWith`, JSON serialization
-- **Inline enum generation** — `enum` properties in schemas become dedicated Dart enums with `@JsonValue`
-- **Doc comments** — `description` and `example` from OpenAPI specs become `///` doc comments
-- **`@Deprecated` annotations** — schema, property, operation, and parameter-level `deprecated` flags
-- **`readOnly` / `writeOnly`** — OpenAPI field flags propagated to the intermediate representation
-- **`@Default` values** — OpenAPI `default` values generate `@Default(...)` annotations
-- **dio clients** — clean HTTP clients, no Retrofit, full control over your Dio instance
-- **Cursor-based pagination** — `fetchMore()` with automatic data accumulation
-- **Discriminator Union types** — `@Freezed(unionKey: ...)` with `@FreezedUnionValue`
-- **multipart/form-data** — file uploads with `MultipartFile` support
-
-**DX:**
-
-- **Watch mode** — auto-regenerate on spec file changes
-- **OpenAPI 3.0 & 3.1** — v3.0 specs are normalized to v3.1 automatically
-- **Swagger 2.0** — partial support (auto-normalized to v3.1)
-- **Zero runtime dependency** — generated code depends only on dio, freezed, and optionally Riverpod
-
-## Quick Start
-
-### 1. Install
-
-```yaml
-dev_dependencies:
-  florval: ^0.3.0
-```
-
-### 2. Initialize
-
-```bash
-dart run florval init
-```
-
-This creates a `florval.yaml` config file. Edit `schema_path` to point to your OpenAPI spec.
-
-### 3. Generate
-
-```bash
-dart run florval generate
-```
-
-### 4. Build
-
-```bash
-dart run build_runner build --delete-conflicting-outputs
-```
-
-This runs freezed, json_serializable, and riverpod_generator on the generated code.
-
-> **Tip — scope build_runner to the generated code.** On a real app, running freezed/json_serializable over your whole `lib/` is slow and may clash with other builders. Add a [`build.yaml`](#recommended-buildyaml) that restricts generation to florval's output directory. See below.
-
-### 5. Wire up your Dio
-
-This is the one manual step, and the most important. **florval never creates an HTTP client for you** — it generates a single Riverpod seam, `apiDioProvider`, and every generated client reads its `Dio` from it:
-
-```dart
-// providers/api_dio_provider.dart  (generated — do not edit)
-@riverpod
-Dio apiDio(Ref ref) {
-  throw UnimplementedError('Override apiDioProvider with your Dio instance');
-}
-```
-
-You override it once at the root of your app with a `Dio` you fully control — base URL, timeouts, auth headers, interceptors:
-
-```dart
-void main() {
-  runApp(
-    ProviderScope(
-      overrides: [
-        apiDioProvider.overrideWith(authedDio), // ← the integration point
-      ],
-      child: const App(),
-    ),
-  );
-}
-```
-
-Because the base URL and timeouts live on *your* `Dio`, you get full control and can swap implementations per flavor/environment without regenerating. A realistic provider looks like this:
-
-```dart
-@Riverpod(keepAlive: true)
-Dio authedDio(Ref ref) {
-  final tokenStore = ref.read(tokenStoreProvider);
-
-  final dio = Dio(
-    BaseOptions(
-      // Pick the base URL at build time: --dart-define=API_BASE_URL=https://api.example.com
-      baseUrl: const String.fromEnvironment('API_BASE_URL'),
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 30),
-      sendTimeout: const Duration(seconds: 30),
-      headers: {Headers.acceptHeader: Headers.jsonContentType},
-    ),
-  );
-
-  // Attach the bearer token to every request.
-  dio.interceptors.add(
-    InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await tokenStore.accessToken();
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-    ),
-  );
-
-  return dio;
-}
-```
-
-See [Wiring patterns](#wiring-patterns) below for token-refresh-on-401 and transport-level retry.
 
 ## Configuration
 
@@ -721,8 +721,9 @@ class PostsView extends HookConsumerWidget {
     final async = ref.watch(listPostsProvider());
     final controller = useScrollController();
 
-    // Guard against the scroll listener firing twice in one frame: `isPending`
-    // only flips after a frame, so without this the next page is requested twice.
+    // Guard against the scroll listener firing twice in one frame: a mutation's
+    // `isPending` only flips after a frame, so without this the next page is
+    // requested twice and the same cursor is sent to the server back-to-back.
     final inFlight = useRef(false);
     useEffect(() {
       void onScroll() {
@@ -762,18 +763,16 @@ class PostsView extends HookConsumerWidget {
 | JsonOptional (undefined vs null) | ✅ | ❌ | ❌ |
 | Riverpod integration | ✅ | ❌ | ❌ |
 | Auto-invalidation after mutations | ✅ | ❌ | ❌ |
-| Inline enum generation | ✅ | ✅ | ✅ |
-| Doc comments from description/example | ✅ | ❌ | ✅ |
-| @Deprecated from OpenAPI flags | ✅ | ❌ | ✅ |
-| @Default from OpenAPI defaults | ✅ | ❌ | ❌ |
 | Cursor-based pagination | ✅ | ❌ | ❌ |
+| Inline enum generation | ✅ | ✅ | ✅ |
+| @Default from OpenAPI defaults | ✅ | ❌ | ❌ |
 | freezed 3.x | ✅ | ✅ | ❌ |
 | No Retrofit dependency | ✅ | ❌ | N/A |
 | OpenAPI 3.0 + 3.1 | ✅ | ✅ | ✅ |
 | Swagger 2.0 | ✅ | ✅ | ✅ |
 | multipart/form-data | ✅ | ✅ | ✅ |
 
-## Generated Output Structure
+## Generated output structure
 
 ```
 lib/api/generated/
@@ -788,27 +787,28 @@ lib/api/generated/
 ├── providers/                   # Riverpod Notifiers + Mutations (if riverpod.enabled)
 │   ├── api_dio_provider.dart    # apiDioProvider — override this with your Dio
 │   └── retry.dart               # retry() function for @Riverpod(retry: retry)
-├── api.dart                     # Barrel file (export everything)
+├── api.dart                     # Barrel: everything except response unions
 ├── api_models.dart              # Barrel: models only
 ├── api_responses.dart           # Barrel: response unions only
 ├── api_clients.dart             # Barrel: clients only
 └── api_providers.dart           # Barrel: providers only
 ```
 
+> Response unions are kept out of `api.dart` to avoid name clashes with models;
+> import `api_responses.dart` directly (often as `r`) when you need them.
+
 ## CLI
 
 ```bash
-dart run florval init                              # Create florval.yaml template
+dart run florval init                               # Create florval.yaml template
 dart run florval init --config custom.yaml --force  # Custom config path
-dart run florval generate                          # Generate from florval.yaml
-dart run florval generate --watch                  # Watch mode
+dart run florval generate                           # Generate from florval.yaml
+dart run florval generate --watch                   # Watch mode
 dart run florval generate --schema api.yaml --output lib/api/
-dart run florval generate --verbose                # Debug output
+dart run florval generate --verbose                 # Debug output
 ```
 
 ## Requirements
-
-### Your project's dependencies
 
 ```yaml
 dependencies:
@@ -831,7 +831,7 @@ dev_dependencies:
   florval: ^0.3.0
 ```
 
-## OpenAPI Version Support
+## OpenAPI version support
 
 | Version | Support |
 |---------|---------|
