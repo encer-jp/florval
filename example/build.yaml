@@ -1,0 +1,15 @@
+# Scope codegen to florval's output directory so build_runner stays fast and
+# doesn't run freezed/json_serializable over unrelated files.
+targets:
+  $default:
+    builders:
+      json_serializable:
+        options:
+          checked: true
+          explicit_to_json: true
+      freezed:
+        generate_for:
+          include:
+            - lib/api/generated/clients/**
+            - lib/api/generated/core/**
+            - lib/api/generated/models/**

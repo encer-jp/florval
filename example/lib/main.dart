@@ -17,13 +17,9 @@ void main() {
   runApp(
     ProviderScope(
       overrides: [
-        authApiClientProvider.overrideWithValue(AuthApiClient(dio)),
-        tasksApiClientProvider.overrideWithValue(TasksApiClient(dio)),
-        usersApiClientProvider.overrideWithValue(UsersApiClient(dio)),
-        projectsApiClientProvider.overrideWithValue(ProjectsApiClient(dio)),
-        notificationsApiClientProvider
-            .overrideWithValue(NotificationsApiClient(dio)),
-        uploadsApiClientProvider.overrideWithValue(UploadsApiClient(dio)),
+        // The single integration seam: every generated client reads its Dio
+        // from `apiDioProvider`. Override it once with the Dio you control.
+        apiDioProvider.overrideWith((ref) => dio),
       ],
       child: DemoApp(dio: dio),
     ),

@@ -47,6 +47,57 @@ cd example/
 flutter run -d chrome
 ```
 
+## 実アプリへの組み込み方（重要）
+
+florvalは**HTTPクライアントを生成しない**。代わりに `apiDioProvider` という
+Riverpodの差し込み口を1つ生成し、生成された全クライアントはここから `Dio` を取得する。
+
+```dart
+// providers/api_dio_provider.dart（生成物・編集不可）
+@riverpod
+Dio apiDio(Ref ref) {
+  throw UnimplementedError('Override apiDioProvider with your Dio instance');
+}
+```
+
+利用側はアプリ起動時に **1回だけ** 自前の `Dio`（baseUrl・タイムアウト・
+インターセプター込み）で override する。本exampleの `lib/main.dart` がその実例：
+
+```dart
+ProviderScope(
+  overrides: [
+    apiDioProvider.overrideWith((ref) => dio), // ← 唯一の組み込みポイント
+  ],
+  child: DemoApp(dio: dio),
+)
+```
+
+baseURLやタイムアウトは `florval.yaml` ではなく **自分の `Dio` 側に持たせる**。
+認証ヘッダー付与・401リフレッシュ・リトライもこの `Dio` のインターセプターで行う
+（実運用パターンはルートREADMEの「Wiring patterns」を参照）。
+
+## build_runnerのスコープ（`build.yaml`）
+
+`build.yaml` でfreezed/json_serializableの対象を生成ディレクトリだけに絞っている。
+プロジェクト全体を走査しないので速く、他のジェネレーターとも衝突しない。
+`checked` / `explicit_to_json` を有効化して型検証とネストオブジェクトのシリアライズを正す。
+
+```yaml
+targets:
+  $default:
+    builders:
+      json_serializable:
+        options:
+          checked: true
+          explicit_to_json: true
+      freezed:
+        generate_for:
+          include:
+            - lib/api/generated/clients/**
+            - lib/api/generated/core/**
+            - lib/api/generated/models/**
+```
+
 ## 成功基準
 
 1. `dart run florval generate` がエラーなく完了
