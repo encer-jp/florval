@@ -15,6 +15,9 @@ class FlorvalType {
   /// Element type when [isList] is true.
   final FlorvalType? itemType;
 
+  /// Value type when this is a Map.
+  final FlorvalType? mapValueType;
+
   /// Original $ref path (e.g. '#/components/schemas/User').
   final String? ref;
 
@@ -27,12 +30,13 @@ class FlorvalType {
   /// Whether this is a primitive Dart type (String, int, double, bool, DateTime).
   bool get isPrimitive =>
       !isList &&
+      !isMap &&
       ref == null &&
       const {'String', 'int', 'double', 'bool', 'DateTime', 'dynamic'}
           .contains(dartType.replaceAll('?', ''));
 
   /// Whether this is a Map type.
-  bool get isMap => dartType.startsWith('Map<');
+  bool get isMap => mapValueType != null || dartType.startsWith('Map<');
 
   const FlorvalType({
     required this.name,
@@ -40,6 +44,7 @@ class FlorvalType {
     this.isNullable = false,
     this.isList = false,
     this.itemType,
+    this.mapValueType,
     this.ref,
     this.isEnum = false,
     this.format,
@@ -52,6 +57,7 @@ class FlorvalType {
         isNullable: true,
         isList: isList,
         itemType: itemType,
+        mapValueType: mapValueType,
         ref: ref,
         isEnum: isEnum,
         format: format,

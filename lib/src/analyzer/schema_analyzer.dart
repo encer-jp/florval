@@ -542,6 +542,7 @@ class SchemaAnalyzer {
             name: dartType,
             dartType: isNullable ? '$dartType?' : dartType,
             isNullable: isNullable,
+            mapValueType: valueResult.type,
           ),
           inlineUnionSchemas: valueResult.inlineUnionSchemas,
           inlineObjectSchemas: valueResult.inlineObjectSchemas,
