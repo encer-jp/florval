@@ -1,3 +1,8 @@
+## 0.3.14
+
+### Bug Fixes
+- **Preserve typed `additionalProperties` map value types end-to-end**: Typed map fields (e.g. `Map<String, bool>`, `Map<String, EnumOrModel>`) lost their value type during generation — `FlorvalType` only kept the `Map<...>` `dartType` string, so generators could not recurse into the map value. In absentable (PATCH/PUT) models that use custom `fromJson`/`toJson`, this produced a direct `as Map<String, T>` cast that throws at runtime (`type '_Map<String, dynamic>' is not a subtype of type 'Map<String, T>?'`), and dropped value conversion in `toJson`. `FlorvalType` now carries a `mapValueType` (preserved through `asNullable()` and import collection), the custom `fromJson` casts each entry value via the map value type, and the custom `toJson` converts each entry value to its JSON representation (enum → `jsonValue`, model → `toJson()`, `format: date` → `yyyy-MM-dd`, `format: date-time` → UTC ISO 8601, nested maps/lists → recursion). Primitive/dynamic value maps round-trip as-is. Nested maps such as `Map<String, Map<String, T>>` are handled in both directions.
+
 ## 0.3.13
 
 ### Documentation
