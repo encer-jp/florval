@@ -1201,6 +1201,94 @@ void main() {
         );
       });
 
+      test('generates custom toJson conversion for typed map fields', () {
+        final schema = FlorvalSchema(
+          name: 'UpdateConfigRequest',
+          fields: [
+            // enum value map
+            FlorvalField(
+              name: 'statuses',
+              jsonKey: 'statuses',
+              type: FlorvalType(
+                name: 'Map<String, Status>',
+                dartType: 'Map<String, Status>?',
+                isNullable: true,
+                mapValueType: FlorvalType(
+                  name: 'Status',
+                  dartType: 'Status',
+                  ref: '#/components/schemas/Status',
+                  isEnum: true,
+                ),
+              ),
+              isRequired: false,
+              absentable: true,
+            ),
+            // model reference value map
+            FlorvalField(
+              name: 'profiles',
+              jsonKey: 'profiles',
+              type: FlorvalType(
+                name: 'Map<String, Profile>',
+                dartType: 'Map<String, Profile>?',
+                isNullable: true,
+                mapValueType: FlorvalType(
+                  name: 'Profile',
+                  dartType: 'Profile',
+                  ref: '#/components/schemas/Profile',
+                ),
+              ),
+              isRequired: false,
+              absentable: true,
+            ),
+            // primitive value map (no per-entry conversion needed)
+            FlorvalField(
+              name: 'flags',
+              jsonKey: 'flags',
+              type: FlorvalType(
+                name: 'Map<String, bool>',
+                dartType: 'Map<String, bool>?',
+                isNullable: true,
+                mapValueType: FlorvalType(name: 'bool', dartType: 'bool'),
+              ),
+              isRequired: false,
+              absentable: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        // enum value map → jsonValue per entry
+        expect(
+          code,
+          contains(
+              "json['statuses'] = (statuses as JsonOptionalValue<Map<String, Status>>).value?.map((k, v) => MapEntry(k, v.jsonValue));"),
+        );
+        // model value map → toJson() per entry
+        expect(
+          code,
+          contains(
+              "json['profiles'] = (profiles as JsonOptionalValue<Map<String, Profile>>).value?.map((k, v) => MapEntry(k, v.toJson()));"),
+        );
+        // primitive value map → assigned as-is, no pointless .map()
+        expect(
+          code,
+          contains(
+              "json['flags'] = (flags as JsonOptionalValue<Map<String, bool>>).value;"),
+        );
+        // enum/model maps must NOT be emitted raw
+        expect(
+          code,
+          isNot(contains(
+              "json['statuses'] = (statuses as JsonOptionalValue<Map<String, Status>>).value;")),
+        );
+        expect(
+          code,
+          isNot(contains(
+              "json['profiles'] = (profiles as JsonOptionalValue<Map<String, Profile>>).value;")),
+        );
+      });
+
       test('handles absentable field with JsonKey', () {
         final schema = FlorvalSchema(
           name: 'UpdateUserRequest',
