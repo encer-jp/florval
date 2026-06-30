@@ -739,6 +739,7 @@ components:
 
       final headers = result.schema.fields.firstWhere((f) => f.name == 'headers');
       expect(headers.type.dartType, 'Map<String, String>?');
+      expect(headers.type.mapValueType?.dartType, 'String');
     });
 
     test('additionalProperties with type integer generates Map<String, int>', () {
@@ -762,6 +763,7 @@ components:
       );
 
       expect(result.type.dartType, 'Map<String, int>');
+      expect(result.type.mapValueType?.dartType, 'int');
     });
 
     test('additionalProperties with \$ref generates Map<String, RefType>', () {
@@ -790,6 +792,8 @@ components:
       );
 
       expect(result.type.dartType, 'Map<String, User>');
+      expect(result.type.mapValueType?.dartType, 'User');
+      expect(result.type.mapValueType?.ref, '#/components/schemas/User');
     });
 
     test('additionalProperties true generates Map<String, dynamic>', () {

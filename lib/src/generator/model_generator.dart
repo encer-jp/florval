@@ -552,7 +552,13 @@ class ModelGenerator {
 
   /// Extracts the inner (non-nullable) type name for wrapping in JsonOptional.
   String _absentableInnerType(FlorvalField field) {
-    return field.type.dartType.replaceAll('?', '');
+    return _withoutTrailingNullable(field.type.dartType);
+  }
+
+  String _withoutTrailingNullable(String dartType) {
+    return dartType.endsWith('?')
+        ? dartType.substring(0, dartType.length - 1)
+        : dartType;
   }
 
   /// Generates a custom `fromJson` that uses `json.containsKey()` to distinguish
@@ -592,7 +598,7 @@ class ModelGenerator {
   /// Returns a Dart expression that casts a JSON value to the target type.
   String _fromJsonCastExpression(FlorvalType type, String accessor) {
     final nullable = type.isNullable;
-    final baseDartType = type.dartType.replaceAll('?', '');
+    final baseDartType = _withoutTrailingNullable(type.dartType);
 
     // DateTime
     if (baseDartType == 'DateTime') {
@@ -628,6 +634,15 @@ class ModelGenerator {
       return '($accessor as List<dynamic>).map((e) => $itemCast).toList()';
     }
 
+    // Map types
+    if (type.isMap && type.mapValueType != null) {
+      final valueCast = _fromJsonCastExpression(type.mapValueType!, 'v');
+      if (nullable) {
+        return '($accessor as Map?)?.map((k, v) => MapEntry(k as String, $valueCast))';
+      }
+      return '($accessor as Map).map((k, v) => MapEntry(k as String, $valueCast))';
+    }
+
     // Reference types (model classes with fromJson)
     if (type.ref != null && !type.isEnum) {
       if (nullable) {
@@ -650,22 +665,7 @@ class ModelGenerator {
 
   /// Returns a cast expression for a single list item.
   String _fromJsonListItemCast(FlorvalType itemType) {
-    if (itemType.ref != null && !itemType.isEnum) {
-      return '${itemType.dartType}.fromJson(e as Map<String, dynamic>)';
-    }
-    if (itemType.isEnum) {
-      return '${itemType.dartType}.fromJsonValue(e as String)';
-    }
-    if (itemType.dartType == 'int') {
-      return '(e as num).toInt()';
-    }
-    if (itemType.dartType == 'double') {
-      return '(e as num).toDouble()';
-    }
-    if (itemType.dartType == 'DateTime') {
-      return 'DateTime.parse(e as String)';
-    }
-    return 'e as ${itemType.dartType}';
+    return _fromJsonCastExpression(itemType, 'e');
   }
 
   /// Generates a custom `toJson()` that excludes absent fields from the JSON map.
@@ -695,7 +695,7 @@ class ModelGenerator {
 
   /// Returns a Dart expression that converts a value to its JSON representation.
   String _toJsonValueExpression(FlorvalType type, String accessor, {bool nullable = false}) {
-    final baseDartType = type.dartType.replaceAll('?', '');
+    final baseDartType = _withoutTrailingNullable(type.dartType);
     final q = nullable ? '?' : '';
 
     if (baseDartType == 'DateTime') {
@@ -715,7 +715,7 @@ class ModelGenerator {
       if (type.itemType!.isEnum) {
         return '$accessor$q.map((e) => e.jsonValue).toList()';
       }
-      if (type.itemType!.dartType.replaceAll('?', '') == 'DateTime') {
+      if (_withoutTrailingNullable(type.itemType!.dartType) == 'DateTime') {
         if (type.itemType!.format == 'date') {
           return "$accessor$q.map((e) => "
               "'\${e.year.toString().padLeft(4, '0')}-'"
@@ -825,17 +825,20 @@ class ModelGenerator {
   /// Adds import paths for referenced types in a list of fields.
   void _addFieldImports(Set<String> imports, Iterable<FlorvalField> fields) {
     for (final field in fields) {
-      final type = field.type;
-      // Check if this is a reference type (not primitive)
-      if (type.ref != null) {
-        final refName = type.ref!.split('/').last;
-        imports.add(ReCase(refName).snakeCase);
-      }
-      // Check item type for lists
-      if (type.itemType != null && type.itemType!.ref != null) {
-        final refName = type.itemType!.ref!.split('/').last;
-        imports.add(ReCase(refName).snakeCase);
-      }
+      _addTypeImports(imports, field.type);
+    }
+  }
+
+  void _addTypeImports(Set<String> imports, FlorvalType type) {
+    if (type.ref != null) {
+      final refName = type.ref!.split('/').last;
+      imports.add(ReCase(refName).snakeCase);
+    }
+    if (type.itemType != null) {
+      _addTypeImports(imports, type.itemType!);
+    }
+    if (type.mapValueType != null) {
+      _addTypeImports(imports, type.mapValueType!);
     }
   }
 }

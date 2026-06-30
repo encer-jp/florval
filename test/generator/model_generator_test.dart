@@ -147,6 +147,31 @@ void main() {
       expect(code, contains("import 'field_error.dart';"));
     });
 
+    test('imports map value type for references', () {
+      final schema = FlorvalSchema(
+        name: 'UserDirectory',
+        fields: [
+          FlorvalField(
+            name: 'users',
+            jsonKey: 'users',
+            type: FlorvalType(
+              name: 'Map<String, User>',
+              dartType: 'Map<String, User>',
+              mapValueType: FlorvalType(
+                name: 'User',
+                dartType: 'User',
+                ref: '#/components/schemas/User',
+              ),
+            ),
+            isRequired: true,
+          ),
+        ],
+      );
+
+      final code = generator.generate(schema);
+      expect(code, contains("import 'user.dart';"));
+    });
+
     test('generates sealed class for oneOf union type', () {
       final schema = FlorvalSchema(
         name: 'Animal',
@@ -1141,6 +1166,39 @@ void main() {
         expect(code, contains("json.containsKey('name')"));
         expect(code, contains('JsonOptional.value('));
         expect(code, contains('JsonOptional<String>.absent()'));
+      });
+
+      test('generates custom fromJson conversion for typed map fields', () {
+        final schema = FlorvalSchema(
+          name: 'UpdateConfigRequest',
+          fields: [
+            FlorvalField(
+              name: 'enabledTools',
+              jsonKey: 'enabledTools',
+              type: FlorvalType(
+                name: 'Map<String, bool>',
+                dartType: 'Map<String, bool>?',
+                isNullable: true,
+                mapValueType: FlorvalType(name: 'bool', dartType: 'bool'),
+              ),
+              isRequired: false,
+              absentable: true,
+            ),
+          ],
+        );
+
+        final code = generator.generate(schema);
+
+        expect(code, contains('JsonOptional<Map<String, bool>>'));
+        expect(
+          code,
+          contains(
+              "JsonOptional.value((json['enabledTools'] as Map?)?.map((k, v) => MapEntry(k as String, v as bool)))"),
+        );
+        expect(
+          code,
+          isNot(contains("json['enabledTools'] as Map<String, bool>")),
+        );
       });
 
       test('handles absentable field with JsonKey', () {
