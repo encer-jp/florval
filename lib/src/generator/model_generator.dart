@@ -728,6 +728,17 @@ class ModelGenerator {
         return '$accessor$q.map((e) => e.toJson()).toList()';
       }
     }
+    // Map types — convert each value to its JSON representation.
+    if (type.isMap && type.mapValueType != null) {
+      final valueExpr = _toJsonValueExpression(type.mapValueType!, 'v',
+          nullable: type.mapValueType!.isNullable);
+      // Primitive/dynamic value maps round-trip as-is and need no per-entry
+      // conversion (recursion returns the accessor unchanged for those).
+      if (valueExpr == 'v') {
+        return accessor;
+      }
+      return '$accessor$q.map((k, v) => MapEntry(k, $valueExpr))';
+    }
     if (type.ref != null && !type.isEnum && !type.isList) {
       return '$accessor$q.toJson()';
     }
