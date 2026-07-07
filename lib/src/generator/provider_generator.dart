@@ -359,11 +359,26 @@ class ProviderGenerator {
     buffer.writeln();
     buffer.writeln(
         '  // --- Optimistic local mutations (florval-generated) ---');
+    buffer.writeln('  //');
+    buffer.writeln(
+        '  // These edit only the in-memory accumulated list and re-emit state so');
+    buffer.writeln(
+        '  // the UI reflects the change immediately (optimistic / realtime updates).');
+    buffer.writeln(
+        '  // They are ephemeral and the server remains the source of truth: the next');
+    buffer.writeln(
+        '  // build() (e.g. after ref.invalidate) refetches from page one and discards');
+    buffer.writeln(
+        '  // any local change made here. Each method is a no-op until the initial');
+    buffer.writeln('  // build() has produced data.');
     buffer.writeln();
 
     // _emitItems()
     buffer.writeln(
-        '  /// Rebuilds state from the current _allItems (preserving cursor/hasMore/lastPage).');
+        '  /// Rebuilds `state` from the current [_allItems], preserving `nextCursor`,');
+    buffer.writeln(
+        '  /// `hasMore`, and the last page. No-op while the notifier has no data yet');
+    buffer.writeln('  /// (during the initial load or while in an error state).');
     buffer.writeln('  void _emitItems() {');
     buffer.writeln('    final current = state.value;');
     buffer.writeln('    if (current == null) {');
@@ -382,7 +397,9 @@ class ProviderGenerator {
 
     // updateWhere()
     buffer.writeln(
-        '  /// Replaces every element matching [test] using [update] (e.g. like/count updates).');
+        '  /// Replaces every element matching [test] with `update(element)` and re-emits');
+    buffer.writeln(
+        '  /// (e.g. toggling a like or bumping a counter). No-op if nothing matches.');
     buffer.writeln(
         '  void updateWhere(bool Function($itemDartType item) test, $itemDartType Function($itemDartType item) update) {');
     buffer.writeln('    var changed = false;');
@@ -399,7 +416,14 @@ class ProviderGenerator {
     buffer.writeln();
 
     // removeWhere()
-    buffer.writeln('  /// Removes every element matching [test].');
+    buffer.writeln(
+        '  /// Removes every element matching [test] and re-emits. No-op if nothing matches.');
+    buffer.writeln('  ///');
+    buffer.writeln(
+        '  /// Local-only: a removed element can reappear when a later [loadNextPage]');
+    buffer.writeln(
+        '  /// or refetch returns it from the server, so also delete it server-side if it');
+    buffer.writeln('  /// must stay gone.');
     buffer.writeln(
         '  void removeWhere(bool Function($itemDartType item) test) {');
     buffer.writeln('    final before = _allItems.length;');
@@ -412,7 +436,9 @@ class ProviderGenerator {
 
     // prepend()
     buffer.writeln(
-        '  /// Inserts [item] at the head of the list (e.g. new incoming message).');
+        '  /// Inserts [item] at the head of the list and re-emits (e.g. a new incoming');
+    buffer.writeln(
+        '  /// message or realtime row). Local-only: dropped on the next refetch.');
     buffer.writeln('  void prepend($itemDartType item) {');
     buffer.writeln('    _allItems.insert(0, item);');
     buffer.writeln('    _emitItems();');
@@ -420,7 +446,13 @@ class ProviderGenerator {
     buffer.writeln();
 
     // append()
-    buffer.writeln('  /// Appends [item] to the tail of the list.');
+    buffer.writeln('  /// Appends [item] to the tail of the list and re-emits.');
+    buffer.writeln('  ///');
+    buffer.writeln(
+        '  /// The tail is also where [loadNextPage] adds the next server page, so an');
+    buffer.writeln(
+        '  /// appended item sits before later-loaded pages until the next refetch');
+    buffer.writeln('  /// reorders from the server.');
     buffer.writeln('  void append($itemDartType item) {');
     buffer.writeln('    _allItems.add(item);');
     buffer.writeln('    _emitItems();');
@@ -429,7 +461,9 @@ class ProviderGenerator {
 
     // replaceAll()
     buffer.writeln(
-        '  /// Replaces all elements (cursor/hasMore are left untouched).');
+        '  /// Replaces the whole list with [items] and re-emits; `nextCursor` and');
+    buffer.writeln(
+        '  /// `hasMore` are left untouched. Local-only: overwritten on the next refetch.');
     buffer.writeln('  void replaceAll(Iterable<$itemDartType> items) {');
     buffer.writeln('    _allItems');
     buffer.writeln('      ..clear()');
