@@ -342,7 +342,134 @@ class ProviderGenerator {
         '        throw ApiException(response);');
     buffer.writeln('    }');
     buffer.writeln('  }');
+
+    // --- Optimistic local mutations (florval-generated) ---
+    _writeOptimisticMutations(buffer, itemDartType, pageDartType);
+
     buffer.writeln('}');
+  }
+
+  /// Writes the optimistic local mutation API appended to each paginated
+  /// Notifier: [_emitItems], [updateWhere], [removeWhere], [prepend],
+  /// [append], and [replaceAll]. These operate on the accumulated
+  /// [_allItems] list and rebuild state while preserving
+  /// cursor/hasMore/lastPage. A no-op when state has no data yet.
+  void _writeOptimisticMutations(
+      StringBuffer buffer, String itemDartType, String pageDartType) {
+    buffer.writeln();
+    buffer.writeln(
+        '  // --- Optimistic local mutations (florval-generated) ---');
+    buffer.writeln('  //');
+    buffer.writeln(
+        '  // These edit only the in-memory accumulated list and re-emit state so');
+    buffer.writeln(
+        '  // the UI reflects the change immediately (optimistic / realtime updates).');
+    buffer.writeln(
+        '  // They are ephemeral and the server remains the source of truth: the next');
+    buffer.writeln(
+        '  // build() (e.g. after ref.invalidate) refetches from page one and discards');
+    buffer.writeln(
+        '  // any local change made here. Each method is a no-op until the initial');
+    buffer.writeln('  // build() has produced data.');
+    buffer.writeln();
+
+    // _emitItems()
+    buffer.writeln(
+        '  /// Rebuilds `state` from the current [_allItems], preserving `nextCursor`,');
+    buffer.writeln(
+        '  /// `hasMore`, and the last page. No-op while the notifier has no data yet');
+    buffer.writeln('  /// (during the initial load or while in an error state).');
+    buffer.writeln('  void _emitItems() {');
+    buffer.writeln('    final current = state.value;');
+    buffer.writeln('    if (current == null) {');
+    buffer.writeln('      return;');
+    buffer.writeln('    }');
+    buffer.writeln('    state = AsyncData(');
+    buffer.writeln('      PaginatedData<$itemDartType, $pageDartType>(');
+    buffer.writeln('        items: List.unmodifiable(_allItems),');
+    buffer.writeln('        nextCursor: _nextCursor,');
+    buffer.writeln('        hasMore: _hasMore,');
+    buffer.writeln('        lastPage: current.lastPage,');
+    buffer.writeln('      ),');
+    buffer.writeln('    );');
+    buffer.writeln('  }');
+    buffer.writeln();
+
+    // updateWhere()
+    buffer.writeln(
+        '  /// Replaces every element matching [test] with `update(element)` and re-emits');
+    buffer.writeln(
+        '  /// (e.g. toggling a like or bumping a counter). No-op if nothing matches.');
+    buffer.writeln(
+        '  void updateWhere(bool Function($itemDartType item) test, $itemDartType Function($itemDartType item) update) {');
+    buffer.writeln('    var changed = false;');
+    buffer.writeln('    for (var i = 0; i < _allItems.length; i++) {');
+    buffer.writeln('      if (test(_allItems[i])) {');
+    buffer.writeln('        _allItems[i] = update(_allItems[i]);');
+    buffer.writeln('        changed = true;');
+    buffer.writeln('      }');
+    buffer.writeln('    }');
+    buffer.writeln('    if (changed) {');
+    buffer.writeln('      _emitItems();');
+    buffer.writeln('    }');
+    buffer.writeln('  }');
+    buffer.writeln();
+
+    // removeWhere()
+    buffer.writeln(
+        '  /// Removes every element matching [test] and re-emits. No-op if nothing matches.');
+    buffer.writeln('  ///');
+    buffer.writeln(
+        '  /// Local-only: a removed element can reappear when a later [loadNextPage]');
+    buffer.writeln(
+        '  /// or refetch returns it from the server, so also delete it server-side if it');
+    buffer.writeln('  /// must stay gone.');
+    buffer.writeln(
+        '  void removeWhere(bool Function($itemDartType item) test) {');
+    buffer.writeln('    final before = _allItems.length;');
+    buffer.writeln('    _allItems.removeWhere(test);');
+    buffer.writeln('    if (_allItems.length != before) {');
+    buffer.writeln('      _emitItems();');
+    buffer.writeln('    }');
+    buffer.writeln('  }');
+    buffer.writeln();
+
+    // prepend()
+    buffer.writeln(
+        '  /// Inserts [item] at the head of the list and re-emits (e.g. a new incoming');
+    buffer.writeln(
+        '  /// message or realtime row). Local-only: dropped on the next refetch.');
+    buffer.writeln('  void prepend($itemDartType item) {');
+    buffer.writeln('    _allItems.insert(0, item);');
+    buffer.writeln('    _emitItems();');
+    buffer.writeln('  }');
+    buffer.writeln();
+
+    // append()
+    buffer.writeln('  /// Appends [item] to the tail of the list and re-emits.');
+    buffer.writeln('  ///');
+    buffer.writeln(
+        '  /// The tail is also where [loadNextPage] adds the next server page, so an');
+    buffer.writeln(
+        '  /// appended item sits before later-loaded pages until the next refetch');
+    buffer.writeln('  /// reorders from the server.');
+    buffer.writeln('  void append($itemDartType item) {');
+    buffer.writeln('    _allItems.add(item);');
+    buffer.writeln('    _emitItems();');
+    buffer.writeln('  }');
+    buffer.writeln();
+
+    // replaceAll()
+    buffer.writeln(
+        '  /// Replaces the whole list with [items] and re-emits; `nextCursor` and');
+    buffer.writeln(
+        '  /// `hasMore` are left untouched. Local-only: overwritten on the next refetch.');
+    buffer.writeln('  void replaceAll(Iterable<$itemDartType> items) {');
+    buffer.writeln('    _allItems');
+    buffer.writeln('      ..clear()');
+    buffer.writeln('      ..addAll(items);');
+    buffer.writeln('    _emitItems();');
+    buffer.writeln('  }');
   }
 
   void _writePaginatedMutation(

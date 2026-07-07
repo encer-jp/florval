@@ -1,3 +1,8 @@
+## 0.4.0
+
+### Features
+- **Optimistic local mutation API on generated paginated Notifiers**: Each generated paginated Notifier now exposes an in-memory mutation API — `updateWhere`, `removeWhere`, `prepend`, `append`, and `replaceAll` (backed by a private `_emitItems` rebuilder) — so consumers can express per-item optimistic and realtime updates (like toggles, deletions, incoming-item inserts, list-wide refreshes) directly against the accumulated list without invalidating and refetching. The methods operate on the Notifier's private accumulation list and rebuild `state` while preserving `nextCursor`, `hasMore`, and `lastPage` (reused from the current `PaginatedData`, so no extra state is needed). Calls made before the initial `build()` completes are safe no-ops (guarded on `state.value == null`). Each generated method carries doc comments spelling out the semantics — that the changes are ephemeral (the server stays the source of truth and the next `build()`/`ref.invalidate` refetch discards them), that they no-op before data is present, and how local inserts/removals interact with a subsequent `loadNextPage`. This is a purely additive change: `build()`, `loadNextPage()`, and the `fetchMore...` mutation output are unchanged, keeping existing generated code fully backward compatible.
+
 ## 0.3.14
 
 ### Bug Fixes
