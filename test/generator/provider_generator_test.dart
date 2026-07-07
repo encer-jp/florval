@@ -635,6 +635,41 @@ void main() {
         expect(code, contains('throw ApiException(response)'));
       });
 
+      test('paginated provider generates optimistic mutation methods', () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        expect(code, contains('void _emitItems() {'));
+        expect(code,
+            contains('void updateWhere(bool Function(Pet item) test, Pet Function(Pet item) update) {'));
+        expect(code, contains('void removeWhere(bool Function(Pet item) test) {'));
+        expect(code, contains('void prepend(Pet item) {'));
+        expect(code, contains('void append(Pet item) {'));
+        expect(code, contains('void replaceAll(Iterable<Pet> items) {'));
+      });
+
+      test('paginated provider _emitItems() preserves lastPage from current state',
+          () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        expect(code, contains('final current = state.valueOrNull;'));
+        expect(code, contains('if (current == null) {'));
+        expect(code, contains('lastPage: current.lastPage,'));
+      });
+
+      test('paginated provider optimistic methods are inside the notifier class',
+          () {
+        final code = generator.generate('pets', [makePaginatedEndpoint()]);
+
+        // The optimistic API must appear before the paginated Mutation constant,
+        // which is emitted after the notifier class is closed.
+        final emitIndex = code.indexOf('void _emitItems()');
+        final mutationIndex = code.indexOf(
+            'final fetchMoreListPetsPaginatedMutation = Mutation');
+        expect(emitIndex, greaterThanOrEqualTo(0));
+        expect(mutationIndex, greaterThanOrEqualTo(0));
+        expect(emitIndex, lessThan(mutationIndex));
+      });
+
       test('generates external Mutation constant for paginated provider', () {
         final code = generator.generate('pets', [makePaginatedEndpoint()]);
 

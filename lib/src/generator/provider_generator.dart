@@ -342,7 +342,100 @@ class ProviderGenerator {
         '        throw ApiException(response);');
     buffer.writeln('    }');
     buffer.writeln('  }');
+
+    // --- Optimistic local mutations (florval-generated) ---
+    _writeOptimisticMutations(buffer, itemDartType, pageDartType);
+
     buffer.writeln('}');
+  }
+
+  /// Writes the optimistic local mutation API appended to each paginated
+  /// Notifier: [_emitItems], [updateWhere], [removeWhere], [prepend],
+  /// [append], and [replaceAll]. These operate on the accumulated
+  /// [_allItems] list and rebuild state while preserving
+  /// cursor/hasMore/lastPage. A no-op when state has no data yet.
+  void _writeOptimisticMutations(
+      StringBuffer buffer, String itemDartType, String pageDartType) {
+    buffer.writeln();
+    buffer.writeln(
+        '  // --- Optimistic local mutations (florval-generated) ---');
+    buffer.writeln();
+
+    // _emitItems()
+    buffer.writeln(
+        '  /// Rebuilds state from the current _allItems (preserving cursor/hasMore/lastPage).');
+    buffer.writeln('  void _emitItems() {');
+    buffer.writeln('    final current = state.valueOrNull;');
+    buffer.writeln('    if (current == null) {');
+    buffer.writeln('      return;');
+    buffer.writeln('    }');
+    buffer.writeln('    state = AsyncData(');
+    buffer.writeln('      PaginatedData<$itemDartType, $pageDartType>(');
+    buffer.writeln('        items: List.unmodifiable(_allItems),');
+    buffer.writeln('        nextCursor: _nextCursor,');
+    buffer.writeln('        hasMore: _hasMore,');
+    buffer.writeln('        lastPage: current.lastPage,');
+    buffer.writeln('      ),');
+    buffer.writeln('    );');
+    buffer.writeln('  }');
+    buffer.writeln();
+
+    // updateWhere()
+    buffer.writeln(
+        '  /// Replaces every element matching [test] using [update] (e.g. like/count updates).');
+    buffer.writeln(
+        '  void updateWhere(bool Function($itemDartType item) test, $itemDartType Function($itemDartType item) update) {');
+    buffer.writeln('    var changed = false;');
+    buffer.writeln('    for (var i = 0; i < _allItems.length; i++) {');
+    buffer.writeln('      if (test(_allItems[i])) {');
+    buffer.writeln('        _allItems[i] = update(_allItems[i]);');
+    buffer.writeln('        changed = true;');
+    buffer.writeln('      }');
+    buffer.writeln('    }');
+    buffer.writeln('    if (changed) {');
+    buffer.writeln('      _emitItems();');
+    buffer.writeln('    }');
+    buffer.writeln('  }');
+    buffer.writeln();
+
+    // removeWhere()
+    buffer.writeln('  /// Removes every element matching [test].');
+    buffer.writeln(
+        '  void removeWhere(bool Function($itemDartType item) test) {');
+    buffer.writeln('    final before = _allItems.length;');
+    buffer.writeln('    _allItems.removeWhere(test);');
+    buffer.writeln('    if (_allItems.length != before) {');
+    buffer.writeln('      _emitItems();');
+    buffer.writeln('    }');
+    buffer.writeln('  }');
+    buffer.writeln();
+
+    // prepend()
+    buffer.writeln(
+        '  /// Inserts [item] at the head of the list (e.g. new incoming message).');
+    buffer.writeln('  void prepend($itemDartType item) {');
+    buffer.writeln('    _allItems.insert(0, item);');
+    buffer.writeln('    _emitItems();');
+    buffer.writeln('  }');
+    buffer.writeln();
+
+    // append()
+    buffer.writeln('  /// Appends [item] to the tail of the list.');
+    buffer.writeln('  void append($itemDartType item) {');
+    buffer.writeln('    _allItems.add(item);');
+    buffer.writeln('    _emitItems();');
+    buffer.writeln('  }');
+    buffer.writeln();
+
+    // replaceAll()
+    buffer.writeln(
+        '  /// Replaces all elements (cursor/hasMore are left untouched).');
+    buffer.writeln('  void replaceAll(Iterable<$itemDartType> items) {');
+    buffer.writeln('    _allItems');
+    buffer.writeln('      ..clear()');
+    buffer.writeln('      ..addAll(items);');
+    buffer.writeln('    _emitItems();');
+    buffer.writeln('  }');
   }
 
   void _writePaginatedMutation(
