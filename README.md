@@ -56,6 +56,7 @@ No `try/catch` for expected outcomes. No `statusCode == 200` checks. Every respo
 - **Riverpod 3.x integration** — Notifiers for GET, Mutation API for POST/PUT/DELETE
 - **Auto-invalidation** — mutations automatically refresh related GET providers
 - **Cursor-based pagination** — accumulating `fetchMore()` with a typed `PaginatedData<T, P>`
+- **Optimistic list updates** — paginating Notifiers expose `updateWhere`/`removeWhere`/`prepend`/`append`/`replaceAll` for instant like/delete/realtime edits without a refetch
 
 **Generation:**
 
@@ -727,7 +728,7 @@ class PostsView extends HookConsumerWidget {
     final inFlight = useRef(false);
     useEffect(() {
       void onScroll() {
-        final data = async.valueOrNull;
+        final data = async.value;
         if (data == null || !data.hasMore || inFlight.value) {
           return;
         }
@@ -754,6 +755,46 @@ class PostsView extends HookConsumerWidget {
   }
 }
 ```
+
+### Optimistic & realtime list updates
+
+Lists often need to change *between* server fetches — a like toggled, a row deleted, a
+new message arriving over a socket. Each paginating Notifier exposes an in-memory mutation
+API so you can edit the accumulated list and have the UI reflect it immediately, without
+invalidating and refetching:
+
+```dart
+final notifier = ref.read(listPostsProvider().notifier);
+
+// Toggle a like — replace the matching item in place
+notifier.updateWhere(
+  (p) => p.id == postId,
+  (p) => p.copyWith(liked: true, likeCount: p.likeCount + 1),
+);
+
+// Delete a post
+notifier.removeWhere((p) => p.id == postId);
+
+// New realtime row (e.g. an incoming chat message)
+notifier.prepend(message);   // head
+notifier.append(message);    // tail
+
+// Swap the whole list (cursor/hasMore untouched)
+notifier.replaceAll(nextItems);
+```
+
+| Method | Effect |
+| --- | --- |
+| `updateWhere(test, update)` | Replace every matching element with `update(element)` |
+| `removeWhere(test)` | Remove every matching element |
+| `prepend(item)` / `append(item)` | Insert at the head / tail |
+| `replaceAll(items)` | Replace all elements (`nextCursor`/`hasMore` preserved) |
+
+These edits are **ephemeral — the server stays the source of truth.** They mutate only the
+Notifier's in-memory list; the next `build()` (e.g. after `ref.invalidate`, or a
+pull-to-refresh) refetches from page one and discards them. A removed item can also reappear
+when a later `fetchMore…()` returns it from the server, so persist deletions server-side too.
+Each method is a no-op until the initial `build()` has produced data.
 
 ## Comparison
 
