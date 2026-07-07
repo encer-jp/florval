@@ -365,7 +365,7 @@ class ProviderGenerator {
     buffer.writeln(
         '  /// Rebuilds state from the current _allItems (preserving cursor/hasMore/lastPage).');
     buffer.writeln('  void _emitItems() {');
-    buffer.writeln('    final current = state.valueOrNull;');
+    buffer.writeln('    final current = state.value;');
     buffer.writeln('    if (current == null) {');
     buffer.writeln('      return;');
     buffer.writeln('    }');

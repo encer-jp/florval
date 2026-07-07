@@ -651,7 +651,7 @@ void main() {
           () {
         final code = generator.generate('pets', [makePaginatedEndpoint()]);
 
-        expect(code, contains('final current = state.valueOrNull;'));
+        expect(code, contains('final current = state.value;'));
         expect(code, contains('if (current == null) {'));
         expect(code, contains('lastPage: current.lastPage,'));
       });
