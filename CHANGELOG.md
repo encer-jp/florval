@@ -1,3 +1,8 @@
+## 0.4.1
+
+### Bug Fixes
+- **Coerce top-level primitive response bodies defensively**: Endpoints whose success response is a top-level primitive (`type: integer`, `number`, `boolean`, `string`) generated `_dio.get<Map<String, dynamic>>()` with a plain `response.data as T` cast. Server frameworks that serialize primitive bodies as plain text (`text/html` / `text/plain`) make dio skip JSON decoding and return a `String`, so the typed `Response` construction failed with a `DioException` before the status-code switch ever ran. Primitive bodies are now requested as `<dynamic>` and coerced via generated helper functions (`_coerceInt`, `_coerceDouble`, `_coerceBool`, `_coerceString`, `_coerceDateTime`) that accept whatever representation arrives — `int`, `num`, or `String` — independent of the response Content-Type; unparseable bodies surface as a clear `FormatException`. Only helpers actually referenced are emitted, and error-path bodies (`e.response!.data`) go through the same coercion. Elements of primitive list responses (`List<int>` etc.) are also coerced per element — the previous `as List<int>` cast always failed at runtime because JSON decoding yields `List<dynamic>`. Object, model-list, and no-body endpoints keep their existing dio type arguments and casts, so existing generated code is unchanged for those shapes.
+
 ## 0.4.0
 
 ### Features
