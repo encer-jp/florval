@@ -13,10 +13,82 @@ import '../utils/status_code.dart';
 class ClientGenerator {
   final TemplateConfig? templateConfig;
 
+  /// Coercion helper function names referenced by the methods generated in
+  /// the current [generate] call. Only these helpers are appended to the
+  /// client file, keeping the output free of unused declarations.
+  final Set<String> _usedCoercionHelpers = {};
+
   ClientGenerator({this.templateConfig});
+
+  /// Coercion helper function name per primitive Dart type.
+  static const Map<String, String> _coercionHelperNames = {
+    'int': '_coerceInt',
+    'double': '_coerceDouble',
+    'bool': '_coerceBool',
+    'String': '_coerceString',
+    'DateTime': '_coerceDateTime',
+  };
+
+  /// Source code of the defensive coercion helpers emitted into client
+  /// files, keyed by helper function name.
+  ///
+  /// Some server frameworks serialize top-level primitive response bodies
+  /// as plain text (e.g. `text/html` or `text/plain`) instead of
+  /// `application/json`. In that case dio does not JSON-decode the body and
+  /// hands back a `String`, so a plain `as int` cast would throw even
+  /// though the spec declares `type: integer`. These helpers accept
+  /// whatever representation arrives and coerce it to the declared type.
+  ///
+  /// Public so tests can execute the exact source that gets generated.
+  static const Map<String, String> coercionHelperSources = {
+    '_coerceInt': '''
+int _coerceInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return num.parse(value.trim()).toInt();
+  throw FormatException('Expected an int response body but got: \$value');
+}
+''',
+    '_coerceDouble': '''
+double _coerceDouble(dynamic value) {
+  if (value is double) return value;
+  if (value is num) return value.toDouble();
+  if (value is String) return double.parse(value.trim());
+  throw FormatException('Expected a double response body but got: \$value');
+}
+''',
+    '_coerceBool': '''
+bool _coerceBool(dynamic value) {
+  if (value is bool) return value;
+  if (value is String) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'true') return true;
+    if (normalized == 'false') return false;
+  }
+  throw FormatException('Expected a bool response body but got: \$value');
+}
+''',
+    '_coerceString': '''
+String _coerceString(dynamic value) {
+  if (value is String) return value;
+  if (value != null) return value.toString();
+  throw const FormatException(
+      'Expected a String response body but got null');
+}
+''',
+    '_coerceDateTime': '''
+DateTime _coerceDateTime(dynamic value) {
+  if (value is DateTime) return value;
+  if (value is String) return DateTime.parse(value.trim());
+  throw FormatException(
+      'Expected a date-time response body but got: \$value');
+}
+''',
+  };
 
   /// Generates a client class for a group of endpoints sharing a tag.
   String generate(String tag, List<FlorvalEndpoint> endpoints) {
+    _usedCoercionHelpers.clear();
     final className = '${ReCase(tag).pascalCase}ApiClient';
     final buffer = StringBuffer();
 
@@ -77,7 +149,27 @@ class ClientGenerator {
 
     buffer.writeln('}');
 
+    _writeCoercionHelpers(buffer);
+
     return buffer.toString();
+  }
+
+  /// Appends the coercion helpers referenced by the generated methods.
+  void _writeCoercionHelpers(StringBuffer buffer) {
+    if (_usedCoercionHelpers.isEmpty) return;
+
+    buffer.writeln();
+    buffer.writeln(
+        '// Servers may serialize top-level primitive bodies as plain text');
+    buffer.writeln(
+        '// instead of JSON, in which case dio hands back a String. These');
+    buffer.writeln(
+        '// helpers coerce the body to the type declared in the spec');
+    buffer.writeln('// regardless of the response Content-Type.');
+    for (final name in _coercionHelperNames.values) {
+      if (!_usedCoercionHelpers.contains(name)) continue;
+      buffer.write(coercionHelperSources[name]);
+    }
   }
 
   void _writeMethod(StringBuffer buffer, FlorvalEndpoint endpoint) {
@@ -164,10 +256,24 @@ class ClientGenerator {
     if (!hasAnyResponseBody) {
       dioTypeArg = '<dynamic>';
     } else {
-      final hasListResponse = endpoint.responses.entries
+      final successResponses = endpoint.responses.entries
           .where((e) => e.key >= 200 && e.key < 300)
-          .any((e) => e.value.type?.isList == true);
-      dioTypeArg = hasListResponse ? '<List<dynamic>>' : '<Map<String, dynamic>>';
+          .toList();
+      // Top-level primitive bodies must be requested as <dynamic>: servers
+      // may send them as plain text (String) rather than JSON, and a
+      // Map/List type argument would make dio fail before the status-code
+      // switch runs.
+      final hasPrimitiveResponse =
+          successResponses.any((e) => e.value.type?.isPrimitive == true);
+      final hasListResponse =
+          successResponses.any((e) => e.value.type?.isList == true);
+      if (hasPrimitiveResponse) {
+        dioTypeArg = '<dynamic>';
+      } else if (hasListResponse) {
+        dioTypeArg = '<List<dynamic>>';
+      } else {
+        dioTypeArg = '<Map<String, dynamic>>';
+      }
     }
 
     // Detect List<MultipartFile> fields in multipart bodies — Dio's
@@ -306,6 +412,17 @@ class ClientGenerator {
       } else if (!type.isPrimitive && !type.isMap && !type.isList) {
         buffer.writeln(
             '          return $responseType.$factoryName(${type.dartType}.fromJson($dataExpr as Map<String, dynamic>));');
+      } else if (type.isList &&
+          type.itemType != null &&
+          _coercionExpr(type.itemType!, 'e') != null) {
+        // JSON decoding yields List<dynamic>; casting it to List<int> etc.
+        // fails at runtime, so coerce each element instead.
+        final itemExpr = _coercionExpr(type.itemType!, 'e')!;
+        buffer.writeln(
+            '          return $responseType.$factoryName(($dataExpr as List).map((e) => $itemExpr).toList());');
+      } else if (_coercionExpr(type, dataExpr) != null) {
+        buffer.writeln(
+            '          return $responseType.$factoryName(${_coercionExpr(type, dataExpr)!});');
       } else {
         buffer.writeln(
             '          return $responseType.$factoryName($dataExpr as ${type.dartType});');
@@ -315,6 +432,22 @@ class ClientGenerator {
       buffer.writeln(
           '          return $responseType.$factoryName();');
     }
+  }
+
+  /// Returns an expression that defensively coerces [expr] to [type]'s
+  /// primitive Dart type, or null when [type] is not a coercible primitive.
+  ///
+  /// Records the referenced helper function so it gets appended to the
+  /// generated client file.
+  String? _coercionExpr(FlorvalType type, String expr) {
+    final base = type.dartType.replaceAll('?', '');
+    final helper = _coercionHelperNames[base];
+    if (helper == null) return null;
+    _usedCoercionHelpers.add(helper);
+    if (type.dartType.endsWith('?')) {
+      return '$expr == null ? null : $helper($expr)';
+    }
+    return '$helper($expr)';
   }
 
   void _writeMethodDocComment(StringBuffer buffer, FlorvalEndpoint endpoint) {

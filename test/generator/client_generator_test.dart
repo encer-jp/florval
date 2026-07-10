@@ -937,6 +937,164 @@ void main() {
       expect(code, contains('_dio.get<List<dynamic>>('));
     });
 
+    group('primitive response coercion', () {
+      FlorvalEndpoint makePrimitiveEndpoint(String dartType,
+              {String operationId = 'getValue'}) =>
+          FlorvalEndpoint(
+            path: '/value',
+            method: 'GET',
+            operationId: operationId,
+            parameters: [],
+            responses: {
+              200: FlorvalResponse(
+                statusCode: 200,
+                type: FlorvalType(name: dartType, dartType: dartType),
+              ),
+            },
+            tags: ['values'],
+          );
+
+      test('uses dynamic type argument for top-level primitive response', () {
+        final code =
+            generator.generate('values', [makePrimitiveEndpoint('int')]);
+
+        expect(code, contains('_dio.get<dynamic>('));
+        expect(code, isNot(contains('_dio.get<Map<String, dynamic>>(')));
+      });
+
+      test('coerces int response instead of casting', () {
+        final code =
+            generator.generate('values', [makePrimitiveEndpoint('int')]);
+
+        expect(code,
+            contains('r.GetValueResponse.success(_coerceInt(response.data))'));
+        expect(code, isNot(contains('response.data as int')));
+        expect(code, contains('int _coerceInt(dynamic value)'));
+      });
+
+      test('int helper handles num and String representations', () {
+        final code =
+            generator.generate('values', [makePrimitiveEndpoint('int')]);
+
+        expect(code, contains('if (value is int) return value;'));
+        expect(code, contains('if (value is num) return value.toInt();'));
+        expect(code,
+            contains('if (value is String) return num.parse(value.trim()).toInt();'));
+      });
+
+      test('coerces double, bool and String responses', () {
+        final code = generator.generate('values', [
+          makePrimitiveEndpoint('double', operationId: 'getDouble'),
+          makePrimitiveEndpoint('bool', operationId: 'getBool'),
+          makePrimitiveEndpoint('String', operationId: 'getString'),
+        ]);
+
+        expect(code,
+            contains('r.GetDoubleResponse.success(_coerceDouble(response.data))'));
+        expect(code,
+            contains('r.GetBoolResponse.success(_coerceBool(response.data))'));
+        expect(code,
+            contains('r.GetStringResponse.success(_coerceString(response.data))'));
+        expect(code, contains('double _coerceDouble(dynamic value)'));
+        expect(code, contains('bool _coerceBool(dynamic value)'));
+        expect(code, contains('String _coerceString(dynamic value)'));
+      });
+
+      test('emits each helper once even when used by multiple endpoints', () {
+        final code = generator.generate('values', [
+          makePrimitiveEndpoint('int', operationId: 'getCount'),
+          makePrimitiveEndpoint('int', operationId: 'getTotal'),
+        ]);
+
+        expect('int _coerceInt(dynamic value)'.allMatches(code).length, 1);
+      });
+
+      test('does not emit helpers for object responses', () {
+        final code = generator.generate('users', [makeGetEndpoint()]);
+
+        expect(code, isNot(contains('_coerce')));
+      });
+
+      test('does not emit unused helpers', () {
+        final code =
+            generator.generate('values', [makePrimitiveEndpoint('int')]);
+
+        expect(code, isNot(contains('_coerceDouble')));
+        expect(code, isNot(contains('_coerceBool')));
+        expect(code, isNot(contains('_coerceString')));
+        expect(code, isNot(contains('_coerceDateTime')));
+      });
+
+      test('does not leak helper state into subsequent generate calls', () {
+        generator.generate('values', [makePrimitiveEndpoint('int')]);
+        final code = generator.generate('users', [makeGetEndpoint()]);
+
+        expect(code, isNot(contains('_coerce')));
+      });
+
+      test('coerces primitive error response bodies', () {
+        final endpoint = FlorvalEndpoint(
+          path: '/value',
+          method: 'GET',
+          operationId: 'getValue',
+          parameters: [],
+          responses: {
+            200: FlorvalResponse(
+              statusCode: 200,
+              type: FlorvalType(name: 'int', dartType: 'int'),
+            ),
+            400: FlorvalResponse(
+              statusCode: 400,
+              type: FlorvalType(name: 'String', dartType: 'String'),
+            ),
+          },
+          tags: ['values'],
+        );
+
+        final code = generator.generate('values', [endpoint]);
+
+        expect(code, contains('_coerceString(response.data)'));
+        expect(code, contains('_coerceString(e.response!.data)'));
+      });
+
+      test('coerces elements of primitive list responses', () {
+        final endpoint = FlorvalEndpoint(
+          path: '/counts',
+          method: 'GET',
+          operationId: 'listCounts',
+          parameters: [],
+          responses: {
+            200: FlorvalResponse(
+              statusCode: 200,
+              type: FlorvalType(
+                name: 'List<int>',
+                dartType: 'List<int>',
+                isList: true,
+                itemType: FlorvalType(name: 'int', dartType: 'int'),
+              ),
+            ),
+          },
+          tags: ['values'],
+        );
+
+        final code = generator.generate('values', [endpoint]);
+
+        expect(code, contains('_dio.get<List<dynamic>>('));
+        expect(
+            code,
+            contains(
+                '(response.data as List).map((e) => _coerceInt(e)).toList()'));
+        expect(code, isNot(contains('response.data as List<int>')));
+      });
+
+      test('keeps object responses on typed dio call (regression guard)', () {
+        final code = generator.generate('users', [makeGetEndpoint()]);
+
+        expect(code, contains('_dio.get<Map<String, dynamic>>('));
+        expect(code, contains('User.fromJson(response.data as Map<String, dynamic>)'));
+      });
+    });
+
     test('generates dynamic type argument for no-body responses', () {
       final endpoint = FlorvalEndpoint(
         path: '/pets/{id}',
